@@ -6,7 +6,8 @@ import QueueStatusBadge from './QueueStatusBadge.vue'
 type QueueEntry = {
   id: string
   category: 'RECEIVING' | 'DELIVERY'
-  customerName: string
+  customerId?: string | null
+  customer?: { id: string; name: string } | null
   driverName: string
   truckNumber: string
   containerNumber?: string | null
@@ -40,10 +41,10 @@ onUnmounted(() => {
   if (tickTimer) window.clearInterval(tickTimer)
 })
 
-const formatDateTime = (value?: string | null) => {
+const formatTime = (value?: string | null) => {
   if (!value) return '-'
   const date = new Date(value)
-  return date.toLocaleString()
+  return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
 }
 
 const categoryLabel = (category: string) => {
@@ -115,14 +116,14 @@ const isOverdue = (entry: QueueEntry) => {
           ]"
         >
           <td class="px-3 py-2">{{ index + 1 }}</td>
-          <td class="px-3 py-2">{{ entry.customerName }}</td>
+          <td class="px-3 py-2">{{ entry.customer?.name || '-' }}</td>
           <td class="px-3 py-2">{{ entry.driverName }}</td>
           <td class="px-3 py-2">{{ entry.truckNumber }}</td>
           <td class="px-3 py-2">{{ entry.containerNumber || '-' }}</td>
-          <td class="px-3 py-2">{{ formatDateTime(entry.registerTime) }}</td>
-          <td class="px-3 py-2">{{ formatDateTime(entry.inWhTime) }}</td>
-          <td class="px-3 py-2">{{ formatDateTime(entry.startTime) }}</td>
-          <td class="px-3 py-2">{{ formatDateTime(entry.finishTime) }}</td>
+          <td class="px-3 py-2">{{ formatTime(entry.registerTime) }}</td>
+          <td class="px-3 py-2">{{ formatTime(entry.inWhTime) }}</td>
+          <td class="px-3 py-2">{{ formatTime(entry.startTime) }}</td>
+          <td class="px-3 py-2">{{ formatTime(entry.finishTime) }}</td>
           <td class="px-3 py-2">
             <span
               v-if="getTimeRemaining(entry) !== null"
@@ -146,7 +147,15 @@ const isOverdue = (entry: QueueEntry) => {
                 Set IN_WH
               </Button>
               <Button
-                v-else-if="entry.status === 'IN_WH'"
+                v-if="entry.status === 'MENUNGGU' || entry.status === 'IN_WH'"
+                size="sm"
+                variant="outline"
+                @click="emit('change-status', entry, 'BATAL')"
+              >
+                Batal
+              </Button>
+              <Button
+                v-if="entry.status === 'IN_WH'"
                 size="sm"
                 variant="outline"
                 @click="emit('change-status', entry, 'PROSES')"
@@ -154,12 +163,28 @@ const isOverdue = (entry: QueueEntry) => {
                 Mulai PROSES
               </Button>
               <Button
-                v-else-if="entry.status === 'PROSES'"
+                v-if="entry.status === 'PROSES'"
                 size="sm"
                 variant="outline"
                 @click="emit('change-status', entry, 'SELESAI')"
               >
                 Selesai
+              </Button>
+              <Button
+                v-if="entry.status === 'IN_WH'"
+                size="sm"
+                variant="ghost"
+                @click="emit('change-status', entry, 'MENUNGGU')"
+              >
+                Kembali
+              </Button>
+              <Button
+                v-if="entry.status === 'PROSES'"
+                size="sm"
+                variant="ghost"
+                @click="emit('change-status', entry, 'IN_WH')"
+              >
+                Kembali
               </Button>
               <Button size="sm" variant="ghost" @click="emit('view-detail', entry)">
                 Detail

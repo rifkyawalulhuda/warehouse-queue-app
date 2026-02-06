@@ -142,6 +142,13 @@ function isNextStatus(current, next) {
   return nextIdx === idx + 1;
 }
 
+function isPrevStatus(current, prev) {
+  const idx = STATUS_FLOW.indexOf(current);
+  const prevIdx = STATUS_FLOW.indexOf(prev);
+  if (idx === -1 || prevIdx === -1) return false;
+  return prevIdx === idx - 1;
+}
+
 async function changeQueueStatus(id, newStatus, userName) {
   const entry = await prisma.queueEntry.findUnique({ where: { id } });
   if (!entry) throw createHttpError(404, "Data tidak ditemukan");
@@ -154,7 +161,11 @@ async function changeQueueStatus(id, newStatus, userName) {
     throw createHttpError(400, "Status sudah final dan tidak bisa diubah");
   }
 
-  if (newStatus !== "BATAL" && !isNextStatus(currentStatus, newStatus)) {
+  if (newStatus === "BATAL") {
+    if (currentStatus !== "MENUNGGU" && currentStatus !== "IN_WH") {
+      throw createHttpError(400, "Batal hanya bisa dilakukan sampai status IN_WH");
+    }
+  } else if (!isNextStatus(currentStatus, newStatus) && !isPrevStatus(currentStatus, newStatus)) {
     throw createHttpError(400, "Perubahan status tidak valid");
   }
 

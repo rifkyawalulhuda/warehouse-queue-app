@@ -21,7 +21,8 @@ type QueueLog = {
 type QueueEntry = {
   id: string
   category: 'RECEIVING' | 'DELIVERY'
-  customerName: string
+  customerId?: string | null
+  customer?: { id: string; name: string } | null
   driverName: string
   truckNumber: string
   containerNumber?: string | null
@@ -34,8 +35,13 @@ type QueueEntry = {
   logs?: QueueLog[]
 }
 
-const apiBase = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '')
+type Customer = {
+  id: string
+  name: string
+}
+
 const entries = ref<QueueEntry[]>([])
+const customers = ref<Customer[]>([])
 const loading = ref(false)
 const error = ref<string | null>(null)
 
@@ -89,7 +95,7 @@ const fetchList = async () => {
   loading.value = true
   error.value = null
   try {
-    const url = `${apiBase}/api/queue?${queryString.value}`
+    const url = `/api/queue?${queryString.value}`
     const response = await fetch(url)
     if (!response.ok) {
       const payload = await response.json().catch(() => ({}))
@@ -104,9 +110,23 @@ const fetchList = async () => {
   }
 }
 
+const fetchCustomers = async () => {
+  try {
+    const response = await fetch(`/api/customers`)
+    if (!response.ok) {
+      const payload = await response.json().catch(() => ({}))
+      throw new Error(payload.message || 'Gagal mengambil customer')
+    }
+    const payload = await response.json()
+    customers.value = payload.data || []
+  } catch (err: any) {
+    error.value = err.message || 'Gagal mengambil customer'
+  }
+}
+
 const fetchDetail = async (id: string) => {
   try {
-    const response = await fetch(`${apiBase}/api/queue/${id}`)
+    const response = await fetch(`/api/queue/${id}`)
     if (!response.ok) {
       const payload = await response.json().catch(() => ({}))
       throw new Error(payload.message || 'Gagal mengambil detail')
@@ -132,7 +152,7 @@ const handleChangeStatus = async (entry: QueueEntry, newStatus: QueueEntry['stat
 const executeChangeStatus = async () => {
   if (!confirmEntry.value || !confirmNextStatus.value) return
   try {
-    const response = await fetch(`${apiBase}/api/queue/${confirmEntry.value.id}/status`, {
+    const response = await fetch(`/api/queue/${confirmEntry.value.id}/status`, {
       method: 'PATCH',
       headers: {
         'Content-Type': 'application/json',
@@ -158,8 +178,8 @@ const executeChangeStatus = async () => {
 }
 
 const handleCreate = async (payload: {
+  customerId: string
   category: 'RECEIVING' | 'DELIVERY'
-  customerName: string
   driverName: string
   truckNumber: string
   containerNumber: string
@@ -171,7 +191,7 @@ const handleCreate = async (payload: {
   try {
     const body: Record<string, any> = {
       category: payload.category,
-      customerName: payload.customerName,
+      customerId: payload.customerId,
       driverName: payload.driverName,
       truckNumber: payload.truckNumber
     }
@@ -179,7 +199,7 @@ const handleCreate = async (payload: {
     if (payload.notes.trim()) body.notes = payload.notes.trim()
     if (payload.registerTime) body.registerTime = new Date(payload.registerTime).toISOString()
 
-    const response = await fetch(`${apiBase}/api/queue`, {
+    const response = await fetch(`/api/queue`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -226,6 +246,7 @@ watch(
 
 onMounted(() => {
   fetchList()
+  fetchCustomers()
 })
 
 let refreshTimer: number | undefined
@@ -298,7 +319,13 @@ onUnmounted(() => {
     </Card>
 
     <QueueDetailDrawer :open="drawerOpen" :entry="selectedEntry" @close="closeDrawer" />
-    <QueueCreateModal :open="createOpen" :submitting="createSubmitting" @close="createOpen = false" @submit="handleCreate" />
+    <QueueCreateModal
+      :open="createOpen"
+      :submitting="createSubmitting"
+      :customers="customers"
+      @close="createOpen = false"
+      @submit="handleCreate"
+    />
     <div v-if="confirmOpen" class="fixed inset-0 z-50">
       <div class="absolute inset-0 bg-black/40" @click="confirmOpen = false"></div>
       <div class="absolute left-1/2 top-1/2 w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-lg bg-card shadow-xl border">

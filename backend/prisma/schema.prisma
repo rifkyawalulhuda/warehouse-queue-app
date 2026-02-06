@@ -22,8 +22,8 @@ enum QueueCategory {
 
 model QueueEntry {
   id              String        @id @default(uuid())
-  customerId      String
-  customer        Customer      @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  customerId      String?
+  customer        Customer?     @relation(fields: [customerId], references: [id], onDelete: Restrict)
   category        QueueCategory
   driverName      String
   truckNumber     String

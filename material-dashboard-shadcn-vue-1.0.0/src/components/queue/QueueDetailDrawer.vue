@@ -14,7 +14,8 @@ type QueueLog = {
 type QueueEntry = {
   id: string
   category: 'RECEIVING' | 'DELIVERY'
-  customerName: string
+  customerId?: string | null
+  customer?: { id: string; name: string } | null
   driverName: string
   truckNumber: string
   containerNumber?: string | null
@@ -65,7 +66,7 @@ const categoryLabel = (category?: string) => {
         <div class="grid grid-cols-2 gap-3 text-sm">
           <div>
             <p class="text-muted-foreground">Customer Name</p>
-            <p class="font-medium">{{ entry?.customerName || '-' }}</p>
+            <p class="font-medium">{{ entry?.customer?.name || '-' }}</p>
           </div>
           <div>
             <p class="text-muted-foreground">Driver Name</p>
