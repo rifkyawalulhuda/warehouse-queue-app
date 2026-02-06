@@ -1,0 +1,8 @@
+docker ps                      # lihat container jalan
+docker stop queue_system       # stop database
+docker start queue_system      # start lagi
+docker logs queue_system       # lihat log database
+
+
+cd folder_docker
+docker compose up -d

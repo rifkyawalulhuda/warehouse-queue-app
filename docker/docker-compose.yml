@@ -1,0 +1,16 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: queue_system
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: sankyu
+      POSTGRES_PASSWORD: sankyu39
+      POSTGRES_DB: queue_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - queue_pgdata:/var/lib/postgresql/data
+
+volumes:
+  queue_pgdata:
