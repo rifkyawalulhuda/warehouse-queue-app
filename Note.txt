@@ -6,3 +6,11 @@ docker logs queue_system       # lihat log database
 
 cd folder_docker
 docker compose up -d
+
+
+SETIAP KALI PINDAH LAPTOP (RITUAL WAJIB
+
+git pull
+cd folder_docker: docker compose up -d
+npm install (jika ada perubahan dependency)
+npm run dev

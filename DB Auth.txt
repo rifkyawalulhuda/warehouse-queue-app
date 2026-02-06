@@ -1,0 +1,9 @@
+Host: localhost
+
+Port: 5432
+
+DB: queue_db
+
+User: sankyu
+
+Password: sankyu39
