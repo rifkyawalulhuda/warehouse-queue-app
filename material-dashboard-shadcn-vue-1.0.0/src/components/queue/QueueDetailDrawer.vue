@@ -70,6 +70,18 @@ const formatDateTime = (value?: string | null) => {
   return date.toLocaleString()
 }
 
+const formatCategoryLabel = (category?: string | null) => {
+  if (category === 'RECEIVING') return 'Receiving'
+  if (category === 'DELIVERY') return 'Delivery'
+  return null
+}
+
+const getCategoryBadgeClass = (category?: string | null) => {
+  if (category === 'RECEIVING') return 'bg-blue-100 text-blue-700'
+  if (category === 'DELIVERY') return 'bg-purple-100 text-purple-700'
+  return 'bg-muted text-muted-foreground'
+}
+
 const categoryLabel = (category?: string) => {
   if (category === 'RECEIVING') return 'Receiving'
   if (category === 'DELIVERY') return 'Delivery'
@@ -85,6 +97,12 @@ const categoryLabel = (category?: string) => {
         <div>
           <h3 class="text-lg font-semibold">Detail Antrian</h3>
           <p class="text-sm text-muted-foreground">ID: {{ entry?.id }}</p>
+          <span
+            v-if="formatCategoryLabel(entry?.category)"
+            :class="['mt-2 inline-flex w-fit items-center rounded px-2 py-1 text-xs font-medium', getCategoryBadgeClass(entry?.category)]"
+          >
+            {{ formatCategoryLabel(entry?.category) }}
+          </span>
         </div>
         <Button variant="outline" size="sm" @click="emit('close')">Tutup</Button>
       </div>

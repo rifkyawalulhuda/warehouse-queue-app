@@ -56,10 +56,45 @@ const categoryLabel = (category?: string | null) => {
   return null
 }
 
-const categoryBadgeClass = (category?: string | null) => {
+const baseCategoryBadgeClass = (category?: string | null) => {
   if (category === 'RECEIVING') return 'bg-blue-100 text-blue-700'
   if (category === 'DELIVERY') return 'bg-purple-100 text-purple-700'
   return 'bg-muted text-muted-foreground'
+}
+
+const getCategorySlaMinutes = (category?: string | null) => {
+  if (category === 'RECEIVING') return 60
+  if (category === 'DELIVERY') return 45
+  return null
+}
+
+const getDurationMinutes = (entry: QueueEntry) => {
+  if (!entry.registerTime) return null
+  const startMs = new Date(entry.registerTime).getTime()
+  if (Number.isNaN(startMs)) return null
+  const endMs = entry.finishTime ? new Date(entry.finishTime).getTime() : nowTick.value
+  if (Number.isNaN(endMs)) return null
+  const diffMs = endMs - startMs
+  if (diffMs < 0) return null
+  return Math.floor(diffMs / 60000)
+}
+
+const getSlaBadgeClass = (entry: QueueEntry) => {
+  const sla = getCategorySlaMinutes(entry.category)
+  const duration = getDurationMinutes(entry)
+  if (!sla || duration === null) return baseCategoryBadgeClass(entry.category)
+  const ratio = duration / sla
+  if (ratio >= 1) return 'bg-red-100 text-red-700'
+  if (ratio >= 0.8) return 'bg-yellow-100 text-yellow-800'
+  return baseCategoryBadgeClass(entry.category)
+}
+
+const getSlaTooltip = (entry: QueueEntry) => {
+  const sla = getCategorySlaMinutes(entry.category)
+  const duration = getDurationMinutes(entry)
+  if (!sla || duration === null) return null
+  if (duration >= sla) return `OVER SLA (${duration} / ${sla} menit)`
+  return `SLA: ${sla} menit | Durasi: ${duration} menit`
 }
 
 const getSlaMinutes = (entry: QueueEntry) => {
@@ -175,7 +210,8 @@ const sortIndicator = (column: string) => {
               <span>{{ entry.customer?.name || '-' }}</span>
               <span
                 v-if="categoryLabel(entry.category)"
-                :class="['inline-flex w-fit items-center rounded px-2 py-1 text-xs font-medium', categoryBadgeClass(entry.category)]"
+                :class="['inline-flex w-fit items-center rounded px-2 py-1 text-xs font-medium', getSlaBadgeClass(entry)]"
+                :title="getSlaTooltip(entry) || undefined"
               >
                 {{ categoryLabel(entry.category) }}
               </span>
