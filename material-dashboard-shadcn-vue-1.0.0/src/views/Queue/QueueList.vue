@@ -75,6 +75,11 @@ const filters = reactive({
   search: ''
 })
 
+const sortBy = ref<
+  'registerTime' | 'inWhTime' | 'startTime' | 'finishTime' | 'customerName' | 'driverName' | 'truckNumber' | 'status'
+>('registerTime')
+const sortDir = ref<'asc' | 'desc'>('desc')
+
 const statusOptions = [
   { label: 'Semua', value: '' },
   { label: 'MENUNGGU', value: 'MENUNGGU' },
@@ -96,6 +101,8 @@ const queryString = computed(() => {
   if (filters.status) params.set('status', filters.status)
   if (filters.category) params.set('category', filters.category)
   if (filters.search) params.set('search', filters.search)
+  params.set('sortBy', sortBy.value)
+  params.set('sortDir', sortDir.value)
   return params.toString()
 })
 
@@ -231,6 +238,16 @@ const handleCreate = async (payload: {
 const closeDrawer = () => {
   drawerOpen.value = false
   selectedEntry.value = null
+}
+
+const toggleSort = (column: typeof sortBy.value) => {
+  if (sortBy.value !== column) {
+    sortBy.value = column
+    sortDir.value = 'desc'
+  } else {
+    sortDir.value = sortDir.value === 'asc' ? 'desc' : 'asc'
+  }
+  fetchList()
 }
 
 const parseErrorMessage = async (response: Response, fallback: string) => {
@@ -387,7 +404,15 @@ onUnmounted(() => {
         <div v-if="error" class="mb-3 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
           {{ error }}
         </div>
-        <QueueTable :entries="entries" :loading="loading" @view-detail="handleViewDetail" @change-status="handleChangeStatus" />
+        <QueueTable
+          :entries="entries"
+          :loading="loading"
+          :sort-by="sortBy"
+          :sort-dir="sortDir"
+          @toggle-sort="toggleSort"
+          @view-detail="handleViewDetail"
+          @change-status="handleChangeStatus"
+        />
       </CardContent>
     </Card>
 

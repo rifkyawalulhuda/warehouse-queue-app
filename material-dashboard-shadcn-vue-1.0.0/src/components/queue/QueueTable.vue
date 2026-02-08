@@ -21,11 +21,14 @@ type QueueEntry = {
 const props = defineProps<{
   entries: QueueEntry[]
   loading: boolean
+  sortBy: string
+  sortDir: 'asc' | 'desc'
 }>()
 
 const emit = defineEmits<{
   (e: 'change-status', entry: QueueEntry, newStatus: QueueEntry['status']): void
   (e: 'view-detail', entry: QueueEntry): void
+  (e: 'toggle-sort', column: string): void
 }>()
 
 const nowTick = ref(Date.now())
@@ -79,6 +82,11 @@ const isOverdue = (entry: QueueEntry) => {
   const remaining = getTimeRemaining(entry)
   return remaining !== null && remaining <= 0
 }
+
+const sortIndicator = (column: string) => {
+  if (props.sortBy !== column) return ''
+  return props.sortDir === 'asc' ? '▲' : '▼'
+}
 </script>
 
 <template>
@@ -87,16 +95,56 @@ const isOverdue = (entry: QueueEntry) => {
       <thead class="bg-muted/60 text-muted-foreground">
         <tr>
           <th class="px-3 py-2 text-left font-medium">No</th>
-          <th class="px-3 py-2 text-left font-medium">Customer Name</th>
-          <th class="px-3 py-2 text-left font-medium">Driver Name</th>
-          <th class="px-3 py-2 text-left font-medium">No Truck</th>
+          <th
+            class="px-3 py-2 text-left font-medium cursor-pointer select-none"
+            @click="emit('toggle-sort', 'customerName')"
+          >
+            Customer Name <span class="ml-1 text-xs">{{ sortIndicator('customerName') }}</span>
+          </th>
+          <th
+            class="px-3 py-2 text-left font-medium cursor-pointer select-none"
+            @click="emit('toggle-sort', 'driverName')"
+          >
+            Driver Name <span class="ml-1 text-xs">{{ sortIndicator('driverName') }}</span>
+          </th>
+          <th
+            class="px-3 py-2 text-left font-medium cursor-pointer select-none"
+            @click="emit('toggle-sort', 'truckNumber')"
+          >
+            No Truck <span class="ml-1 text-xs">{{ sortIndicator('truckNumber') }}</span>
+          </th>
           <th class="px-3 py-2 text-left font-medium">No Container</th>
-          <th class="px-3 py-2 text-left font-medium">Register Time</th>
-          <th class="px-3 py-2 text-left font-medium">In WH - Time</th>
-          <th class="px-3 py-2 text-left font-medium">Start</th>
-          <th class="px-3 py-2 text-left font-medium">Finish</th>
+          <th
+            class="px-3 py-2 text-left font-medium cursor-pointer select-none"
+            @click="emit('toggle-sort', 'registerTime')"
+          >
+            Register Time <span class="ml-1 text-xs">{{ sortIndicator('registerTime') }}</span>
+          </th>
+          <th
+            class="px-3 py-2 text-left font-medium cursor-pointer select-none"
+            @click="emit('toggle-sort', 'inWhTime')"
+          >
+            In WH - Time <span class="ml-1 text-xs">{{ sortIndicator('inWhTime') }}</span>
+          </th>
+          <th
+            class="px-3 py-2 text-left font-medium cursor-pointer select-none"
+            @click="emit('toggle-sort', 'startTime')"
+          >
+            Start <span class="ml-1 text-xs">{{ sortIndicator('startTime') }}</span>
+          </th>
+          <th
+            class="px-3 py-2 text-left font-medium cursor-pointer select-none"
+            @click="emit('toggle-sort', 'finishTime')"
+          >
+            Finish <span class="ml-1 text-xs">{{ sortIndicator('finishTime') }}</span>
+          </th>
           <th class="px-3 py-2 text-left font-medium">Time Remaining</th>
-          <th class="px-3 py-2 text-left font-medium">Status</th>
+          <th
+            class="px-3 py-2 text-left font-medium cursor-pointer select-none"
+            @click="emit('toggle-sort', 'status')"
+          >
+            Status <span class="ml-1 text-xs">{{ sortIndicator('status') }}</span>
+          </th>
           <th class="px-3 py-2 text-left font-medium">Aksi</th>
         </tr>
       </thead>

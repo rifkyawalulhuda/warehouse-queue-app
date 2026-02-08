@@ -3,6 +3,16 @@ const { PrismaClient } = require("@prisma/client");
 const prisma = new PrismaClient();
 
 const STATUS_FLOW = ["MENUNGGU", "IN_WH", "PROSES", "SELESAI"];
+const SORTABLE_FIELDS = new Set([
+  "registerTime",
+  "inWhTime",
+  "startTime",
+  "finishTime",
+  "customerName",
+  "driverName",
+  "truckNumber",
+  "status",
+]);
 
 function createHttpError(status, message, details) {
   const err = new Error(message);
@@ -70,6 +80,52 @@ function getUserName(req) {
   return req.headers["x-user-name"] || "system";
 }
 
+function normalizeSort(query) {
+  const rawSortBy = typeof query.sortBy === "string" ? query.sortBy : "";
+  const rawSortDir = typeof query.sortDir === "string" ? query.sortDir.toLowerCase() : "";
+  const sortBy = SORTABLE_FIELDS.has(rawSortBy) ? rawSortBy : "registerTime";
+  const sortDir = rawSortDir === "asc" ? "asc" : "desc";
+  return { sortBy, sortDir };
+}
+
+function buildOrderBy(sortBy, sortDir) {
+  const orderBy = [];
+  switch (sortBy) {
+    case "customerName":
+      orderBy.push({ customer: { name: sortDir } });
+      break;
+    case "driverName":
+      orderBy.push({ driverName: sortDir });
+      break;
+    case "truckNumber":
+      orderBy.push({ truckNumber: sortDir });
+      break;
+    case "status":
+      orderBy.push({ status: sortDir });
+      break;
+    case "inWhTime":
+      orderBy.push({ inWhTime: sortDir });
+      break;
+    case "startTime":
+      orderBy.push({ startTime: sortDir });
+      break;
+    case "finishTime":
+      orderBy.push({ finishTime: sortDir });
+      break;
+    case "registerTime":
+    default:
+      orderBy.push({ registerTime: sortDir });
+      break;
+  }
+
+  if (sortBy !== "registerTime") {
+    orderBy.push({ registerTime: "desc" });
+  } else {
+    orderBy.push({ createdAt: "desc" });
+  }
+  return orderBy;
+}
+
 async function createQueueEntry(data, userName) {
   return prisma.queueEntry.create({
     data: {
@@ -97,6 +153,7 @@ async function createQueueEntry(data, userName) {
 async function listQueueEntries(query) {
   const { status, category, search } = query;
   const { from, to } = buildDateRange(query);
+  const { sortBy, sortDir } = normalizeSort(query);
 
   const where = {};
   if (status) where.status = status;
@@ -117,7 +174,7 @@ async function listQueueEntries(query) {
 
   return prisma.queueEntry.findMany({
     where,
-    orderBy: [{ status: "asc" }, { registerTime: "asc" }],
+    orderBy: buildOrderBy(sortBy, sortDir),
     include: {
       customer: true,
     },
