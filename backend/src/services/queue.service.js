@@ -126,7 +126,9 @@ function buildOrderBy(sortBy, sortDir) {
   return orderBy;
 }
 
-async function createQueueEntry(data, userName) {
+async function createQueueEntry(data, actorUser) {
+  const resolvedName = actorUser?.name || "system";
+  const actorUserId = actorUser?.id || null;
   return prisma.queueEntry.create({
     data: {
       category: data.category,
@@ -138,9 +140,10 @@ async function createQueueEntry(data, userName) {
       notes: data.notes || null,
       logs: {
         create: {
-          action: "CREATE",
-          userName,
-          newStatus: "MENUNGGU",
+          type: "CREATE",
+          userName: resolvedName,
+          actorUserId,
+          toStatus: "MENUNGGU",
         },
       },
     },
@@ -203,7 +206,17 @@ async function listQueueEntriesForExport(query) {
 async function getQueueEntryById(id) {
   const entry = await prisma.queueEntry.findUnique({
     where: { id },
-    include: { logs: { orderBy: { createdAt: "asc" } }, customer: true },
+    include: {
+      logs: {
+        orderBy: { createdAt: "asc" },
+        include: {
+          actorUser: {
+            select: { id: true, name: true, username: true, role: true },
+          },
+        },
+      },
+      customer: true,
+    },
   });
   if (!entry) {
     throw createHttpError(404, "Data tidak ditemukan");
@@ -211,12 +224,15 @@ async function getQueueEntryById(id) {
   return entry;
 }
 
-async function updateQueueEntry(id, data, userName) {
+async function updateQueueEntry(id, data, actorUser) {
   const entry = await prisma.queueEntry.findUnique({ where: { id } });
   if (!entry) throw createHttpError(404, "Data tidak ditemukan");
   if (entry.status === "SELESAI" || entry.status === "BATAL") {
     throw createHttpError(400, "Data tidak bisa diubah karena status sudah final");
   }
+
+  const resolvedName = actorUser?.name || "system";
+  const actorUserId = actorUser?.id || null;
 
   return prisma.queueEntry.update({
     where: { id },
@@ -229,8 +245,9 @@ async function updateQueueEntry(id, data, userName) {
       notes: data.notes ?? undefined,
       logs: {
         create: {
-          action: "UPDATE",
-          userName,
+          type: "UPDATE",
+          userName: resolvedName,
+          actorUserId,
         },
       },
     },
@@ -254,7 +271,7 @@ function isPrevStatus(current, prev) {
   return prevIdx === idx - 1;
 }
 
-async function changeQueueStatus(id, newStatus, userName) {
+async function changeQueueStatus(id, newStatus, actorUser) {
   const entry = await prisma.queueEntry.findUnique({ where: { id } });
   if (!entry) throw createHttpError(404, "Data tidak ditemukan");
 
@@ -279,6 +296,9 @@ async function changeQueueStatus(id, newStatus, userName) {
   if (newStatus === "PROSES" && !entry.startTime) timeUpdates.startTime = new Date();
   if (newStatus === "SELESAI" && !entry.finishTime) timeUpdates.finishTime = new Date();
 
+  const resolvedName = actorUser?.name || "system";
+  const actorUserId = actorUser?.id || null;
+
   return prisma.queueEntry.update({
     where: { id },
     data: {
@@ -286,10 +306,11 @@ async function changeQueueStatus(id, newStatus, userName) {
       ...timeUpdates,
       logs: {
         create: {
-          action: "STATUS_CHANGE",
-          oldStatus: currentStatus,
-          newStatus,
-          userName,
+          type: "STATUS_CHANGE",
+          fromStatus: currentStatus,
+          toStatus: newStatus,
+          userName: resolvedName,
+          actorUserId,
         },
       },
     },

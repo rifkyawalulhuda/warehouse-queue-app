@@ -1,5 +1,6 @@
 const ExcelJS = require("exceljs");
 const queueService = require("../services/queue.service");
+const adminUserService = require("../services/adminUser.service");
 const { sendSuccess } = require("../utils/response");
 
 function formatDateTime(value) {
@@ -49,8 +50,8 @@ function buildExportFilename(dateFrom, dateTo) {
 
 async function createQueue(req, res, next) {
   try {
-    const userName = queueService.getUserName(req);
-    const entry = await queueService.createQueueEntry(req.body, userName);
+    const actorUser = req.user?.sub ? await adminUserService.getAdminUserById(req.user.sub) : null;
+    const entry = await queueService.createQueueEntry(req.body, actorUser);
     return sendSuccess(res, entry);
   } catch (err) {
     return next(err);
@@ -77,8 +78,8 @@ async function getQueueById(req, res, next) {
 
 async function updateQueue(req, res, next) {
   try {
-    const userName = queueService.getUserName(req);
-    const entry = await queueService.updateQueueEntry(req.params.id, req.body, userName);
+    const actorUser = req.user?.sub ? await adminUserService.getAdminUserById(req.user.sub) : null;
+    const entry = await queueService.updateQueueEntry(req.params.id, req.body, actorUser);
     return sendSuccess(res, entry);
   } catch (err) {
     return next(err);
@@ -87,8 +88,8 @@ async function updateQueue(req, res, next) {
 
 async function updateQueueStatus(req, res, next) {
   try {
-    const userName = queueService.getUserName(req);
-    const entry = await queueService.changeQueueStatus(req.params.id, req.body.newStatus, userName);
+    const actorUser = req.user?.sub ? await adminUserService.getAdminUserById(req.user.sub) : null;
+    const entry = await queueService.changeQueueStatus(req.params.id, req.body.newStatus, actorUser);
     return sendSuccess(res, entry);
   } catch (err) {
     return next(err);

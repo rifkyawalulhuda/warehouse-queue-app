@@ -5,10 +5,11 @@ import Button from '@/components/ui/Button.vue'
 
 type QueueLog = {
   id: string
-  action: string
-  oldStatus?: string | null
-  newStatus?: string | null
-  userName: string
+  type: 'CREATE' | 'UPDATE' | 'STATUS_CHANGE'
+  fromStatus?: string | null
+  toStatus?: string | null
+  userName?: string | null
+  actorUser?: { id: string; name: string; username: string; role: string } | null
   createdAt: string
 }
 
@@ -164,11 +165,14 @@ const categoryLabel = (category?: string) => {
           <div v-if="entry?.logs?.length" class="space-y-2 text-sm">
             <div v-for="log in entry.logs" :key="log.id" class="rounded-md border p-2">
               <div class="flex items-center justify-between">
-                <span class="font-medium">{{ log.action }}</span>
+                <span class="font-medium">{{ log.type }}</span>
                 <span class="text-muted-foreground">{{ formatDateTime(log.createdAt) }}</span>
               </div>
               <div class="text-muted-foreground">
-                {{ log.userName }} | {{ log.oldStatus || '-' }} -> {{ log.newStatus || '-' }}
+                oleh: {{ log.actorUser?.name || log.userName || '-' }}
+                <span v-if="log.fromStatus || log.toStatus">
+                  — {{ log.fromStatus || '-' }} -> {{ log.toStatus || '-' }}
+                </span>
               </div>
             </div>
           </div>

@@ -12,10 +12,11 @@ import api from '@/services/api'
 
 type QueueLog = {
   id: string
-  action: string
-  oldStatus?: string | null
-  newStatus?: string | null
-  userName: string
+  type: 'CREATE' | 'UPDATE' | 'STATUS_CHANGE'
+  fromStatus?: string | null
+  toStatus?: string | null
+  userName?: string | null
+  actorUser?: { id: string; name: string; username: string; role: string } | null
   createdAt: string
 }
 

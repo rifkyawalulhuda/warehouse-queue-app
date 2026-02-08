@@ -50,16 +50,19 @@ model QueueEntry {
 }
 
 model QueueLog {
-  id           String      @id @default(uuid())
+  id           String       @id @default(uuid())
   queueEntryId String
-  action       String
-  oldStatus    QueueStatus?
-  newStatus    QueueStatus?
+  type         String       @map("action")
+  fromStatus   QueueStatus? @map("oldStatus")
+  toStatus     QueueStatus? @map("newStatus")
   userName     String
-  createdAt    DateTime    @default(now())
-  entry        QueueEntry  @relation(fields: [queueEntryId], references: [id], onDelete: Cascade)
+  actorUserId  String?
+  createdAt    DateTime     @default(now())
+  entry        QueueEntry   @relation(fields: [queueEntryId], references: [id], onDelete: Cascade)
+  actorUser    AdminUser?   @relation(fields: [actorUserId], references: [id], onDelete: SetNull)
 
   @@index([queueEntryId, createdAt])
+  @@index([actorUserId])
 }
 
 model Customer {
@@ -82,6 +85,7 @@ model AdminUser {
   passwordHash String
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
+  logs         QueueLog[]
 
   @@index([role])
   @@index([username])
