@@ -4,6 +4,7 @@ const queueRoutes = require("./routes/queue.routes");
 const customerRoutes = require("./routes/customer.routes");
 const adminUserRoutes = require("./routes/adminUser.routes");
 const authRoutes = require("./routes/auth.routes");
+const dashboardRoutes = require("./routes/dashboard.routes");
 const errorMiddleware = require("./middlewares/error.middleware");
 
 const app = express();
@@ -17,6 +18,7 @@ app.use("/api", queueRoutes);
 app.use("/api", customerRoutes);
 app.use("/api", adminUserRoutes);
 app.use("/api", authRoutes);
+app.use("/api", dashboardRoutes);
 
 app.use(errorMiddleware);
 

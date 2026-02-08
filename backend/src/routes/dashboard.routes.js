@@ -1,0 +1,14 @@
+const express = require("express");
+const dashboardController = require("../controllers/dashboard.controller");
+const authMiddleware = require("../middlewares/auth.middleware");
+const { requireRole } = require("../middlewares/role.middleware");
+
+const router = express.Router();
+
+router.use(authMiddleware, requireRole("ADMIN", "WAREHOUSE"));
+
+router.get("/dashboard/summary", dashboardController.summary);
+router.get("/dashboard/hourly", dashboardController.hourly);
+router.get("/dashboard/status", dashboardController.status);
+
+module.exports = router;

@@ -1,204 +1,224 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import Card from '@/components/ui/Card.vue'
 import CardHeader from '@/components/ui/CardHeader.vue'
 import CardTitle from '@/components/ui/CardTitle.vue'
 import CardContent from '@/components/ui/CardContent.vue'
-import { Users, Building2, TrendingUp, DollarSign } from 'lucide-vue-next'
-import { Line } from 'vue-chartjs'
-import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  Title,
-  Tooltip,
-  Legend,
-  Filler,
-  type ChartData,
-  type ChartOptions
-} from 'chart.js'
+import Button from '@/components/ui/Button.vue'
+import HourlyTotalLineChart from '@/components/dashboard/HourlyTotalLineChart.vue'
+import HourlyCategoryStackedBar from '@/components/dashboard/HourlyCategoryStackedBar.vue'
+import StatusPieChart from '@/components/dashboard/StatusPieChart.vue'
+import { getDashboardHourly, getDashboardStatus, getDashboardSummary } from '@/services/dashboardApi'
 
-ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  Title,
-  Tooltip,
-  Legend,
-  Filler
+type Summary = {
+  date: string
+  total: number
+  delivery: number
+  receiving: number
+  waiting: number
+  processing: number
+  done: number
+  cancelled: number
+  avgProcessMinutes: number
+  overSlaPercent: number
+}
+
+type HourlyItem = { hour: string; total: number; receiving: number; delivery: number }
+type StatusItem = { name: string; value: number }
+
+const todayString = () => new Date().toISOString().slice(0, 10)
+
+const selectedDate = ref(todayString())
+const summary = reactive<Summary>({
+  date: selectedDate.value,
+  total: 0,
+  delivery: 0,
+  receiving: 0,
+  waiting: 0,
+  processing: 0,
+  done: 0,
+  cancelled: 0,
+  avgProcessMinutes: 0,
+  overSlaPercent: 0
+})
+const hourlyItems = ref<HourlyItem[]>([])
+const statusItems = ref<StatusItem[]>([])
+const loading = ref(false)
+const error = ref<string | null>(null)
+
+const isToday = computed(() => selectedDate.value === todayString())
+
+const getErrorMessage = (err: any, fallback: string) => {
+  return err?.response?.data?.message || err?.message || fallback
+}
+
+const fetchDashboard = async () => {
+  loading.value = true
+  error.value = null
+  try {
+    const [summaryRes, hourlyRes, statusRes] = await Promise.all([
+      getDashboardSummary(selectedDate.value),
+      getDashboardHourly(selectedDate.value),
+      getDashboardStatus(selectedDate.value)
+    ])
+
+    const s = summaryRes.data || {}
+    summary.date = s.date || selectedDate.value
+    summary.total = s.total || 0
+    summary.delivery = s.delivery || 0
+    summary.receiving = s.receiving || 0
+    summary.waiting = s.waiting || 0
+    summary.processing = s.processing || 0
+    summary.done = s.done || 0
+    summary.cancelled = s.cancelled || 0
+    summary.avgProcessMinutes = s.avgProcessMinutes || 0
+    summary.overSlaPercent = s.overSlaPercent || 0
+
+    hourlyItems.value = hourlyRes.data?.items || []
+    statusItems.value = statusRes.data?.items || []
+  } catch (err: any) {
+    error.value = getErrorMessage(err, 'Gagal memuat dashboard')
+  } finally {
+    loading.value = false
+  }
+}
+
+let refreshTimer: number | undefined
+
+const setupAutoRefresh = () => {
+  if (refreshTimer) window.clearInterval(refreshTimer)
+  if (!isToday.value) return
+  refreshTimer = window.setInterval(() => {
+    fetchDashboard()
+  }, 30000)
+}
+
+watch(
+  () => selectedDate.value,
+  () => {
+    fetchDashboard()
+    setupAutoRefresh()
+  }
 )
 
-const revenueData = computed<ChartData<'line'>>(() => ({
-  labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
-  datasets: [
-    {
-      label: 'Revenue',
-      data: [185000, 198000, 192000, 225000, 210000, 234567],
-      borderColor: 'rgb(66, 184, 131)',
-      backgroundColor: 'rgba(66, 184, 131, 0.1)',
-      tension: 0.4,
-      fill: true
-    }
-  ]
-}))
+onMounted(() => {
+  fetchDashboard()
+  setupAutoRefresh()
+})
 
-const revenueOptions = computed<ChartOptions<'line'>>(() => ({
-  responsive: true,
-  maintainAspectRatio: false,
-  plugins: {
-    legend: {
-      display: false
-    },
-    tooltip: {
-      callbacks: {
-        label: (context) => {
-          const value = context.parsed.y
-          return `Revenue: $${(value / 1000).toFixed(0)}k`
-        }
-      }
-    }
-  },
-  scales: {
-    y: {
-      beginAtZero: true,
-      ticks: {
-        callback: (value) => `$${(Number(value) / 1000).toFixed(0)}k`
-      }
-    }
-  }
-}))
+onUnmounted(() => {
+  if (refreshTimer) window.clearInterval(refreshTimer)
+})
 </script>
 
 <template>
   <div class="space-y-6">
-    <div>
-      <h1 class="text-xl font-bold tracking-tight">Dashboard</h1>
-      <p class="text-muted-foreground">Welcome to your new CRM dashboard</p>
+    <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+      <div>
+        <h1 class="text-xl font-bold tracking-tight">Dashboard Antrian Truk</h1>
+        <p class="text-muted-foreground">Ringkasan operasional</p>
+      </div>
+      <div class="flex flex-wrap items-center gap-2">
+        <input
+          v-model="selectedDate"
+          type="date"
+          class="bg-transparent border rounded-md px-2 py-2 text-sm"
+        />
+        <Button size="sm" variant="outline" @click="fetchDashboard">Refresh</Button>
+      </div>
     </div>
 
-    <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+    <div v-if="error" class="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+      {{ error }}
+      <Button size="sm" variant="ghost" class="ml-2" @click="fetchDashboard">Retry</Button>
+    </div>
+
+    <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
       <Card>
         <CardHeader class="flex flex-row items-center justify-between pb-2">
-          <CardTitle class="text-sm font-medium">Total Contacts</CardTitle>
-          <Users class="h-4 w-4 text-muted-foreground" />
+          <CardTitle class="text-sm font-medium">Total Transaksi</CardTitle>
         </CardHeader>
         <CardContent>
-          <div class="text-2xl font-bold">1,234</div>
-          <p class="text-xs text-muted-foreground">+12% from last month</p>
+          <div class="text-2xl font-bold">{{ summary.total }}</div>
+          <p class="text-xs text-muted-foreground">Avg Process: {{ summary.avgProcessMinutes }} menit</p>
         </CardContent>
       </Card>
 
       <Card>
         <CardHeader class="flex flex-row items-center justify-between pb-2">
-          <CardTitle class="text-sm font-medium">Companies</CardTitle>
-          <Building2 class="h-4 w-4 text-muted-foreground" />
+          <CardTitle class="text-sm font-medium">Delivery</CardTitle>
         </CardHeader>
         <CardContent>
-          <div class="text-2xl font-bold">456</div>
-          <p class="text-xs text-muted-foreground">+8% from last month</p>
+          <div class="text-2xl font-bold">{{ summary.delivery }}</div>
         </CardContent>
       </Card>
 
       <Card>
         <CardHeader class="flex flex-row items-center justify-between pb-2">
-          <CardTitle class="text-sm font-medium">Active Deals</CardTitle>
-          <TrendingUp class="h-4 w-4 text-muted-foreground" />
+          <CardTitle class="text-sm font-medium">Receiving</CardTitle>
         </CardHeader>
         <CardContent>
-          <div class="text-2xl font-bold">89</div>
-          <p class="text-xs text-muted-foreground">+23% from last month</p>
+          <div class="text-2xl font-bold">{{ summary.receiving }}</div>
         </CardContent>
       </Card>
 
       <Card>
         <CardHeader class="flex flex-row items-center justify-between pb-2">
-          <CardTitle class="text-sm font-medium">Revenue</CardTitle>
-          <DollarSign class="h-4 w-4 text-muted-foreground" />
+          <CardTitle class="text-sm font-medium">Menunggu</CardTitle>
         </CardHeader>
         <CardContent>
-          <div class="text-2xl font-bold">$234,567</div>
-          <p class="text-xs text-muted-foreground">+18% from last month</p>
+          <div class="text-2xl font-bold">{{ summary.waiting }}</div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader class="flex flex-row items-center justify-between pb-2">
+          <CardTitle class="text-sm font-medium">Sedang Diproses</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div class="text-2xl font-bold">{{ summary.processing }}</div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader class="flex flex-row items-center justify-between pb-2">
+          <CardTitle class="text-sm font-medium">Over SLA</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div class="text-2xl font-bold">{{ summary.overSlaPercent }}%</div>
         </CardContent>
       </Card>
     </div>
 
-    <Card>
-      <CardHeader>
-        <CardTitle>Revenue Trend</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div class="h-[300px]">
-          <Line :data="revenueData" :options="revenueOptions" />
-        </div>
-      </CardContent>
-    </Card>
+    <div v-if="loading" class="text-sm text-muted-foreground">Loading...</div>
 
-    <div class="grid gap-4 md:grid-cols-2">
+    <div class="grid gap-4 lg:grid-cols-2">
       <Card>
         <CardHeader>
-          <CardTitle>Recent Activity</CardTitle>
+          <CardTitle>Transaksi per Jam</CardTitle>
         </CardHeader>
         <CardContent>
-          <div class="space-y-4">
-            <div class="flex items-start gap-3">
-              <div class="w-2 h-2 bg-primary rounded-full mt-2"></div>
-              <div class="flex-1">
-                <p class="text-sm font-medium">New contact added</p>
-                <p class="text-xs text-muted-foreground">John Doe from Acme Corp</p>
-                <p class="text-xs text-muted-foreground">2 hours ago</p>
-              </div>
-            </div>
-            <div class="flex items-start gap-3">
-              <div class="w-2 h-2 bg-primary rounded-full mt-2"></div>
-              <div class="flex-1">
-                <p class="text-sm font-medium">Deal closed</p>
-                <p class="text-xs text-muted-foreground">$45,000 deal with Tech Solutions</p>
-                <p class="text-xs text-muted-foreground">5 hours ago</p>
-              </div>
-            </div>
-            <div class="flex items-start gap-3">
-              <div class="w-2 h-2 bg-primary rounded-full mt-2"></div>
-              <div class="flex-1">
-                <p class="text-sm font-medium">Task completed</p>
-                <p class="text-xs text-muted-foreground">Follow-up call with Jane Smith</p>
-                <p class="text-xs text-muted-foreground">1 day ago</p>
-              </div>
-            </div>
-          </div>
+          <HourlyTotalLineChart :items="hourlyItems" />
         </CardContent>
       </Card>
 
       <Card>
         <CardHeader>
-          <CardTitle>Upcoming Tasks</CardTitle>
+          <CardTitle>Receiving vs Delivery per Jam</CardTitle>
         </CardHeader>
         <CardContent>
-          <div class="space-y-4">
-            <div class="flex items-center gap-3">
-              <input type="checkbox" class="w-4 h-4 rounded border-input" />
-              <div class="flex-1">
-                <p class="text-sm font-medium">Call with prospect</p>
-                <p class="text-xs text-muted-foreground">Today at 2:00 PM</p>
-              </div>
-            </div>
-            <div class="flex items-center gap-3">
-              <input type="checkbox" class="w-4 h-4 rounded border-input" />
-              <div class="flex-1">
-                <p class="text-sm font-medium">Send proposal</p>
-                <p class="text-xs text-muted-foreground">Tomorrow at 10:00 AM</p>
-              </div>
-            </div>
-            <div class="flex items-center gap-3">
-              <input type="checkbox" class="w-4 h-4 rounded border-input" />
-              <div class="flex-1">
-                <p class="text-sm font-medium">Review contracts</p>
-                <p class="text-xs text-muted-foreground">Friday at 3:00 PM</p>
-              </div>
-            </div>
-          </div>
+          <HourlyCategoryStackedBar :items="hourlyItems" />
+        </CardContent>
+      </Card>
+    </div>
+
+    <div class="grid gap-4 lg:grid-cols-3">
+      <Card class="lg:col-span-1">
+        <CardHeader>
+          <CardTitle>Distribusi Status</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <StatusPieChart :items="statusItems" />
         </CardContent>
       </Card>
     </div>
