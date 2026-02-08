@@ -15,3 +15,5 @@ docker compose up -d (docker)
 npx prisma migrate dev (backend)
 npm install (jika ada perubahan dependency) (Backend)
 npm run dev (front end)
+
+http://localhost:5000/material-dashboard-shadcn-vue/display/antrian-truk

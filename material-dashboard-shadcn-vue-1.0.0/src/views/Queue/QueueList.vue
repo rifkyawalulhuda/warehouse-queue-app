@@ -57,6 +57,10 @@ const confirmNextStatus = ref<QueueEntry['status'] | null>(null)
 const exportOpen = ref(false)
 const exporting = ref(false)
 const exportError = ref<string | null>(null)
+const page = ref(1)
+const limit = ref(15)
+const totalPages = ref(1)
+const totalItems = ref(0)
 
 const exportForm = reactive({
   dateFrom: '',
@@ -107,6 +111,8 @@ const queryString = computed(() => {
   if (filters.status) params.set('status', filters.status)
   if (filters.category) params.set('category', filters.category)
   if (filters.search) params.set('search', filters.search)
+  params.set('page', String(page.value))
+  params.set('limit', String(limit.value))
   params.set('sortBy', sortBy.value)
   params.set('sortDir', sortDir.value)
   return params.toString()
@@ -119,6 +125,10 @@ const fetchList = async () => {
     const url = `/queue?${queryString.value}`
     const response = await api.get(url)
     entries.value = response.data?.data || []
+    totalPages.value = response.data?.meta?.totalPages || 1
+    totalItems.value = response.data?.meta?.totalItems || 0
+    page.value = response.data?.meta?.page || page.value
+    limit.value = response.data?.meta?.limit || limit.value
   } catch (err: any) {
     error.value = getErrorMessage(err, 'Terjadi kesalahan')
   } finally {
@@ -228,6 +238,29 @@ const toggleSort = (column: typeof sortBy.value) => {
   } else {
     sortDir.value = sortDir.value === 'asc' ? 'desc' : 'asc'
   }
+  page.value = 1
+  fetchList()
+}
+
+const paginationItems = computed(() => {
+  const total = totalPages.value
+  const current = page.value
+  if (total <= 7) {
+    return Array.from({ length: total }, (_, i) => i + 1)
+  }
+  const items: Array<number | string> = [1]
+  const start = Math.max(2, current - 1)
+  const end = Math.min(total - 1, current + 1)
+  if (start > 2) items.push('...')
+  for (let i = start; i <= end; i++) items.push(i)
+  if (end < total - 1) items.push('...')
+  items.push(total)
+  return items
+})
+
+const goToPage = (target: number) => {
+  if (target < 1 || target > totalPages.value || target === page.value) return
+  page.value = target
   fetchList()
 }
 
@@ -285,6 +318,7 @@ let searchTimer: number | undefined
 watch(
   () => [filters.date, filters.status, filters.category],
   () => {
+    page.value = 1
     fetchList()
   }
 )
@@ -294,8 +328,17 @@ watch(
   () => {
     if (searchTimer) window.clearTimeout(searchTimer)
     searchTimer = window.setTimeout(() => {
+      page.value = 1
       fetchList()
     }, 400)
+  }
+)
+
+watch(
+  () => limit.value,
+  () => {
+    page.value = 1
+    fetchList()
   }
 )
 
@@ -379,6 +422,37 @@ onUnmounted(() => {
           @view-detail="handleViewDetail"
           @change-status="handleChangeStatus"
         />
+        <div class="mt-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <div class="flex items-center gap-2 text-sm">
+            <span class="text-muted-foreground">Rows:</span>
+            <select v-model.number="limit" class="bg-transparent border rounded-md px-2 py-1 text-sm">
+              <option :value="15">15</option>
+              <option :value="30">30</option>
+              <option :value="50">50</option>
+              <option :value="100">100</option>
+            </select>
+            <span class="text-muted-foreground">Total: {{ totalItems }}</span>
+          </div>
+          <div class="flex flex-wrap items-center gap-1">
+            <Button size="sm" variant="outline" :disabled="page === 1" @click="goToPage(page - 1)">
+              Prev
+            </Button>
+            <template v-for="(item, idx) in paginationItems" :key="`${item}-${idx}`">
+              <span v-if="item === '...'" class="px-2 text-muted-foreground">...</span>
+              <Button
+                v-else
+                size="sm"
+                :variant="item === page ? 'default' : 'ghost'"
+                @click="goToPage(Number(item))"
+              >
+                {{ item }}
+              </Button>
+            </template>
+            <Button size="sm" variant="outline" :disabled="page === totalPages" @click="goToPage(page + 1)">
+              Next
+            </Button>
+          </div>
+        </div>
       </CardContent>
     </Card>
 

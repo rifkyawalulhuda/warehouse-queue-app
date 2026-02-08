@@ -157,6 +157,10 @@ async function listQueueEntries(query) {
   const { status, category, search } = query;
   const { from, to } = buildDateRange(query);
   const { sortBy, sortDir } = normalizeSort(query);
+  const rawPage = typeof query.page === "string" ? Number(query.page) : Number(query.page);
+  const rawLimit = typeof query.limit === "string" ? Number(query.limit) : Number(query.limit);
+  const limit = Number.isFinite(rawLimit) && rawLimit > 0 ? rawLimit : 15;
+  let page = Number.isFinite(rawPage) && rawPage > 0 ? Math.floor(rawPage) : 1;
 
   const where = {};
   if (status) where.status = status;
@@ -175,13 +179,30 @@ async function listQueueEntries(query) {
     ];
   }
 
-  return prisma.queueEntry.findMany({
+  const totalItems = await prisma.queueEntry.count({ where });
+  const totalPages = Math.max(1, Math.ceil(totalItems / limit));
+  if (page > totalPages) page = totalPages;
+  const skip = (page - 1) * limit;
+
+  const data = await prisma.queueEntry.findMany({
     where,
     orderBy: buildOrderBy(sortBy, sortDir),
     include: {
       customer: true,
     },
+    skip,
+    take: limit,
   });
+
+  return {
+    data,
+    meta: {
+      page,
+      limit,
+      totalItems,
+      totalPages,
+    },
+  };
 }
 
 async function listQueueEntriesForExport(query) {

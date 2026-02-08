@@ -60,8 +60,8 @@ async function createQueue(req, res, next) {
 
 async function listQueue(req, res, next) {
   try {
-    const entries = await queueService.listQueueEntries(req.query);
-    return sendSuccess(res, entries);
+    const result = await queueService.listQueueEntries(req.query);
+    return res.json({ ok: true, data: result.data, meta: result.meta });
   } catch (err) {
     return next(err);
   }
