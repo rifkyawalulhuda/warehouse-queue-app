@@ -204,16 +204,16 @@ onUnmounted(() => {
             <tr v-for="entry in entries" :key="entry.id" :class="['border-t', rowHighlightClass(entry.status)]">
               <td class="px-4 py-4">
                 <span
-                  class="inline-flex items-center rounded-full px-3 py-1 text-sm font-semibold tracking-wide"
+                  class="inline-flex items-center rounded-lg px-3 py-2 text-sm font-semibold tracking-wide"
                   :class="categoryBadgeClass(entry.category)"
                 >
                   {{ categoryLabel(entry.category) }}
                 </span>
               </td>
-              <td class="px-4 py-4">{{ entry.driverName || '-' }}</td>
-              <td class="px-4 py-4">{{ entry.truckNumber || '-' }}</td>
+              <td class="px-4 py-4 font-bold">{{ entry.driverName || '-' }}</td>
+              <td class="px-4 py-4 font-semibold">{{ entry.truckNumber || '-' }}</td>
               <td class="px-4 py-4">{{ entry.containerNumber || '-' }}</td>
-              <td class="px-4 py-4 font-semibold">{{ entry.customer?.name || '-' }}</td>
+              <td class="px-4 py-4">{{ entry.customer?.name || '-' }}</td>
               <td class="px-4 py-4">{{ formatTime(entry.registerTime) }}</td>
               <td class="px-4 py-4">
                 <span
