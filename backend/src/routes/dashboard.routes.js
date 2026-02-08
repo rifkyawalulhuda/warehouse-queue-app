@@ -10,5 +10,7 @@ router.use(authMiddleware, requireRole("ADMIN", "WAREHOUSE"));
 router.get("/dashboard/summary", dashboardController.summary);
 router.get("/dashboard/hourly", dashboardController.hourly);
 router.get("/dashboard/status", dashboardController.status);
+router.get("/dashboard/top-customers", dashboardController.topCustomers);
+router.get("/dashboard/over-sla", dashboardController.overSla);
 
 module.exports = router;

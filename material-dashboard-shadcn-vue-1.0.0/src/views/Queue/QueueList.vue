@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import Card from '@/components/ui/Card.vue'
 import CardHeader from '@/components/ui/CardHeader.vue'
 import CardContent from '@/components/ui/CardContent.vue'
@@ -46,6 +47,8 @@ const entries = ref<QueueEntry[]>([])
 const customers = ref<Customer[]>([])
 const loading = ref(false)
 const error = ref<string | null>(null)
+const route = useRoute()
+const router = useRouter()
 
 const selectedEntry = ref<QueueEntry | null>(null)
 const drawerOpen = ref(false)
@@ -157,6 +160,11 @@ const fetchDetail = async (id: string) => {
 const handleViewDetail = async (entry: QueueEntry) => {
   drawerOpen.value = true
   await fetchDetail(entry.id)
+}
+
+const openDetailById = async (id: string) => {
+  drawerOpen.value = true
+  await fetchDetail(id)
 }
 
 const handleChangeStatus = async (entry: QueueEntry, newStatus: QueueEntry['status']) => {
@@ -345,6 +353,10 @@ watch(
 onMounted(() => {
   fetchList()
   fetchCustomers()
+  const detailId = route.query.detailId
+  if (typeof detailId === 'string' && detailId) {
+    openDetailById(detailId)
+  }
 })
 
 let refreshTimer: number | undefined
@@ -358,6 +370,15 @@ onMounted(() => {
 onUnmounted(() => {
   if (refreshTimer) window.clearInterval(refreshTimer)
 })
+
+watch(
+  () => route.query.detailId,
+  (value) => {
+    if (typeof value === 'string' && value) {
+      openDetailById(value)
+    }
+  }
+)
 
 </script>
 

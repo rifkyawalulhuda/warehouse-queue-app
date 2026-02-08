@@ -5,3 +5,7 @@ export const getDashboardSummary = (date: string) => api.get(`/dashboard/summary
 export const getDashboardHourly = (date: string) => api.get(`/dashboard/hourly`, { params: { date } })
 
 export const getDashboardStatus = (date: string) => api.get(`/dashboard/status`, { params: { date } })
+
+export const getTopCustomers = (date: string) => api.get(`/dashboard/top-customers`, { params: { date } })
+
+export const getOverSla = (date: string) => api.get(`/dashboard/over-sla`, { params: { date } })

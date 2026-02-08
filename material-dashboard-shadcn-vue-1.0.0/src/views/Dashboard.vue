@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import Card from '@/components/ui/Card.vue'
 import CardHeader from '@/components/ui/CardHeader.vue'
 import CardTitle from '@/components/ui/CardTitle.vue'
@@ -8,7 +9,9 @@ import Button from '@/components/ui/Button.vue'
 import HourlyTotalLineChart from '@/components/dashboard/HourlyTotalLineChart.vue'
 import HourlyCategoryStackedBar from '@/components/dashboard/HourlyCategoryStackedBar.vue'
 import StatusPieChart from '@/components/dashboard/StatusPieChart.vue'
-import { getDashboardHourly, getDashboardStatus, getDashboardSummary } from '@/services/dashboardApi'
+import TopCustomerDurationTable from '@/components/dashboard/TopCustomerDurationTable.vue'
+import OverSlaTable from '@/components/dashboard/OverSlaTable.vue'
+import { getDashboardHourly, getDashboardStatus, getDashboardSummary, getOverSla, getTopCustomers } from '@/services/dashboardApi'
 
 type Summary = {
   date: string
@@ -25,10 +28,13 @@ type Summary = {
 
 type HourlyItem = { hour: string; total: number; receiving: number; delivery: number }
 type StatusItem = { name: string; value: number }
+type TopCustomerItem = { customerName: string; avgDurationMinutes: number; totalTransactions: number }
+type OverSlaItem = { id: string; customerName: string; truckNumber: string; status: string; overMinutes: number }
 
 const todayString = () => new Date().toISOString().slice(0, 10)
 
 const selectedDate = ref(todayString())
+const router = useRouter()
 const summary = reactive<Summary>({
   date: selectedDate.value,
   total: 0,
@@ -43,6 +49,8 @@ const summary = reactive<Summary>({
 })
 const hourlyItems = ref<HourlyItem[]>([])
 const statusItems = ref<StatusItem[]>([])
+const topCustomers = ref<TopCustomerItem[]>([])
+const overSlaItems = ref<OverSlaItem[]>([])
 const loading = ref(false)
 const error = ref<string | null>(null)
 
@@ -56,10 +64,12 @@ const fetchDashboard = async () => {
   loading.value = true
   error.value = null
   try {
-    const [summaryRes, hourlyRes, statusRes] = await Promise.all([
+    const [summaryRes, hourlyRes, statusRes, topCustomerRes, overSlaRes] = await Promise.all([
       getDashboardSummary(selectedDate.value),
       getDashboardHourly(selectedDate.value),
-      getDashboardStatus(selectedDate.value)
+      getDashboardStatus(selectedDate.value),
+      getTopCustomers(selectedDate.value),
+      getOverSla(selectedDate.value)
     ])
 
     const s = summaryRes.data || {}
@@ -76,6 +86,8 @@ const fetchDashboard = async () => {
 
     hourlyItems.value = hourlyRes.data?.items || []
     statusItems.value = statusRes.data?.items || []
+    topCustomers.value = topCustomerRes.data?.items || []
+    overSlaItems.value = overSlaRes.data?.items || []
   } catch (err: any) {
     error.value = getErrorMessage(err, 'Gagal memuat dashboard')
   } finally {
@@ -84,6 +96,10 @@ const fetchDashboard = async () => {
 }
 
 let refreshTimer: number | undefined
+
+const openQueueDetail = (id: string) => {
+  router.push({ path: '/queue', query: { detailId: id } })
+}
 
 const setupAutoRefresh = () => {
   if (refreshTimer) window.clearInterval(refreshTimer)
@@ -219,6 +235,25 @@ onUnmounted(() => {
         </CardHeader>
         <CardContent>
           <StatusPieChart :items="statusItems" />
+        </CardContent>
+      </Card>
+    </div>
+
+    <div class="grid gap-4 lg:grid-cols-2">
+      <Card>
+        <CardHeader>
+          <CardTitle>Top 5 Customer Terlama</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <TopCustomerDurationTable :items="topCustomers" />
+        </CardContent>
+      </Card>
+      <Card>
+        <CardHeader>
+          <CardTitle>Top 5 Over SLA</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <OverSlaTable :items="overSlaItems" @select="openQueueDetail" />
         </CardContent>
       </Card>
     </div>

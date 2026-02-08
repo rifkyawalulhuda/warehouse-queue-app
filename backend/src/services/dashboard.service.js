@@ -193,8 +193,117 @@ async function getStatus(dateQuery) {
   return { date: range.date, items };
 }
 
+function formatDurationHumanMinutes(minutes) {
+  if (!Number.isFinite(minutes) || minutes <= 0) return "kurang dari 1 menit";
+  const hours = Math.floor(minutes / 60);
+  const remainingMinutes = minutes % 60;
+  if (hours > 0 && remainingMinutes > 0) return `${hours} jam ${remainingMinutes} menit`;
+  if (hours > 0 && remainingMinutes === 0) return `${hours} jam`;
+  return `${remainingMinutes} menit`;
+}
+
+async function getTopCustomers(dateQuery) {
+  const range = resolveDateRange(dateQuery);
+  const entries = await prisma.queueEntry.findMany({
+    where: {
+      registerTime: {
+        gte: range.from,
+        lte: range.to,
+      },
+      finishTime: {
+        not: null,
+      },
+    },
+    select: {
+      registerTime: true,
+      finishTime: true,
+      customer: { select: { name: true } },
+    },
+  });
+
+  const grouped = new Map();
+  entries.forEach((entry) => {
+    if (!entry.finishTime) return;
+    const minutes = durationMinutes(new Date(entry.registerTime), new Date(entry.finishTime));
+    if (minutes === null) return;
+    const name = entry.customer?.name || "-";
+    const current = grouped.get(name) || { totalMinutes: 0, totalTransactions: 0 };
+    current.totalMinutes += minutes;
+    current.totalTransactions += 1;
+    grouped.set(name, current);
+  });
+
+  const items = Array.from(grouped.entries()).map(([customerName, data]) => {
+    const avgDurationMinutes = data.totalTransactions
+      ? Math.round(data.totalMinutes / data.totalTransactions)
+      : 0;
+    return {
+      customerName,
+      avgDurationMinutes,
+      totalTransactions: data.totalTransactions,
+    };
+  });
+
+  items.sort((a, b) => b.avgDurationMinutes - a.avgDurationMinutes);
+
+  return { date: range.date, items: items.slice(0, 5) };
+}
+
+async function getOverSla(dateQuery) {
+  const range = resolveDateRange(dateQuery);
+  const now = new Date();
+
+  const entries = await prisma.queueEntry.findMany({
+    where: {
+      registerTime: {
+        gte: range.from,
+        lte: range.to,
+      },
+    },
+    select: {
+      id: true,
+      category: true,
+      status: true,
+      registerTime: true,
+      finishTime: true,
+      driverName: true,
+      truckNumber: true,
+      customer: { select: { name: true } },
+    },
+  });
+
+  const items = entries
+    .map((entry) => {
+      if (entry.status === "BATAL") return null;
+      const slaMinutes = getSlaMinutes(entry.category);
+      if (!slaMinutes) return null;
+      const end = entry.finishTime ? new Date(entry.finishTime) : now;
+      const minutes = durationMinutes(new Date(entry.registerTime), end);
+      if (minutes === null) return null;
+      if (minutes < slaMinutes) return null;
+      return {
+        id: entry.id,
+        customerName: entry.customer?.name || "-",
+        driverName: entry.driverName,
+        truckNumber: entry.truckNumber,
+        category: entry.category,
+        durationMinutes: minutes,
+        slaMinutes,
+        overMinutes: minutes - slaMinutes,
+        status: entry.status,
+      };
+    })
+    .filter(Boolean);
+
+  items.sort((a, b) => b.overMinutes - a.overMinutes);
+
+  return { date: range.date, items: items.slice(0, 5) };
+}
+
 module.exports = {
   getSummary,
   getHourly,
   getStatus,
+  getTopCustomers,
+  getOverSla,
 };

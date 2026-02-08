@@ -27,8 +27,28 @@ async function status(req, res, next) {
   }
 }
 
+async function topCustomers(req, res, next) {
+  try {
+    const result = await dashboardService.getTopCustomers(req.query.date);
+    return res.json(result);
+  } catch (err) {
+    return next(err);
+  }
+}
+
+async function overSla(req, res, next) {
+  try {
+    const result = await dashboardService.getOverSla(req.query.date);
+    return res.json(result);
+  } catch (err) {
+    return next(err);
+  }
+}
+
 module.exports = {
   summary,
   hourly,
   status,
+  topCustomers,
+  overSla,
 };
