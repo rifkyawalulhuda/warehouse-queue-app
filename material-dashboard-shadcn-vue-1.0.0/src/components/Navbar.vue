@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { Search, Menu, User, CreditCard, LogOut, ChevronDown } from 'lucide-vue-next'
 import { useAuth } from '@/composables/useAuth'
@@ -12,6 +12,7 @@ const router = useRouter()
 const { user, logout } = useAuth()
 const searchQuery = ref('')
 const accountDropdownOpen = ref(false)
+const displayUserName = computed(() => user.value?.name || 'Account')
 
 const handleSearch = (e: Event) => {
   e.preventDefault()
@@ -82,7 +83,7 @@ const handleLogout = async () => {
               <div class="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center">
                 <User :size="18" />
               </div>
-              <span class="hidden sm:block text-sm font-medium">Account</span>
+              <span class="hidden sm:block text-sm font-medium">{{ displayUserName }}</span>
               <ChevronDown :size="16" class="hidden sm:block" />
             </button>
 
