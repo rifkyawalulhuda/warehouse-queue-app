@@ -10,6 +10,7 @@ const router = express.Router();
 
 router.post("/queue", validateQueueCreate, queueController.createQueue);
 router.get("/queue", queueController.listQueue);
+router.get("/queue/export", queueController.exportQueue);
 router.get("/queue/:id", queueController.getQueueById);
 router.patch("/queue/:id", validateQueueUpdate, queueController.updateQueue);
 router.patch("/queue/:id/status", validateStatusChange, queueController.updateQueueStatus);

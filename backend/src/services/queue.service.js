@@ -37,6 +37,35 @@ function buildDateRange(query) {
   return { from, to };
 }
 
+function buildExportDateRange(query) {
+  const { dateFrom, dateTo } = query;
+  if (!dateFrom || !dateTo) return null;
+
+  const fromDate = parseDateOnly(dateFrom);
+  const toDate = parseDateOnly(dateTo);
+  if (!fromDate || !toDate) return null;
+
+  const from = new Date(
+    fromDate.getFullYear(),
+    fromDate.getMonth(),
+    fromDate.getDate(),
+    0,
+    0,
+    0,
+    0
+  );
+  const to = new Date(
+    toDate.getFullYear(),
+    toDate.getMonth(),
+    toDate.getDate(),
+    23,
+    59,
+    59,
+    999
+  );
+  return { from, to };
+}
+
 function getUserName(req) {
   return req.headers["x-user-name"] || "system";
 }
@@ -89,6 +118,25 @@ async function listQueueEntries(query) {
   return prisma.queueEntry.findMany({
     where,
     orderBy: [{ status: "asc" }, { registerTime: "asc" }],
+    include: {
+      customer: true,
+    },
+  });
+}
+
+async function listQueueEntriesForExport(query) {
+  const range = buildExportDateRange(query);
+  const where = {};
+  if (range) {
+    where.registerTime = {
+      gte: range.from,
+      lte: range.to,
+    };
+  }
+
+  return prisma.queueEntry.findMany({
+    where,
+    orderBy: [{ registerTime: "asc" }],
     include: {
       customer: true,
     },
@@ -198,6 +246,7 @@ module.exports = {
   getUserName,
   createQueueEntry,
   listQueueEntries,
+  listQueueEntriesForExport,
   getQueueEntryById,
   updateQueueEntry,
   changeQueueStatus,

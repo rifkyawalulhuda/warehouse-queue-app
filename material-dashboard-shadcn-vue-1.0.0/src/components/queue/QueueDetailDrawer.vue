@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { computed } from 'vue'
 import QueueStatusBadge from './QueueStatusBadge.vue'
 import Button from '@/components/ui/Button.vue'
 
@@ -36,6 +37,32 @@ const props = defineProps<{
 const emit = defineEmits<{
   (e: 'close'): void
 }>()
+
+const parseDate = (value?: string | null) => {
+  if (!value) return null
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return null
+  return date
+}
+
+const formatDurationHuman = (ms?: number | null) => {
+  if (ms === null || ms === undefined || ms < 0) return '-'
+  const totalMinutes = Math.floor(ms / 60000)
+  const hours = Math.floor(totalMinutes / 60)
+  const minutes = totalMinutes % 60
+
+  if (hours > 0 && minutes > 0) return `${hours} jam ${minutes} menit`
+  if (hours > 0 && minutes === 0) return `${hours} jam`
+  if (hours === 0 && minutes > 0) return `${minutes} menit`
+  return 'kurang dari 1 menit'
+}
+
+const totalDurationHuman = computed(() => {
+  const start = parseDate(props.entry?.registerTime)
+  const finish = parseDate(props.entry?.finishTime)
+  if (!start || !finish) return '-'
+  return formatDurationHuman(finish.getTime() - start.getTime())
+})
 
 const formatDateTime = (value?: string | null) => {
   if (!value) return '-'
@@ -103,6 +130,10 @@ const categoryLabel = (category?: string) => {
           <div>
             <p class="text-muted-foreground">Finish Time</p>
             <p class="font-medium">{{ formatDateTime(entry?.finishTime) }}</p>
+          </div>
+          <div>
+            <p class="text-muted-foreground">Total Waktu (Register → Finish)</p>
+            <p class="font-medium">{{ totalDurationHuman }}</p>
           </div>
           <div class="col-span-2">
             <p class="text-muted-foreground">Notes</p>

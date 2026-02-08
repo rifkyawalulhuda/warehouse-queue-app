@@ -1,5 +1,33 @@
+const ExcelJS = require("exceljs");
 const queueService = require("../services/queue.service");
 const { sendSuccess } = require("../utils/response");
+
+function formatDateTime(value) {
+  if (!value) return "-";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "-";
+  const pad = (num) => String(num).padStart(2, "0");
+  const year = date.getFullYear();
+  const month = pad(date.getMonth() + 1);
+  const day = pad(date.getDate());
+  const hours = pad(date.getHours());
+  const minutes = pad(date.getMinutes());
+  const seconds = pad(date.getSeconds());
+  return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+}
+
+function mapCategory(category) {
+  if (category === "RECEIVING") return "Receiving";
+  if (category === "DELIVERY") return "Delivery";
+  return "-";
+}
+
+function buildExportFilename(dateFrom, dateTo) {
+  if (dateFrom && dateTo) {
+    return `antrian_truk_${dateFrom}_sampai_${dateTo}.xlsx`;
+  }
+  return "antrian_truk.xlsx";
+}
 
 async function createQueue(req, res, next) {
   try {
@@ -49,10 +77,67 @@ async function updateQueueStatus(req, res, next) {
   }
 }
 
+async function exportQueue(req, res, next) {
+  try {
+    const { dateFrom, dateTo } = req.query;
+    const entries = await queueService.listQueueEntriesForExport(req.query);
+
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet("Antrian Truk");
+
+    worksheet.columns = [
+      { header: "No", key: "no", width: 6 },
+      { header: "Customer Name", key: "customerName", width: 28 },
+      { header: "Driver Name", key: "driverName", width: 20 },
+      { header: "No Truck", key: "truckNumber", width: 16 },
+      { header: "No Container", key: "containerNumber", width: 18 },
+      { header: "Register Time", key: "registerTime", width: 20 },
+      { header: "In WH - Time", key: "inWhTime", width: 20 },
+      { header: "Start", key: "startTime", width: 20 },
+      { header: "Finish", key: "finishTime", width: 20 },
+      { header: "Time Remaining", key: "timeRemaining", width: 18 },
+      { header: "Status", key: "status", width: 14 },
+      { header: "Category", key: "category", width: 14 },
+    ];
+
+    worksheet.getRow(1).font = { bold: true };
+
+    entries.forEach((entry, index) => {
+      worksheet.addRow({
+        no: index + 1,
+        customerName: entry.customer?.name || "-",
+        driverName: entry.driverName || "-",
+        truckNumber: entry.truckNumber || "-",
+        containerNumber: entry.containerNumber || "-",
+        registerTime: formatDateTime(entry.registerTime),
+        inWhTime: formatDateTime(entry.inWhTime),
+        startTime: formatDateTime(entry.startTime),
+        finishTime: formatDateTime(entry.finishTime),
+        timeRemaining: "-",
+        status: entry.status || "-",
+        category: mapCategory(entry.category),
+      });
+    });
+
+    const filename = buildExportFilename(dateFrom, dateTo);
+    res.setHeader(
+      "Content-Type",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    );
+    res.setHeader("Content-Disposition", `attachment; filename=\"${filename}\"`);
+
+    await workbook.xlsx.write(res);
+    res.end();
+  } catch (err) {
+    return next(err);
+  }
+}
+
 module.exports = {
   createQueue,
   listQueue,
   getQueueById,
   updateQueue,
   updateQueueStatus,
+  exportQueue,
 };

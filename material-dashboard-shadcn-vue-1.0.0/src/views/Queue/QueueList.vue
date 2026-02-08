@@ -52,6 +52,14 @@ const createSubmitting = ref(false)
 const confirmOpen = ref(false)
 const confirmEntry = ref<QueueEntry | null>(null)
 const confirmNextStatus = ref<QueueEntry['status'] | null>(null)
+const exportOpen = ref(false)
+const exporting = ref(false)
+const exportError = ref<string | null>(null)
+
+const exportForm = reactive({
+  dateFrom: '',
+  dateTo: ''
+})
 
 const todayString = () => {
   const now = new Date()
@@ -225,6 +233,70 @@ const closeDrawer = () => {
   selectedEntry.value = null
 }
 
+const parseErrorMessage = async (response: Response, fallback: string) => {
+  const text = await response.text().catch(() => '')
+  if (!text) return fallback
+  try {
+    const payload = JSON.parse(text)
+    return payload?.message || fallback
+  } catch {
+    return text
+  }
+}
+
+const buildExportFileName = () => {
+  if (exportForm.dateFrom && exportForm.dateTo) {
+    return `antrian_truk_${exportForm.dateFrom}_sampai_${exportForm.dateTo}.xlsx`
+  }
+  return 'antrian_truk.xlsx'
+}
+
+const handleExportDownload = async () => {
+  exportError.value = null
+  const hasFrom = Boolean(exportForm.dateFrom)
+  const hasTo = Boolean(exportForm.dateTo)
+  if (hasFrom !== hasTo) {
+    exportError.value = 'Tanggal Dari & Sampai harus diisi bersama'
+    return
+  }
+
+  exporting.value = true
+  try {
+    const params = new URLSearchParams()
+    if (hasFrom && hasTo) {
+      params.set('dateFrom', exportForm.dateFrom)
+      params.set('dateTo', exportForm.dateTo)
+    }
+    const url = params.toString() ? `/api/queue/export?${params.toString()}` : '/api/queue/export'
+    const response = await fetch(url)
+    if (!response.ok) {
+      throw new Error(await parseErrorMessage(response, 'Gagal export excel'))
+    }
+    const blob = await response.blob()
+    const downloadUrl = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = downloadUrl
+    link.download = buildExportFileName()
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+    window.setTimeout(() => URL.revokeObjectURL(downloadUrl), 0)
+
+    exportOpen.value = false
+    exportForm.dateFrom = ''
+    exportForm.dateTo = ''
+  } catch (err: any) {
+    exportError.value = err.message || 'Gagal export excel'
+  } finally {
+    exporting.value = false
+  }
+}
+
+const closeExport = () => {
+  exportOpen.value = false
+  exportError.value = null
+}
+
 let searchTimer: number | undefined
 
 watch(
@@ -271,6 +343,7 @@ onUnmounted(() => {
         <p class="text-muted-foreground">Monitoring antrian masuk gudang</p>
       </div>
       <div class="flex items-center gap-2">
+        <Button size="sm" variant="outline" @click="exportOpen = true">Export Excel</Button>
         <Button size="sm" @click="createOpen = true">Tambah Transaksi</Button>
         <Button size="sm" variant="outline" @click="fetchList">
           <RefreshCw class="mr-2 h-4 w-4" />
@@ -346,6 +419,33 @@ onUnmounted(() => {
         <div class="p-4 border-t flex items-center justify-end gap-2">
           <Button variant="ghost" @click="confirmOpen = false">Batal</Button>
           <Button @click="executeChangeStatus">Ya, Ubah</Button>
+        </div>
+      </div>
+    </div>
+
+    <div v-if="exportOpen" class="fixed inset-0 z-50">
+      <div class="absolute inset-0 bg-black/40" @click="closeExport"></div>
+      <div class="absolute left-1/2 top-1/2 w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-lg bg-card shadow-xl border">
+        <div class="p-4 border-b">
+          <h3 class="text-lg font-semibold">Export Excel</h3>
+        </div>
+        <div class="p-4 space-y-3 text-sm">
+          <div>
+            <label class="text-sm text-muted-foreground">Tanggal Dari</label>
+            <input v-model="exportForm.dateFrom" type="date" class="mt-1 w-full bg-transparent border rounded-md px-2 py-2 text-sm" />
+          </div>
+          <div>
+            <label class="text-sm text-muted-foreground">Tanggal Sampai</label>
+            <input v-model="exportForm.dateTo" type="date" class="mt-1 w-full bg-transparent border rounded-md px-2 py-2 text-sm" />
+          </div>
+          <p class="text-xs text-muted-foreground">Kosongkan tanggal untuk export semua data.</p>
+          <p v-if="exportError" class="text-xs text-red-600">{{ exportError }}</p>
+        </div>
+        <div class="p-4 border-t flex items-center justify-end gap-2">
+          <Button variant="ghost" @click="closeExport">Batal</Button>
+          <Button :disabled="exporting" @click="handleExportDownload">
+            {{ exporting ? 'Downloading...' : 'Download' }}
+          </Button>
         </div>
       </div>
     </div>
