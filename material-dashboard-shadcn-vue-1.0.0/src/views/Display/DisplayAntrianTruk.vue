@@ -5,6 +5,7 @@ import api from '@/services/api'
 type DisplayEntry = {
   id: string
   customer?: { id: string; name: string } | null
+  category?: 'RECEIVING' | 'DELIVERY' | null
   driverName: string
   truckNumber: string
   containerNumber?: string | null
@@ -63,6 +64,18 @@ const statusLabel = (status: DisplayEntry['status']) => {
   if (status === 'SELESAI') return 'SELESAI'
   if (status === 'BATAL') return 'BATAL'
   return status
+}
+
+const categoryLabel = (category?: DisplayEntry['category']) => {
+  if (category === 'RECEIVING') return 'Receiving'
+  if (category === 'DELIVERY') return 'Delivery'
+  return '-'
+}
+
+const categoryBadgeClass = (category?: DisplayEntry['category']) => {
+  if (category === 'RECEIVING') return 'bg-blue-200 text-blue-900'
+  if (category === 'DELIVERY') return 'bg-purple-200 text-purple-900'
+  return 'bg-slate-200 text-slate-700'
 }
 
 const statusBadgeClass = (status: DisplayEntry['status']) => {
@@ -172,26 +185,35 @@ onUnmounted(() => {
         <table class="min-w-full text-lg">
           <thead class="bg-muted/60 text-muted-foreground">
             <tr>
-              <th class="px-4 py-3 text-left font-semibold">Customer Name</th>
+              <th class="px-4 py-3 text-left font-semibold">Kategori</th>
               <th class="px-4 py-3 text-left font-semibold">Driver Name</th>
               <th class="px-4 py-3 text-left font-semibold">No Truck</th>
               <th class="px-4 py-3 text-left font-semibold">No Container</th>
+              <th class="px-4 py-3 text-left font-semibold">Customer Name</th>
               <th class="px-4 py-3 text-left font-semibold">Register Time</th>
               <th class="px-4 py-3 text-left font-semibold">Status</th>
             </tr>
           </thead>
           <tbody>
             <tr v-if="loading">
-              <td colspan="6" class="px-4 py-6 text-center text-muted-foreground">Loading...</td>
+              <td colspan="7" class="px-4 py-6 text-center text-muted-foreground">Loading...</td>
             </tr>
             <tr v-else-if="entries.length === 0">
-              <td colspan="6" class="px-4 py-6 text-center text-muted-foreground">Data kosong.</td>
+              <td colspan="7" class="px-4 py-6 text-center text-muted-foreground">Data kosong.</td>
             </tr>
             <tr v-for="entry in entries" :key="entry.id" :class="['border-t', rowHighlightClass(entry.status)]">
-              <td class="px-4 py-4 font-semibold">{{ entry.customer?.name || '-' }}</td>
+              <td class="px-4 py-4">
+                <span
+                  class="inline-flex items-center rounded-full px-3 py-1 text-sm font-semibold tracking-wide"
+                  :class="categoryBadgeClass(entry.category)"
+                >
+                  {{ categoryLabel(entry.category) }}
+                </span>
+              </td>
               <td class="px-4 py-4">{{ entry.driverName || '-' }}</td>
               <td class="px-4 py-4">{{ entry.truckNumber || '-' }}</td>
               <td class="px-4 py-4">{{ entry.containerNumber || '-' }}</td>
+              <td class="px-4 py-4 font-semibold">{{ entry.customer?.name || '-' }}</td>
               <td class="px-4 py-4">{{ formatTime(entry.registerTime) }}</td>
               <td class="px-4 py-4">
                 <span
