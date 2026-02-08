@@ -110,14 +110,6 @@ const handleLogout = async () => {
                 </div>
 
                 <button
-                  @click="navigateToBilling"
-                  class="w-full flex items-center gap-2 px-4 py-2 text-sm hover:bg-accent"
-                >
-                  <CreditCard :size="16" />
-                  <span>Billing</span>
-                </button>
-
-                <button
                   @click="handleLogout"
                   class="w-full flex items-center gap-2 px-4 py-2 text-sm hover:bg-accent text-red-600"
                 >

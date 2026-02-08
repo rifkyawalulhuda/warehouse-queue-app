@@ -96,8 +96,21 @@ const formatTime = (value?: string | null) => {
   return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
 }
 
+const formatDisplayDateTime = (date: Date) => {
+  const weekday = new Intl.DateTimeFormat('id-ID', { weekday: 'long' }).format(date)
+  const day = String(date.getDate()).padStart(2, '0')
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const year = date.getFullYear()
+  const datePart = `${day}-${month}-${year}`
+  const hh = String(date.getHours()).padStart(2, '0')
+  const mm = String(date.getMinutes()).padStart(2, '0')
+  const ss = String(date.getSeconds()).padStart(2, '0')
+  const timePart = `${hh}:${mm}:${ss}`
+  return `${weekday}, ${datePart} ${timePart}`
+}
+
 const nowText = computed(() => {
-  return now.value.toLocaleString()
+  return formatDisplayDateTime(now.value)
 })
 
 const toggleFullscreen = async () => {
@@ -140,7 +153,8 @@ onUnmounted(() => {
     <header class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
       <div>
         <h1 class="text-3xl md:text-4xl font-bold">Antrian Delivery & Receiving</h1>
-        <p class="text-muted-foreground text-lg md:text-xl">Monitoring antrian hari ini</p>
+        
+        <p class="text-muted-foreground text-lg md:text-xl">PT. SANKYU INDONESIA INTERNATIONAL CIKARANG LOGISTIC CENTER</p>
       </div>
       <div class="flex items-center gap-3">
         <div class="text-lg md:text-xl font-semibold">{{ nowText }}</div>
