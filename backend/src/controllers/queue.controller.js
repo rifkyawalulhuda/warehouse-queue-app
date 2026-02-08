@@ -22,6 +22,24 @@ function mapCategory(category) {
   return "-";
 }
 
+function formatDurationHuman(registerTime, finishTime) {
+  if (!registerTime || !finishTime) return "-";
+  const start = new Date(registerTime);
+  const end = new Date(finishTime);
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return "-";
+  const durationMs = end.getTime() - start.getTime();
+  if (durationMs < 0) return "-";
+
+  const totalMinutes = Math.floor(durationMs / 60000);
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+
+  if (hours > 0 && minutes > 0) return `${hours} jam ${minutes} menit`;
+  if (hours > 0 && minutes === 0) return `${hours} jam`;
+  if (hours === 0 && minutes > 0) return `${minutes} menit`;
+  return "kurang dari 1 menit";
+}
+
 function buildExportFilename(dateFrom, dateTo) {
   if (dateFrom && dateTo) {
     return `antrian_truk_${dateFrom}_sampai_${dateTo}.xlsx`;
@@ -95,6 +113,7 @@ async function exportQueue(req, res, next) {
       { header: "In WH - Time", key: "inWhTime", width: 20 },
       { header: "Start", key: "startTime", width: 20 },
       { header: "Finish", key: "finishTime", width: 20 },
+      { header: "Total Waktu (Register → Finish)", key: "totalDuration", width: 28 },
       { header: "Time Remaining", key: "timeRemaining", width: 18 },
       { header: "Status", key: "status", width: 14 },
       { header: "Category", key: "category", width: 14 },
@@ -113,6 +132,7 @@ async function exportQueue(req, res, next) {
         inWhTime: formatDateTime(entry.inWhTime),
         startTime: formatDateTime(entry.startTime),
         finishTime: formatDateTime(entry.finishTime),
+        totalDuration: formatDurationHuman(entry.registerTime, entry.finishTime),
         timeRemaining: "-",
         status: entry.status || "-",
         category: mapCategory(entry.category),
