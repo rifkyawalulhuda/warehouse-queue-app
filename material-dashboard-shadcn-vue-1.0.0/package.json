@@ -24,7 +24,7 @@
     "vue-router": "^4.4.5"
   },
   "devDependencies": {
-    "@vitejs/plugin-vue": "^5.1.4",
+    "@vitejs/plugin-vue": "^6.0.4",
     "autoprefixer": "^10.4.20",
     "express": "^4.21.1",
     "gh-pages": "^6.3.0",

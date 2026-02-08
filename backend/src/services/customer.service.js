@@ -35,6 +35,21 @@ async function deleteCustomer(id) {
   }
 }
 
+async function updateCustomer(id, data) {
+  if (!id) throw createHttpError(400, "ID customer tidak valid");
+  if (!data.name || typeof data.name !== "string" || !data.name.trim()) {
+    throw createHttpError(400, "Nama Customer wajib diisi");
+  }
+  try {
+    return await prisma.customer.update({
+      where: { id },
+      data: { name: data.name.trim() },
+    });
+  } catch (err) {
+    throw createHttpError(400, "Customer tidak ditemukan");
+  }
+}
+
 async function importCustomersFromExcel(rows) {
   if (!Array.isArray(rows)) {
     throw createHttpError(400, "Data Excel tidak valid");
@@ -73,5 +88,6 @@ module.exports = {
   listCustomers,
   createCustomer,
   deleteCustomer,
+  updateCustomer,
   importCustomersFromExcel,
 };

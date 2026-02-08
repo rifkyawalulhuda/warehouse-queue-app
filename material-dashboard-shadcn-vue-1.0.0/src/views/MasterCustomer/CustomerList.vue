@@ -20,8 +20,16 @@ const importFile = ref<File | null>(null)
 const search = ref('')
 const confirmOpen = ref(false)
 const confirmCustomer = ref<Customer | null>(null)
+const editOpen = ref(false)
+const editCustomer = ref<Customer | null>(null)
+const editError = ref<string | null>(null)
+const updating = ref(false)
 
 const form = reactive({
+  name: ''
+})
+
+const editForm = reactive({
   name: ''
 })
 
@@ -104,6 +112,77 @@ const confirmDelete = async () => {
   if (!confirmCustomer.value) return
   await handleDelete(confirmCustomer.value.id)
   closeConfirm()
+}
+
+const openEdit = (cust: Customer) => {
+  editCustomer.value = cust
+  editForm.name = cust.name
+  editError.value = null
+  editOpen.value = true
+}
+
+const closeEdit = () => {
+  editOpen.value = false
+  editCustomer.value = null
+  editForm.name = ''
+  editError.value = null
+}
+
+const parseErrorMessage = async (response: Response, fallback: string) => {
+  const raw = await response.text().catch(() => '')
+  if (raw) {
+    try {
+      const payload = JSON.parse(raw)
+      if (payload?.message) return payload.message as string
+    } catch {
+      return raw
+    }
+  }
+  return fallback
+}
+
+const updateCustomer = async (id: string, name: string) => {
+  const url = `/api/customers/${id}`
+  const body = JSON.stringify({ name })
+  const headers = { 'Content-Type': 'application/json' }
+
+  const attempt = async (method: string) => {
+    const response = await fetch(url, { method, headers, body })
+    if (response.ok) return { ok: true as const }
+    return {
+      ok: false as const,
+      status: response.status,
+      message: await parseErrorMessage(response, 'Gagal update customer')
+    }
+  }
+
+  let result = await attempt('PATCH')
+  if (!result.ok && (result.status === 404 || result.status === 405)) {
+    result = await attempt('PUT')
+  }
+  return result
+}
+
+const submitUpdate = async () => {
+  if (!editForm.name.trim()) {
+    editError.value = 'Nama Customer wajib diisi'
+    return
+  }
+  if (!editCustomer.value) return
+  updating.value = true
+  editError.value = null
+  try {
+    const result = await updateCustomer(editCustomer.value.id, editForm.name.trim())
+    if (!result.ok) {
+      throw new Error(result.message || 'Gagal update customer')
+    }
+    await fetchCustomers()
+    closeEdit()
+  } catch (err: any) {
+    editError.value = err.message || 'Gagal update customer'
+  } finally {
+    updating.value = false
+  }
 }
 
 const handleImport = async () => {
@@ -228,7 +307,10 @@ onMounted(() => {
                 <td class="px-3 py-2">{{ cust.name }}</td>
                 <td class="px-3 py-2">{{ new Date(cust.createdAt).toLocaleString() }}</td>
                 <td class="px-3 py-2">
-                  <Button size="sm" variant="outline" @click="openConfirm(cust)">Hapus</Button>
+                  <div class="flex items-center gap-2">
+                    <Button size="sm" variant="outline" @click="openEdit(cust)">Edit</Button>
+                    <Button size="sm" variant="outline" @click="openConfirm(cust)">Hapus</Button>
+                  </div>
                 </td>
               </tr>
             </tbody>
@@ -249,6 +331,28 @@ onMounted(() => {
         <div class="p-4 border-t flex items-center justify-end gap-2">
           <Button variant="ghost" @click="closeConfirm">Batal</Button>
           <Button @click="confirmDelete">Ya, Hapus</Button>
+        </div>
+      </div>
+    </div>
+
+    <div v-if="editOpen" class="fixed inset-0 z-50">
+      <div class="absolute inset-0 bg-black/40" @click="closeEdit"></div>
+      <div class="absolute left-1/2 top-1/2 w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-lg bg-card shadow-xl border">
+        <div class="p-4 border-b">
+          <h3 class="text-lg font-semibold">Edit Customer</h3>
+        </div>
+        <div class="p-4 space-y-3 text-sm">
+          <div>
+            <label class="text-sm text-muted-foreground">Nama Customer</label>
+            <input v-model="editForm.name" type="text" class="mt-1 w-full bg-transparent border rounded-md px-2 py-2 text-sm" />
+          </div>
+          <p v-if="editError" class="text-xs text-red-600">{{ editError }}</p>
+        </div>
+        <div class="p-4 border-t flex items-center justify-end gap-2">
+          <Button variant="ghost" @click="closeEdit">Batal</Button>
+          <Button :disabled="updating" @click="submitUpdate">
+            {{ updating ? 'Updating...' : 'Update' }}
+          </Button>
         </div>
       </div>
     </div>

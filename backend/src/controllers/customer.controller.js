@@ -29,6 +29,15 @@ async function deleteCustomer(req, res, next) {
   }
 }
 
+async function updateCustomer(req, res, next) {
+  try {
+    const updated = await customerService.updateCustomer(req.params.id, req.body);
+    return sendSuccess(res, updated);
+  } catch (err) {
+    return next(err);
+  }
+}
+
 async function importCustomers(req, res, next) {
   try {
     if (!req.file || !req.file.buffer) {
@@ -70,6 +79,7 @@ module.exports = {
   listCustomers,
   createCustomer,
   deleteCustomer,
+  updateCustomer,
   importCustomers,
   downloadTemplate,
 };
