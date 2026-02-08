@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { RouterView, useRoute } from 'vue-router'
 import Navbar from '@/components/Navbar.vue'
 import Footer from '@/components/Footer.vue'
+import { useAuth } from '@/composables/useAuth'
 import {
   LayoutDashboard,
   Users,
@@ -20,6 +21,7 @@ import {
 } from 'lucide-vue-next'
 
 const route = useRoute()
+const { user } = useAuth()
 const sidebarOpen = ref(true)
 const isMobile = ref(false)
 
@@ -37,6 +39,13 @@ const navigation = [
   { name: 'Settings', path: '/settings', icon: Settings },
   { name: 'Docs', path: '/docs', icon: BookOpen }
 ]
+
+const filteredNavigation = computed(() => {
+  if (user.value?.role === 'WAREHOUSE') {
+    return navigation.filter((item) => item.path === '/queue')
+  }
+  return navigation
+})
 
 const checkMobile = () => {
   isMobile.value = window.innerWidth < 1024
@@ -87,7 +96,7 @@ onUnmounted(() => {
       </div>
 
       <nav class="flex-1 p-4 space-y-1 overflow-y-auto">
-        <router-link v-for="item in navigation" :key="item.path" :to="item.path" @click="closeSidebarOnMobile" :class="[
+        <router-link v-for="item in filteredNavigation" :key="item.path" :to="item.path" @click="closeSidebarOnMobile" :class="[
           'flex items-center gap-2 px-3 py-2 rounded-lg transition-colors text-sm',
           route.path === item.path
             ? 'bg-primary text-primary-foreground'

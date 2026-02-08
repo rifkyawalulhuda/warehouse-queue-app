@@ -8,6 +8,7 @@ import QueueTable from '@/components/queue/QueueTable.vue'
 import QueueDetailDrawer from '@/components/queue/QueueDetailDrawer.vue'
 import QueueCreateModal from '@/components/queue/QueueCreateModal.vue'
 import { RefreshCw, Search } from 'lucide-vue-next'
+import api from '@/services/api'
 
 type QueueLog = {
   id: string
@@ -61,6 +62,10 @@ const exportForm = reactive({
   dateTo: ''
 })
 
+const getErrorMessage = (err: any, fallback: string) => {
+  return err?.response?.data?.message || err?.message || fallback
+}
+
 const todayString = () => {
   const now = new Date()
   const month = String(now.getMonth() + 1).padStart(2, '0')
@@ -110,16 +115,11 @@ const fetchList = async () => {
   loading.value = true
   error.value = null
   try {
-    const url = `/api/queue?${queryString.value}`
-    const response = await fetch(url)
-    if (!response.ok) {
-      const payload = await response.json().catch(() => ({}))
-      throw new Error(payload.message || 'Gagal mengambil data')
-    }
-    const payload = await response.json()
-    entries.value = payload.data || []
+    const url = `/queue?${queryString.value}`
+    const response = await api.get(url)
+    entries.value = response.data?.data || []
   } catch (err: any) {
-    error.value = err.message || 'Terjadi kesalahan'
+    error.value = getErrorMessage(err, 'Terjadi kesalahan')
   } finally {
     loading.value = false
   }
@@ -127,29 +127,19 @@ const fetchList = async () => {
 
 const fetchCustomers = async () => {
   try {
-    const response = await fetch(`/api/customers`)
-    if (!response.ok) {
-      const payload = await response.json().catch(() => ({}))
-      throw new Error(payload.message || 'Gagal mengambil customer')
-    }
-    const payload = await response.json()
-    customers.value = payload.data || []
+    const response = await api.get('/customers')
+    customers.value = response.data?.data || []
   } catch (err: any) {
-    error.value = err.message || 'Gagal mengambil customer'
+    error.value = getErrorMessage(err, 'Gagal mengambil customer')
   }
 }
 
 const fetchDetail = async (id: string) => {
   try {
-    const response = await fetch(`/api/queue/${id}`)
-    if (!response.ok) {
-      const payload = await response.json().catch(() => ({}))
-      throw new Error(payload.message || 'Gagal mengambil detail')
-    }
-    const payload = await response.json()
-    selectedEntry.value = payload.data
+    const response = await api.get(`/queue/${id}`)
+    selectedEntry.value = response.data?.data
   } catch (err: any) {
-    error.value = err.message || 'Gagal mengambil detail'
+    error.value = getErrorMessage(err, 'Gagal mengambil detail')
   }
 }
 
@@ -167,24 +157,21 @@ const handleChangeStatus = async (entry: QueueEntry, newStatus: QueueEntry['stat
 const executeChangeStatus = async () => {
   if (!confirmEntry.value || !confirmNextStatus.value) return
   try {
-    const response = await fetch(`/api/queue/${confirmEntry.value.id}/status`, {
-      method: 'PATCH',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-user-name': 'admin'
-      },
-      body: JSON.stringify({ newStatus: confirmNextStatus.value })
-    })
-    if (!response.ok) {
-      const payload = await response.json().catch(() => ({}))
-      throw new Error(payload.message || 'Gagal update status')
-    }
+    await api.patch(
+      `/queue/${confirmEntry.value.id}/status`,
+      { newStatus: confirmNextStatus.value },
+      {
+        headers: {
+          'x-user-name': 'admin'
+        }
+      }
+    )
     await fetchList()
     if (drawerOpen.value && selectedEntry.value?.id === confirmEntry.value.id) {
       await fetchDetail(confirmEntry.value.id)
     }
   } catch (err: any) {
-    error.value = err.message || 'Gagal update status'
+    error.value = getErrorMessage(err, 'Gagal update status')
   } finally {
     confirmOpen.value = false
     confirmEntry.value = null
@@ -214,22 +201,15 @@ const handleCreate = async (payload: {
     if (payload.notes.trim()) body.notes = payload.notes.trim()
     if (payload.registerTime) body.registerTime = new Date(payload.registerTime).toISOString()
 
-    const response = await fetch(`/api/queue`, {
-      method: 'POST',
+    await api.post('/queue', body, {
       headers: {
-        'Content-Type': 'application/json',
         'x-user-name': 'admin'
-      },
-      body: JSON.stringify(body)
+      }
     })
-    if (!response.ok) {
-      const resPayload = await response.json().catch(() => ({}))
-      throw new Error(resPayload.message || 'Gagal menambah transaksi')
-    }
     createOpen.value = false
     await fetchList()
   } catch (err: any) {
-    error.value = err.message || 'Gagal menambah transaksi'
+    error.value = getErrorMessage(err, 'Gagal menambah transaksi')
   } finally {
     createSubmitting.value = false
   }
@@ -248,17 +228,6 @@ const toggleSort = (column: typeof sortBy.value) => {
     sortDir.value = sortDir.value === 'asc' ? 'desc' : 'asc'
   }
   fetchList()
-}
-
-const parseErrorMessage = async (response: Response, fallback: string) => {
-  const text = await response.text().catch(() => '')
-  if (!text) return fallback
-  try {
-    const payload = JSON.parse(text)
-    return payload?.message || fallback
-  } catch {
-    return text
-  }
 }
 
 const buildExportFileName = () => {
@@ -284,13 +253,9 @@ const handleExportDownload = async () => {
       params.set('dateFrom', exportForm.dateFrom)
       params.set('dateTo', exportForm.dateTo)
     }
-    const url = params.toString() ? `/api/queue/export?${params.toString()}` : '/api/queue/export'
-    const response = await fetch(url)
-    if (!response.ok) {
-      throw new Error(await parseErrorMessage(response, 'Gagal export excel'))
-    }
-    const blob = await response.blob()
-    const downloadUrl = URL.createObjectURL(blob)
+    const url = params.toString() ? `/queue/export?${params.toString()}` : '/queue/export'
+    const response = await api.get(url, { responseType: 'blob' })
+    const downloadUrl = URL.createObjectURL(response.data)
     const link = document.createElement('a')
     link.href = downloadUrl
     link.download = buildExportFileName()
@@ -303,7 +268,7 @@ const handleExportDownload = async () => {
     exportForm.dateFrom = ''
     exportForm.dateTo = ''
   } catch (err: any) {
-    exportError.value = err.message || 'Gagal export excel'
+    exportError.value = getErrorMessage(err, 'Gagal export excel')
   } finally {
     exporting.value = false
   }

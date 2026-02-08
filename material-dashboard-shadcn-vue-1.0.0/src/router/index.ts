@@ -1,12 +1,20 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import MainLayout from '@/layouts/MainLayout.vue'
+import { useAuth } from '@/composables/useAuth'
 
 const router = createRouter({
   history: createWebHistory('/material-dashboard-shadcn-vue/'),
   routes: [
     {
+      path: '/login',
+      name: 'Login',
+      component: () => import('@/views/Auth/Login.vue'),
+      meta: { public: true }
+    },
+    {
       path: '/',
       component: MainLayout,
+      meta: { requiresAuth: true },
       children: [
         {
           path: '',
@@ -40,17 +48,20 @@ const router = createRouter({
         {
           path: 'master-customers',
           name: 'Master Customer',
-          component: () => import('@/views/MasterCustomer/CustomerList.vue')
+          component: () => import('@/views/MasterCustomer/CustomerList.vue'),
+          meta: { roles: ['ADMIN'] }
         },
         {
           path: 'master-admins',
           name: 'Master Admin',
-          component: () => import('@/views/MasterAdmin/AdminList.vue')
+          component: () => import('@/views/MasterAdmin/AdminList.vue'),
+          meta: { roles: ['ADMIN'] }
         },
         {
           path: 'queue',
           name: 'Antrian Truk',
-          component: () => import('@/views/Queue/QueueList.vue')
+          component: () => import('@/views/Queue/QueueList.vue'),
+          meta: { roles: ['ADMIN', 'WAREHOUSE'] }
         },
         {
           path: 'reports',
@@ -75,6 +86,32 @@ const router = createRouter({
       ]
     }
   ]
+})
+
+router.beforeEach((to) => {
+  const { initFromStorage, isAuthenticated, user } = useAuth()
+  initFromStorage()
+
+  if (to.meta.public) {
+    if (isAuthenticated.value) {
+      return user.value?.role === 'WAREHOUSE' ? '/queue' : '/dashboard'
+    }
+    return true
+  }
+
+  const requiresAuth = to.matched.some((record) => record.meta.requiresAuth)
+  if (!requiresAuth) return true
+
+  if (!isAuthenticated.value || !user.value) {
+    return { path: '/login', query: { redirect: to.fullPath } }
+  }
+
+  const roles = to.meta.roles as string[] | undefined
+  if (roles && !roles.includes(user.value.role)) {
+    return user.value.role === 'WAREHOUSE' ? '/queue' : '/dashboard'
+  }
+
+  return true
 })
 
 export default router

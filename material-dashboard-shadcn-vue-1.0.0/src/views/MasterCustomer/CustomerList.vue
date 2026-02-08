@@ -4,6 +4,7 @@ import Card from '@/components/ui/Card.vue'
 import CardHeader from '@/components/ui/CardHeader.vue'
 import CardContent from '@/components/ui/CardContent.vue'
 import Button from '@/components/ui/Button.vue'
+import api from '@/services/api'
 
 type Customer = {
   id: string
@@ -33,19 +34,18 @@ const editForm = reactive({
   name: ''
 })
 
+const getErrorMessage = (err: any, fallback: string) => {
+  return err?.response?.data?.message || err?.message || fallback
+}
+
 const fetchCustomers = async () => {
   loading.value = true
   error.value = null
   try {
-    const response = await fetch(`/api/customers`)
-    if (!response.ok) {
-      const payload = await response.json().catch(() => ({}))
-      throw new Error(payload.message || 'Gagal mengambil data')
-    }
-    const payload = await response.json()
-    customers.value = payload.data || []
+    const response = await api.get('/customers')
+    customers.value = response.data?.data || []
   } catch (err: any) {
-    error.value = err.message || 'Terjadi kesalahan'
+    error.value = getErrorMessage(err, 'Terjadi kesalahan')
   } finally {
     loading.value = false
   }
@@ -65,21 +65,11 @@ const handleSubmit = async () => {
   submitting.value = true
   error.value = null
   try {
-    const response = await fetch(`/api/customers`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ name: form.name.trim() })
-    })
-    if (!response.ok) {
-      const payload = await response.json().catch(() => ({}))
-      throw new Error(payload.message || 'Gagal menambah customer')
-    }
+    await api.post('/customers', { name: form.name.trim() })
     form.name = ''
     await fetchCustomers()
   } catch (err: any) {
-    error.value = err.message || 'Gagal menambah customer'
+    error.value = getErrorMessage(err, 'Gagal menambah customer')
   } finally {
     submitting.value = false
   }
@@ -87,14 +77,10 @@ const handleSubmit = async () => {
 
 const handleDelete = async (id: string) => {
   try {
-    const response = await fetch(`/api/customers/${id}`, { method: 'DELETE' })
-    if (!response.ok) {
-      const payload = await response.json().catch(() => ({}))
-      throw new Error(payload.message || 'Gagal menghapus customer')
-    }
+    await api.delete(`/customers/${id}`)
     await fetchCustomers()
   } catch (err: any) {
-    error.value = err.message || 'Gagal menghapus customer'
+    error.value = getErrorMessage(err, 'Gagal menghapus customer')
   }
 }
 
@@ -128,41 +114,6 @@ const closeEdit = () => {
   editError.value = null
 }
 
-const parseErrorMessage = async (response: Response, fallback: string) => {
-  const raw = await response.text().catch(() => '')
-  if (raw) {
-    try {
-      const payload = JSON.parse(raw)
-      if (payload?.message) return payload.message as string
-    } catch {
-      return raw
-    }
-  }
-  return fallback
-}
-
-const updateCustomer = async (id: string, name: string) => {
-  const url = `/api/customers/${id}`
-  const body = JSON.stringify({ name })
-  const headers = { 'Content-Type': 'application/json' }
-
-  const attempt = async (method: string) => {
-    const response = await fetch(url, { method, headers, body })
-    if (response.ok) return { ok: true as const }
-    return {
-      ok: false as const,
-      status: response.status,
-      message: await parseErrorMessage(response, 'Gagal update customer')
-    }
-  }
-
-  let result = await attempt('PATCH')
-  if (!result.ok && (result.status === 404 || result.status === 405)) {
-    result = await attempt('PUT')
-  }
-  return result
-}
-
 const submitUpdate = async () => {
   if (!editForm.name.trim()) {
     editError.value = 'Nama Customer wajib diisi'
@@ -172,14 +123,11 @@ const submitUpdate = async () => {
   updating.value = true
   editError.value = null
   try {
-    const result = await updateCustomer(editCustomer.value.id, editForm.name.trim())
-    if (!result.ok) {
-      throw new Error(result.message || 'Gagal update customer')
-    }
+    await api.patch(`/customers/${editCustomer.value.id}`, { name: editForm.name.trim() })
     await fetchCustomers()
     closeEdit()
   } catch (err: any) {
-    editError.value = err.message || 'Gagal update customer'
+    editError.value = getErrorMessage(err, 'Gagal update customer')
   } finally {
     updating.value = false
   }
@@ -195,20 +143,34 @@ const handleImport = async () => {
   try {
     const formData = new FormData()
     formData.append('file', importFile.value)
-    const response = await fetch(`/api/customers/import`, {
-      method: 'POST',
-      body: formData
+    await api.post('/customers/import', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
     })
-    if (!response.ok) {
-      const payload = await response.json().catch(() => ({}))
-      throw new Error(payload.message || 'Gagal import customer')
-    }
     importFile.value = null
     await fetchCustomers()
   } catch (err: any) {
-    error.value = err.message || 'Gagal import customer'
+    error.value = getErrorMessage(err, 'Gagal import customer')
   } finally {
     importing.value = false
+  }
+}
+
+const handleDownloadTemplate = async () => {
+  try {
+    const response = await api.get('/customers/template', { responseType: 'blob' })
+    const blob = new Blob([response.data], { type: response.headers['content-type'] })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = 'customer-import-template.xlsx'
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+    window.setTimeout(() => URL.revokeObjectURL(url), 0)
+  } catch (err: any) {
+    error.value = getErrorMessage(err, 'Gagal download template')
   }
 }
 
@@ -261,9 +223,9 @@ onMounted(() => {
             <p class="mt-1 text-xs text-muted-foreground">Header kolom: "Nama Customer"</p>
           </div>
           <div class="flex items-center gap-2">
-            <a href="/api/customers/template" class="text-sm text-primary underline-offset-4 hover:underline">
+            <button type="button" class="text-sm text-primary underline-offset-4 hover:underline" @click="handleDownloadTemplate">
               Download Template
-            </a>
+            </button>
             <Button size="sm" :disabled="importing" @click="handleImport">
               {{ importing ? 'Importing...' : 'Import' }}
             </Button>

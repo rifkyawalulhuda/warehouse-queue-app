@@ -65,6 +65,18 @@ async function listAdminUsers(query) {
   });
 }
 
+async function getAdminUserById(id) {
+  if (!id) throw createHttpError(400, "ID admin tidak valid");
+  const admin = await prisma.adminUser.findUnique({
+    where: { id },
+    select: adminSelect,
+  });
+  if (!admin) {
+    throw createHttpError(404, "Admin tidak ditemukan");
+  }
+  return admin;
+}
+
 async function createAdminUser(data) {
   const errors = [];
   if (!isNonEmptyString(data.name)) errors.push("Nama wajib diisi");
@@ -158,6 +170,7 @@ async function deleteAdminUser(id) {
 
 module.exports = {
   listAdminUsers,
+  getAdminUserById,
   createAdminUser,
   updateAdminUser,
   deleteAdminUser,

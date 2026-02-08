@@ -2,12 +2,14 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { Search, Menu, User, CreditCard, LogOut, ChevronDown } from 'lucide-vue-next'
+import { useAuth } from '@/composables/useAuth'
 
 defineProps<{
   onToggleSidebar: () => void
 }>()
 
 const router = useRouter()
+const { user, logout } = useAuth()
 const searchQuery = ref('')
 const accountDropdownOpen = ref(false)
 
@@ -29,9 +31,10 @@ const navigateToBilling = () => {
   closeAccountDropdown()
 }
 
-const handleLogout = () => {
-  console.log('Logout clicked')
+const handleLogout = async () => {
+  await logout()
   closeAccountDropdown()
+  router.push('/login')
 }
 </script>
 
@@ -102,8 +105,8 @@ const handleLogout = () => {
                 class="absolute right-0 mt-2 w-56 bg-card border rounded-md shadow-lg py-1 z-50"
               >
                 <div class="px-4 py-3 border-b">
-                  <p class="text-sm font-medium">John Doe</p>
-                  <p class="text-xs text-muted-foreground">john@example.com</p>
+                  <p class="text-sm font-medium">{{ user?.name || 'User' }}</p>
+                  <p class="text-xs text-muted-foreground">{{ user?.username || '-' }}</p>
                 </div>
 
                 <button

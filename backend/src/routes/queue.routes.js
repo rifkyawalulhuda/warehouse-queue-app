@@ -5,9 +5,12 @@ const {
   validateQueueUpdate,
   validateStatusChange,
 } = require("../middlewares/validate.middleware");
+const authMiddleware = require("../middlewares/auth.middleware");
+const { requireRole } = require("../middlewares/role.middleware");
 
 const router = express.Router();
 
+router.use("/queue", authMiddleware, requireRole("ADMIN", "WAREHOUSE"));
 router.post("/queue", validateQueueCreate, queueController.createQueue);
 router.get("/queue", queueController.listQueue);
 router.get("/queue/export", queueController.exportQueue);

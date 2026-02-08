@@ -4,6 +4,7 @@ import Card from '@/components/ui/Card.vue'
 import CardHeader from '@/components/ui/CardHeader.vue'
 import CardContent from '@/components/ui/CardContent.vue'
 import Button from '@/components/ui/Button.vue'
+import api from '@/services/api'
 
 type AdminUser = {
   id: string
@@ -51,15 +52,8 @@ const formatRole = (role?: string | null) => {
   return '-'
 }
 
-const parseErrorMessage = async (response: Response, fallback: string) => {
-  const text = await response.text().catch(() => '')
-  if (!text) return fallback
-  try {
-    const payload = JSON.parse(text)
-    return payload?.message || fallback
-  } catch {
-    return text
-  }
+const getErrorMessage = (err: any, fallback: string) => {
+  return err?.response?.data?.message || err?.message || fallback
 }
 
 const fetchAdmins = async () => {
@@ -68,15 +62,11 @@ const fetchAdmins = async () => {
   try {
     const params = new URLSearchParams()
     if (search.value.trim()) params.set('search', search.value.trim())
-    const url = params.toString() ? `/api/admin-users?${params.toString()}` : '/api/admin-users'
-    const response = await fetch(url)
-    if (!response.ok) {
-      throw new Error(await parseErrorMessage(response, 'Gagal mengambil data admin'))
-    }
-    const payload = await response.json()
-    admins.value = payload.data || []
+    const url = params.toString() ? `/admin-users?${params.toString()}` : '/admin-users'
+    const response = await api.get(url)
+    admins.value = response.data?.data || []
   } catch (err: any) {
-    error.value = err.message || 'Gagal mengambil data admin'
+    error.value = getErrorMessage(err, 'Gagal mengambil data admin')
   } finally {
     loading.value = false
   }
@@ -101,23 +91,14 @@ const handleCreate = async () => {
   submitting.value = true
   error.value = null
   try {
-    const response = await fetch('/api/admin-users', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        name: form.name.trim(),
-        position: form.position.trim(),
-        phone: String(form.phone).trim(),
-        role: form.role,
-        username: form.username.trim(),
-        password: form.password.trim()
-      })
+    await api.post('/admin-users', {
+      name: form.name.trim(),
+      position: form.position.trim(),
+      phone: String(form.phone).trim(),
+      role: form.role,
+      username: form.username.trim(),
+      password: form.password.trim()
     })
-    if (!response.ok) {
-      throw new Error(await parseErrorMessage(response, 'Gagal menambah admin'))
-    }
     form.name = ''
     form.position = ''
     form.phone = ''
@@ -126,7 +107,7 @@ const handleCreate = async () => {
     form.password = ''
     await fetchAdmins()
   } catch (err: any) {
-    error.value = err.message || 'Gagal menambah admin'
+    error.value = getErrorMessage(err, 'Gagal menambah admin')
   } finally {
     submitting.value = false
   }
@@ -185,20 +166,11 @@ const submitUpdate = async () => {
     if (editForm.password.trim()) {
       body.password = editForm.password.trim()
     }
-    const response = await fetch(`/api/admin-users/${editAdmin.value.id}`, {
-      method: 'PATCH',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(body)
-    })
-    if (!response.ok) {
-      throw new Error(await parseErrorMessage(response, 'Gagal update admin'))
-    }
+    await api.patch(`/admin-users/${editAdmin.value.id}`, body)
     await fetchAdmins()
     closeEdit()
   } catch (err: any) {
-    editError.value = err.message || 'Gagal update admin'
+    editError.value = getErrorMessage(err, 'Gagal update admin')
   } finally {
     updating.value = false
   }
@@ -217,13 +189,10 @@ const closeConfirm = () => {
 const confirmDelete = async () => {
   if (!confirmAdmin.value) return
   try {
-    const response = await fetch(`/api/admin-users/${confirmAdmin.value.id}`, { method: 'DELETE' })
-    if (!response.ok) {
-      throw new Error(await parseErrorMessage(response, 'Gagal menghapus admin'))
-    }
+    await api.delete(`/admin-users/${confirmAdmin.value.id}`)
     await fetchAdmins()
   } catch (err: any) {
-    error.value = err.message || 'Gagal menghapus admin'
+    error.value = getErrorMessage(err, 'Gagal menghapus admin')
   } finally {
     closeConfirm()
   }

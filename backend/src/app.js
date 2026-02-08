@@ -3,6 +3,7 @@ const cors = require("cors");
 const queueRoutes = require("./routes/queue.routes");
 const customerRoutes = require("./routes/customer.routes");
 const adminUserRoutes = require("./routes/adminUser.routes");
+const authRoutes = require("./routes/auth.routes");
 const errorMiddleware = require("./middlewares/error.middleware");
 
 const app = express();
@@ -15,6 +16,7 @@ app.get("/health", (req, res) => res.json({ ok: true }));
 app.use("/api", queueRoutes);
 app.use("/api", customerRoutes);
 app.use("/api", adminUserRoutes);
+app.use("/api", authRoutes);
 
 app.use(errorMiddleware);
 
