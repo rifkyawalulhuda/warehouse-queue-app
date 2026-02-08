@@ -3,6 +3,11 @@ import './assets/index.css'
 import App from './App.vue'
 import router from './router'
 
-createApp(App)
-  .use(router)
-  .mount('#app')
+const app = createApp(App)
+
+if (import.meta.env.DEV) {
+  app.config.devtools = true
+}
+
+app.use(router)
+app.mount('#app')
