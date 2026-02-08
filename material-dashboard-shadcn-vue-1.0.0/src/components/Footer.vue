@@ -6,18 +6,15 @@ import { Heart } from 'lucide-vue-next'
   <footer class="bg-card border-t py-6 px-4 md:px-8">
     <div class="flex flex-col md:flex-row items-center justify-between gap-4">
       <div class="flex items-center gap-1 text-sm text-muted-foreground">
-        <span>© 2025, made with</span>
-        <Heart :size="16" class="text-red-500 fill-red-500" />
+        <span>© 2026, copyright</span>
         <span>by</span>
         <a 
-          href="https://www.creative-tim.com/?_ga=2.144777527.2047538345.1768887475-571404473.1768887475"
-          target="_blank" 
-          rel="noopener noreferrer"
+          href="https://sankyuidn.co.id"
+          target="blank" 
           class="text-primary hover:underline"
         >
-          Creative Tim
+          Sankyu Indonesia
         </a>
-        <span> for a better web.</span>
         <span> • Distributed by</span>
         <a 
           href="https://themewagon.com"

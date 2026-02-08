@@ -77,7 +77,7 @@ onUnmounted(() => {
       isMobile && !sidebarOpen ? '-translate-x-full' : 'translate-x-0'
     ]">
       <div class="p-4 border-b flex items-center justify-between">
-        <h3 v-if="sidebarOpen" class="text-sm font-semibold">Material Shadcn Vue</h3>
+        <h3 v-if="sidebarOpen" class="text-sm font-semibold">PT. SANKYU INDONESIA</h3>
         <button @click="toggleSidebar" class="p-2 hover:bg-accent rounded-md hidden lg:block"
           :class="{ 'mx-auto': !sidebarOpen }">
           <ChevronRight v-if="!sidebarOpen" :size="20" />
