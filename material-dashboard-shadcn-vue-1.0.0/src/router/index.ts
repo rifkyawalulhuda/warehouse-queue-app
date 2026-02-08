@@ -12,6 +12,12 @@ const router = createRouter({
       meta: { public: true }
     },
     {
+      path: '/display/antrian-truk',
+      name: 'Display Antrian Truk',
+      component: () => import('@/views/Display/DisplayAntrianTruk.vue'),
+      meta: { public: true }
+    },
+    {
       path: '/',
       component: MainLayout,
       meta: { requiresAuth: true },
@@ -93,7 +99,7 @@ router.beforeEach((to) => {
   initFromStorage()
 
   if (to.meta.public) {
-    if (isAuthenticated.value) {
+    if (to.name === 'Login' && isAuthenticated.value) {
       return user.value?.role === 'WAREHOUSE' ? '/queue' : '/dashboard'
     }
     return true

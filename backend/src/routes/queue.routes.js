@@ -10,6 +10,7 @@ const { requireRole } = require("../middlewares/role.middleware");
 
 const router = express.Router();
 
+router.get("/queue/display", queueController.displayQueue);
 router.use("/queue", authMiddleware, requireRole("ADMIN", "WAREHOUSE"));
 router.post("/queue", validateQueueCreate, queueController.createQueue);
 router.get("/queue", queueController.listQueue);

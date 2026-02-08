@@ -203,6 +203,63 @@ async function listQueueEntriesForExport(query) {
   });
 }
 
+function getTodayRange() {
+  const now = new Date();
+  const from = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+  const to = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+  return { from, to };
+}
+
+async function listQueueEntriesForDisplay() {
+  const { from, to } = getTodayRange();
+  const entries = await prisma.queueEntry.findMany({
+    where: {
+      registerTime: {
+        gte: from,
+        lte: to,
+      },
+    },
+    orderBy: [{ registerTime: "asc" }],
+    include: {
+      customer: true,
+    },
+  });
+
+  const statusOrder = {
+    MENUNGGU: 0,
+    IN_WH: 1,
+    PROSES: 2,
+    SELESAI: 3,
+    BATAL: 4,
+  };
+
+  entries.sort((a, b) => {
+    const aOrder = statusOrder[a.status] ?? 99;
+    const bOrder = statusOrder[b.status] ?? 99;
+    if (aOrder !== bOrder) return aOrder - bOrder;
+    const aTime = new Date(a.registerTime).getTime();
+    const bTime = new Date(b.registerTime).getTime();
+    if (a.status === "SELESAI" && b.status === "SELESAI") {
+      return bTime - aTime;
+    }
+    return aTime - bTime;
+  });
+
+  const summary = entries.reduce(
+    (acc, entry) => {
+      acc.total += 1;
+      if (entry.category === "DELIVERY") acc.delivery += 1;
+      if (entry.category === "RECEIVING") acc.receiving += 1;
+      if (entry.status === "MENUNGGU") acc.menunggu += 1;
+      if (entry.status === "IN_WH" || entry.status === "PROSES") acc.proses += 1;
+      return acc;
+    },
+    { total: 0, delivery: 0, receiving: 0, menunggu: 0, proses: 0 }
+  );
+
+  return { entries, summary };
+}
+
 async function getQueueEntryById(id) {
   const entry = await prisma.queueEntry.findUnique({
     where: { id },
@@ -325,6 +382,7 @@ module.exports = {
   createQueueEntry,
   listQueueEntries,
   listQueueEntriesForExport,
+  listQueueEntriesForDisplay,
   getQueueEntryById,
   updateQueueEntry,
   changeQueueStatus,

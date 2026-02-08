@@ -154,6 +154,15 @@ async function exportQueue(req, res, next) {
   }
 }
 
+async function displayQueue(req, res, next) {
+  try {
+    const payload = await queueService.listQueueEntriesForDisplay();
+    return sendSuccess(res, payload);
+  } catch (err) {
+    return next(err);
+  }
+}
+
 module.exports = {
   createQueue,
   listQueue,
@@ -161,4 +170,5 @@ module.exports = {
   updateQueue,
   updateQueueStatus,
   exportQueue,
+  displayQueue,
 };
