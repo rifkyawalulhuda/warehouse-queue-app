@@ -98,7 +98,7 @@ const fetchDashboard = async () => {
 let refreshTimer: number | undefined
 
 const openQueueDetail = (id: string) => {
-  router.push({ path: '/queue', query: { detailId: id } })
+  router.push({ path: '/antrian-truk', query: { detailId: id } })
 }
 
 const setupAutoRefresh = () => {

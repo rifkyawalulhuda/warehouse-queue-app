@@ -6,18 +6,11 @@ import Footer from '@/components/Footer.vue'
 import { useAuth } from '@/composables/useAuth'
 import {
   LayoutDashboard,
-  Users,
-  Building2,
-  TrendingUp,
-  CheckSquare,
+  UserCog,
   UserPlus,
   Truck,
-  BarChart3,
-  Settings,
-  BookOpen,
   ChevronLeft,
-  ChevronRight,
-  CreditCard
+  ChevronRight
 } from 'lucide-vue-next'
 
 const route = useRoute()
@@ -26,25 +19,15 @@ const sidebarOpen = ref(true)
 const isMobile = ref(false)
 
 const navigation = [
-  { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
-  { name: 'Contacts', path: '/contacts', icon: Users },
-  { name: 'Companies', path: '/companies', icon: Building2 },
-  { name: 'Deals', path: '/deals', icon: TrendingUp },
-  { name: 'Tasks', path: '/tasks', icon: CheckSquare },
-  { name: 'Master Customer', path: '/master-customers', icon: UserPlus },
-  { name: 'Master Admin', path: '/master-admins', icon: Users },
-  { name: 'Antrian Truk', path: '/queue', icon: Truck },
-  { name: 'Reports', path: '/reports', icon: BarChart3 },
-  { name: 'Billing', path: '/billing', icon: CreditCard },
-  { name: 'Settings', path: '/settings', icon: Settings },
-  { name: 'Docs', path: '/docs', icon: BookOpen }
+  { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard, roles: ['ADMIN', 'WAREHOUSE'] },
+  { name: 'Master Customer', path: '/master-customer', icon: UserPlus, roles: ['ADMIN'] },
+  { name: 'Master Admin', path: '/master-admin', icon: UserCog, roles: ['ADMIN'] },
+  { name: 'Antrian Truk', path: '/antrian-truk', icon: Truck, roles: ['ADMIN', 'WAREHOUSE'] }
 ]
 
 const filteredNavigation = computed(() => {
-  if (user.value?.role === 'WAREHOUSE') {
-    return navigation.filter((item) => item.path === '/queue')
-  }
-  return navigation
+  if (!user.value?.role) return navigation
+  return navigation.filter((item) => !item.roles || item.roles.includes(user.value?.role))
 })
 
 const checkMobile = () => {

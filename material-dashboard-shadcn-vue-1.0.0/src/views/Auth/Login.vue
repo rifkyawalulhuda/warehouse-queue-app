@@ -32,7 +32,7 @@ const handleSubmit = async () => {
     if (redirect) {
       router.replace(redirect)
     } else if (user.role === 'WAREHOUSE') {
-      router.replace('/queue')
+      router.replace('/antrian-truk')
     } else {
       router.replace('/dashboard')
     }

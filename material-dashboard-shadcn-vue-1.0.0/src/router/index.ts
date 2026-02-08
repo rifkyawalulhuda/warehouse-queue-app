@@ -32,62 +32,22 @@ const router = createRouter({
           component: () => import('@/views/Dashboard.vue')
         },
         {
-          path: 'contacts',
-          name: 'Contacts',
-          component: () => import('@/views/Contacts.vue')
-        },
-        {
-          path: 'companies',
-          name: 'Companies',
-          component: () => import('@/views/Companies.vue')
-        },
-        {
-          path: 'deals',
-          name: 'Deals',
-          component: () => import('@/views/Deals.vue')
-        },
-        {
-          path: 'tasks',
-          name: 'Tasks',
-          component: () => import('@/views/Tasks.vue')
-        },
-        {
-          path: 'master-customers',
+          path: 'master-customer',
           name: 'Master Customer',
           component: () => import('@/views/MasterCustomer/CustomerList.vue'),
           meta: { roles: ['ADMIN'] }
         },
         {
-          path: 'master-admins',
+          path: 'master-admin',
           name: 'Master Admin',
           component: () => import('@/views/MasterAdmin/AdminList.vue'),
           meta: { roles: ['ADMIN'] }
         },
         {
-          path: 'queue',
+          path: 'antrian-truk',
           name: 'Antrian Truk',
           component: () => import('@/views/Queue/QueueList.vue'),
           meta: { roles: ['ADMIN', 'WAREHOUSE'] }
-        },
-        {
-          path: 'reports',
-          name: 'Reports',
-          component: () => import('@/views/Reports.vue')
-        },
-        {
-          path: 'billing',
-          name: 'Billing',
-          component: () => import('@/views/Billing.vue')
-        },
-        {
-          path: 'settings',
-          name: 'Settings',
-          component: () => import('@/views/Settings.vue')
-        },
-        {
-          path: 'docs',
-          name: 'Docs',
-          component: () => import('@/views/Docs.vue')
         }
       ]
     }
@@ -100,7 +60,7 @@ router.beforeEach((to) => {
 
   if (to.meta.public) {
     if (to.name === 'Login' && isAuthenticated.value) {
-      return user.value?.role === 'WAREHOUSE' ? '/queue' : '/dashboard'
+      return user.value?.role === 'WAREHOUSE' ? '/antrian-truk' : '/dashboard'
     }
     return true
   }
@@ -114,7 +74,7 @@ router.beforeEach((to) => {
 
   const roles = to.meta.roles as string[] | undefined
   if (roles && !roles.includes(user.value.role)) {
-    return user.value.role === 'WAREHOUSE' ? '/queue' : '/dashboard'
+    return user.value.role === 'WAREHOUSE' ? '/antrian-truk' : '/dashboard'
   }
 
   return true
