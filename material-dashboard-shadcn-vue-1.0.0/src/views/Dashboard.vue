@@ -31,9 +31,17 @@ type StatusItem = { name: string; value: number }
 type TopCustomerItem = { customerName: string; avgDurationMinutes: number; totalTransactions: number }
 type OverSlaItem = { id: string; customerName: string; truckNumber: string; status: string; overMinutes: number }
 
-const todayString = () => new Date().toISOString().slice(0, 10)
+const getToday = () => {
+  const now = new Date()
+  const yyyy = now.getFullYear()
+  const mm = String(now.getMonth() + 1).padStart(2, '0')
+  const dd = String(now.getDate()).padStart(2, '0')
+  return `${yyyy}-${mm}-${dd}`
+}
 
-const selectedDate = ref(todayString())
+const today = ref(getToday())
+const selectedDate = ref(today.value)
+const autoFollowToday = ref(true)
 const router = useRouter()
 const summary = reactive<Summary>({
   date: selectedDate.value,
@@ -54,7 +62,7 @@ const overSlaItems = ref<OverSlaItem[]>([])
 const loading = ref(false)
 const error = ref<string | null>(null)
 
-const isToday = computed(() => selectedDate.value === todayString())
+const isToday = computed(() => selectedDate.value === today.value)
 
 const getErrorMessage = (err: any, fallback: string) => {
   return err?.response?.data?.message || err?.message || fallback
@@ -96,6 +104,7 @@ const fetchDashboard = async () => {
 }
 
 let refreshTimer: number | undefined
+let todayTimer: number | undefined
 
 const openQueueDetail = (id: string) => {
   router.push({ path: '/antrian-truk', query: { detailId: id } })
@@ -111,19 +120,27 @@ const setupAutoRefresh = () => {
 
 watch(
   () => selectedDate.value,
-  () => {
+  (value) => {
+    autoFollowToday.value = value === today.value
     fetchDashboard()
     setupAutoRefresh()
   }
 )
 
 onMounted(() => {
+  todayTimer = window.setInterval(() => {
+    today.value = getToday()
+    if (autoFollowToday.value) {
+      selectedDate.value = today.value
+    }
+  }, 10000)
   fetchDashboard()
   setupAutoRefresh()
 })
 
 onUnmounted(() => {
   if (refreshTimer) window.clearInterval(refreshTimer)
+  if (todayTimer) window.clearInterval(todayTimer)
 })
 </script>
 
