@@ -20,6 +20,11 @@ enum QueueCategory {
   DELIVERY
 }
 
+enum AdminRole {
+  ADMIN
+  WAREHOUSE
+}
+
 model QueueEntry {
   id              String        @id @default(uuid())
   customerId      String?
@@ -65,4 +70,19 @@ model Customer {
   entries   QueueEntry[]
 
   @@index([name])
+}
+
+model AdminUser {
+  id           String    @id @default(uuid())
+  name         String
+  position     String
+  phone        String
+  role         AdminRole
+  username     String    @unique
+  passwordHash String
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([role])
+  @@index([username])
 }

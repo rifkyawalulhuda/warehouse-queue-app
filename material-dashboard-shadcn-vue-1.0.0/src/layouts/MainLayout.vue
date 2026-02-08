@@ -30,6 +30,7 @@ const navigation = [
   { name: 'Deals', path: '/deals', icon: TrendingUp },
   { name: 'Tasks', path: '/tasks', icon: CheckSquare },
   { name: 'Master Customer', path: '/master-customers', icon: UserPlus },
+  { name: 'Master Admin', path: '/master-admins', icon: Users },
   { name: 'Antrian Truk', path: '/queue', icon: Truck },
   { name: 'Reports', path: '/reports', icon: BarChart3 },
   { name: 'Billing', path: '/billing', icon: CreditCard },

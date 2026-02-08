@@ -43,6 +43,11 @@ const router = createRouter({
           component: () => import('@/views/MasterCustomer/CustomerList.vue')
         },
         {
+          path: 'master-admins',
+          name: 'Master Admin',
+          component: () => import('@/views/MasterAdmin/AdminList.vue')
+        },
+        {
           path: 'queue',
           name: 'Antrian Truk',
           component: () => import('@/views/Queue/QueueList.vue')
