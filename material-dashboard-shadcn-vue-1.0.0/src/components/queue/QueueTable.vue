@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import Button from '@/components/ui/Button.vue'
 import QueueStatusBadge from './QueueStatusBadge.vue'
+import { useAuth } from '@/composables/useAuth'
 
 type QueueEntry = {
   id: string
@@ -30,6 +31,9 @@ const emit = defineEmits<{
   (e: 'view-detail', entry: QueueEntry): void
   (e: 'toggle-sort', column: string): void
 }>()
+
+const { user } = useAuth()
+const isAdmin = computed(() => user.value?.role === 'ADMIN')
 
 const nowTick = ref(Date.now())
 let tickTimer: number | undefined
@@ -247,14 +251,6 @@ const sortIndicator = (column: string) => {
                 Set IN_WH
               </Button>
               <Button
-                v-if="entry.status === 'MENUNGGU' || entry.status === 'IN_WH'"
-                size="sm"
-                variant="outline"
-                @click="emit('change-status', entry, 'BATAL')"
-              >
-                Batal
-              </Button>
-              <Button
                 v-if="entry.status === 'IN_WH'"
                 size="sm"
                 variant="outline"
@@ -285,6 +281,15 @@ const sortIndicator = (column: string) => {
                 @click="emit('change-status', entry, 'IN_WH')"
               >
                 Kembali
+              </Button>
+              <Button
+                v-if="isAdmin && (entry.status === 'MENUNGGU' || entry.status === 'IN_WH')"
+                size="sm"
+                variant="outline"
+                class="border-red-200 bg-red-600 text-white hover:bg-red-700 hover:text-white"
+                @click="emit('change-status', entry, 'BATAL')"
+              >
+                Batal
               </Button>
               <Button size="sm" variant="ghost" @click="emit('view-detail', entry)">
                 Detail
