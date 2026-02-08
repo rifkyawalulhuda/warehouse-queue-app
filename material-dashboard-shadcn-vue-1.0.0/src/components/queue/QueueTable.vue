@@ -50,10 +50,16 @@ const formatTime = (value?: string | null) => {
   return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
 }
 
-const categoryLabel = (category: string) => {
+const categoryLabel = (category?: string | null) => {
   if (category === 'RECEIVING') return 'Receiving'
   if (category === 'DELIVERY') return 'Delivery'
-  return category
+  return null
+}
+
+const categoryBadgeClass = (category?: string | null) => {
+  if (category === 'RECEIVING') return 'bg-blue-100 text-blue-700'
+  if (category === 'DELIVERY') return 'bg-purple-100 text-purple-700'
+  return 'bg-muted text-muted-foreground'
 }
 
 const getSlaMinutes = (entry: QueueEntry) => {
@@ -164,7 +170,17 @@ const sortIndicator = (column: string) => {
           ]"
         >
           <td class="px-3 py-2">{{ index + 1 }}</td>
-          <td class="px-3 py-2">{{ entry.customer?.name || '-' }}</td>
+          <td class="px-3 py-2">
+            <div class="flex flex-col gap-1">
+              <span>{{ entry.customer?.name || '-' }}</span>
+              <span
+                v-if="categoryLabel(entry.category)"
+                :class="['inline-flex w-fit items-center rounded px-2 py-1 text-xs font-medium', categoryBadgeClass(entry.category)]"
+              >
+                {{ categoryLabel(entry.category) }}
+              </span>
+            </div>
+          </td>
           <td class="px-3 py-2">{{ entry.driverName }}</td>
           <td class="px-3 py-2">{{ entry.truckNumber }}</td>
           <td class="px-3 py-2">{{ entry.containerNumber || '-' }}</td>
