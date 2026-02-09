@@ -204,8 +204,12 @@ const sortIndicator = (column: string) => {
           v-for="(entry, index) in props.entries"
           :key="entry.id"
           :class="[
-            'border-t',
-            isOverdue(entry) ? 'bg-red-50' : 'bg-background'
+            'border-t transition-colors',
+            entry.status === 'BATAL'
+              ? 'bg-red-50 hover:bg-red-100'
+              : isOverdue(entry)
+                ? 'bg-red-50 hover:bg-red-100'
+                : 'hover:bg-gray-50'
           ]"
         >
           <td class="px-3 py-2">{{ index + 1 }}</td>
