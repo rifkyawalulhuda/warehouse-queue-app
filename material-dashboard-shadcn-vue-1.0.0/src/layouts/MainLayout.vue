@@ -1,15 +1,17 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, computed } from 'vue'
+import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
 import { RouterView, useRoute } from 'vue-router'
 import Navbar from '@/components/Navbar.vue'
 import Footer from '@/components/Footer.vue'
 import { useAuth } from '@/composables/useAuth'
 import {
   LayoutDashboard,
+  Database,
   UserCog,
   UserPlus,
   Warehouse,
   Truck,
+  ChevronDown,
   ChevronLeft,
   ChevronRight
 } from 'lucide-vue-next'
@@ -19,18 +21,62 @@ const { user } = useAuth()
 const sidebarOpen = ref(true)
 const isMobile = ref(false)
 
-const navigation = [
+type NavItem = {
+  name: string
+  path?: string
+  icon?: any
+  roles?: string[]
+  children?: NavItem[]
+}
+
+const navigation: NavItem[] = [
   { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard, roles: ['ADMIN', 'WAREHOUSE'] },
-  { name: 'Master Customer', path: '/master-customer', icon: UserPlus, roles: ['ADMIN'] },
-  { name: 'Master Gate', path: '/master-gate', icon: Warehouse, roles: ['ADMIN', 'WAREHOUSE'] },
-  { name: 'Master Admin', path: '/master-admin', icon: UserCog, roles: ['ADMIN'] },
+  {
+    name: 'Master Data',
+    icon: Database,
+    children: [
+      { name: 'Master Customer', path: '/master-customer', roles: ['ADMIN'] },
+      { name: 'Master Gate', path: '/master-gate', roles: ['ADMIN', 'WAREHOUSE'] },
+      { name: 'Master Admin', path: '/master-admin', roles: ['ADMIN'] }
+    ]
+  },
   { name: 'Antrian Truk', path: '/antrian-truk', icon: Truck, roles: ['ADMIN', 'WAREHOUSE'] }
 ]
 
 const filteredNavigation = computed(() => {
   if (!user.value?.role) return navigation
-  return navigation.filter((item) => !item.roles || item.roles.includes(user.value?.role))
+  const role = user.value.role
+  return navigation
+    .map((item) => {
+      if (item.children) {
+        const children = item.children.filter((child) => !child.roles || child.roles.includes(role))
+        if (children.length === 0) return null
+        return { ...item, children }
+      }
+      if (!item.roles || item.roles.includes(role)) return item
+      return null
+    })
+    .filter(Boolean) as NavItem[]
 })
+
+const openGroups = ref<Record<string, boolean>>({})
+
+const isGroupActive = (item: NavItem) => {
+  return Boolean(item.children?.some((child) => child.path === route.path))
+}
+
+const isGroupOpen = (item: NavItem) => {
+  if (isGroupActive(item)) return true
+  return Boolean(openGroups.value[item.name])
+}
+
+const toggleGroup = (item: NavItem) => {
+  if (isGroupActive(item)) {
+    openGroups.value[item.name] = true
+    return
+  }
+  openGroups.value[item.name] = !isGroupOpen(item)
+}
 
 const checkMobile = () => {
   isMobile.value = window.innerWidth < 1024
@@ -59,6 +105,18 @@ onMounted(() => {
 onUnmounted(() => {
   window.removeEventListener('resize', checkMobile)
 })
+
+watch(
+  () => route.path,
+  () => {
+    filteredNavigation.value.forEach((item) => {
+      if (item.children && isGroupActive(item)) {
+        openGroups.value[item.name] = true
+      }
+    })
+  },
+  { immediate: true }
+)
 </script>
 
 <template>
@@ -81,15 +139,59 @@ onUnmounted(() => {
       </div>
 
       <nav class="flex-1 p-4 space-y-1 overflow-y-auto">
-        <router-link v-for="item in filteredNavigation" :key="item.path" :to="item.path" @click="closeSidebarOnMobile" :class="[
-          'flex items-center gap-2 px-3 py-2 rounded-lg transition-colors text-sm',
-          route.path === item.path
-            ? 'bg-primary text-primary-foreground'
-            : 'hover:bg-accent hover:text-accent-foreground'
-        ]">
-          <component :is="item.icon" :size="20" />
-          <span v-if="sidebarOpen">{{ item.name }}</span>
-        </router-link>
+        <template v-for="item in filteredNavigation" :key="item.name">
+          <div v-if="item.children" class="space-y-1">
+            <button
+              type="button"
+              @click="toggleGroup(item)"
+              :class="[
+                'w-full flex items-center gap-2 px-3 py-2 rounded-lg transition-colors text-sm',
+                isGroupActive(item)
+                  ? 'bg-primary text-primary-foreground'
+                  : 'hover:bg-accent hover:text-accent-foreground'
+              ]"
+            >
+              <component :is="item.icon" :size="20" />
+              <span v-if="sidebarOpen" class="flex-1 text-left">{{ item.name }}</span>
+              <ChevronDown
+                v-if="sidebarOpen"
+                :size="16"
+                :class="['transition-transform', isGroupOpen(item) ? 'rotate-180' : 'rotate-0']"
+              />
+            </button>
+            <div v-if="sidebarOpen && isGroupOpen(item)" class="space-y-1 pl-7">
+              <router-link
+                v-for="child in item.children"
+                :key="child.path"
+                :to="child.path"
+                @click="closeSidebarOnMobile"
+                :class="[
+                  'flex items-center gap-2 px-3 py-2 rounded-lg transition-colors text-sm',
+                  route.path === child.path
+                    ? 'bg-primary text-primary-foreground'
+                    : 'hover:bg-accent hover:text-accent-foreground'
+                ]"
+              >
+                <span>{{ child.name }}</span>
+              </router-link>
+            </div>
+          </div>
+          <router-link
+            v-else
+            :key="item.path"
+            :to="item.path"
+            @click="closeSidebarOnMobile"
+            :class="[
+              'flex items-center gap-2 px-3 py-2 rounded-lg transition-colors text-sm',
+              route.path === item.path
+                ? 'bg-primary text-primary-foreground'
+                : 'hover:bg-accent hover:text-accent-foreground'
+            ]"
+          >
+            <component :is="item.icon" :size="20" />
+            <span v-if="sidebarOpen">{{ item.name }}</span>
+          </router-link>
+        </template>
       </nav>
     </aside>
 
