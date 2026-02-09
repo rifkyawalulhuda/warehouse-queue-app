@@ -124,7 +124,7 @@ const formatGateSpeech = (gate?: QueueEntry['gate'] | null) => {
   }
   if (gate.area) {
     const area = gate.area.trim()
-    if (area) parts.push(area)
+    if (area) parts.push(`Area ${area}`)
   }
   return parts.join(', ')
 }

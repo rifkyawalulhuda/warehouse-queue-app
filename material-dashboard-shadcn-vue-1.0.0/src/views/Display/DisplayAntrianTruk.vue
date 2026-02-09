@@ -46,6 +46,7 @@ const isFullscreen = ref(false)
 const soundEnabled = ref(true)
 const soundPreferenceKey = 'monitorSoundEnabled'
 const prevStatusMap = ref(new Map<string, DisplayEntry['status']>())
+const announcedInWh = ref(new Set<string>())
 const initialized = ref(false)
 
 if (typeof window !== 'undefined') {
@@ -148,7 +149,7 @@ const formatGateSpeech = (gate?: DisplayEntry['gate'] | null) => {
   }
   if (gate.area) {
     const area = gate.area.trim()
-    if (area) parts.push(area)
+    if (area) parts.push(`Area ${area}`)
   }
   return parts.join(', ')
 }
@@ -178,21 +179,28 @@ const buildAnnouncement = (entry: DisplayEntry) => {
   return `Perhatian. Driver ${driverName}, truk ${truckNumber}. Silakan menuju ${gateNo}. Anda sudah diperbolehkan masuk area ${areaType}.`
 }
 
+const canAnnounce = (entry: DisplayEntry) => {
+  return entry.status === 'IN_WH' && Boolean(entry.gate?.gateNo) && Boolean(entry.gate?.area)
+}
+
 const detectStatusTransitions = (newEntries: DisplayEntry[]) => {
   // Diff status between polling cycles; skip first load to avoid spam.
   if (!initialized.value) {
     initialized.value = true
     prevStatusMap.value = new Map(newEntries.map((entry) => [entry.id, entry.status]))
+    announcedInWh.value = new Set(
+      newEntries.filter((entry) => entry.status === 'IN_WH').map((entry) => entry.id)
+    )
     return
   }
 
   const nextMap = new Map<string, DisplayEntry['status']>()
   for (const entry of newEntries) {
-    const prevStatus = prevStatusMap.value.get(entry.id)
-    if (prevStatus === 'MENUNGGU' && entry.status === 'IN_WH') {
+    if (!announcedInWh.value.has(entry.id) && canAnnounce(entry)) {
       const message = buildAnnouncement(entry)
       enqueue(message, 1000)
       enqueue(`Saya Ulangi. ${message}`)
+      announcedInWh.value.add(entry.id)
     }
     nextMap.set(entry.id, entry.status)
   }
