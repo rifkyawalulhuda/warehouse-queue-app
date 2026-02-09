@@ -8,7 +8,7 @@ import Button from '@/components/ui/Button.vue'
 import QueueTable from '@/components/queue/QueueTable.vue'
 import QueueDetailDrawer from '@/components/queue/QueueDetailDrawer.vue'
 import QueueCreateModal from '@/components/queue/QueueCreateModal.vue'
-import { RefreshCw, Search } from 'lucide-vue-next'
+import { RefreshCw, Search, ChevronDown } from 'lucide-vue-next'
 import api from '@/services/api'
 import { getMasterGates, setInWh, type MasterGate } from '@/services/queueApi'
 
@@ -63,10 +63,13 @@ const confirmNextStatus = ref<QueueEntry['status'] | null>(null)
 const setInWhOpen = ref(false)
 const setInWhEntry = ref<QueueEntry | null>(null)
 const selectedGateId = ref('')
+const gateSearchQuery = ref('')
 const masterGates = ref<MasterGate[]>([])
 const gateLoading = ref(false)
 const gateError = ref<string | null>(null)
 const setInWhSubmitting = ref(false)
+const gateDropdownOpen = ref(false)
+const gateDropdownRef = ref<HTMLElement | null>(null)
 const success = ref<string | null>(null)
 const exportOpen = ref(false)
 const exporting = ref(false)
@@ -182,6 +185,22 @@ const fetchMasterGates = async () => {
   }
 }
 
+const gateLabel = (gate: MasterGate) => {
+  return `${gate.gateNo} - ${gate.area} (${gate.warehouse})`
+}
+
+const filteredGates = computed(() => {
+  const q = gateSearchQuery.value.trim().toLowerCase()
+  if (!q) return masterGates.value
+  return masterGates.value.filter((gate) => {
+    return (
+      gate.gateNo.toLowerCase().includes(q) ||
+      gate.area.toLowerCase().includes(q) ||
+      gate.warehouse.toLowerCase().includes(q)
+    )
+  })
+})
+
 const fetchDetail = async (id: string) => {
   try {
     const response = await api.get(`/queue/${id}`)
@@ -205,7 +224,9 @@ const handleChangeStatus = async (entry: QueueEntry, newStatus: QueueEntry['stat
   if (newStatus === 'IN_WH' && entry.status === 'MENUNGGU') {
     setInWhEntry.value = entry
     selectedGateId.value = ''
+    gateSearchQuery.value = ''
     gateError.value = null
+    gateDropdownOpen.value = false
     setInWhOpen.value = true
     if (masterGates.value.length === 0) {
       await fetchMasterGates()
@@ -221,7 +242,9 @@ const closeSetInWh = () => {
   setInWhOpen.value = false
   setInWhEntry.value = null
   selectedGateId.value = ''
+  gateSearchQuery.value = ''
   gateError.value = null
+  gateDropdownOpen.value = false
 }
 
 const submitSetInWh = async () => {
@@ -240,6 +263,39 @@ const submitSetInWh = async () => {
     error.value = getErrorMessage(err, 'Gagal update status')
   } finally {
     setInWhSubmitting.value = false
+  }
+}
+
+const selectGate = (gate: MasterGate) => {
+  selectedGateId.value = gate.id
+  gateSearchQuery.value = gateLabel(gate)
+  gateDropdownOpen.value = false
+}
+
+const handleGateSearchInput = () => {
+  gateDropdownOpen.value = true
+  if (!selectedGateId.value) return
+  const selected = masterGates.value.find((gate) => gate.id === selectedGateId.value)
+  if (!selected) {
+    selectedGateId.value = ''
+    return
+  }
+  if (gateSearchQuery.value.trim() !== gateLabel(selected)) {
+    selectedGateId.value = ''
+  }
+}
+
+const openGateDropdown = () => {
+  if (gateLoading.value || masterGates.value.length === 0) return
+  gateDropdownOpen.value = true
+}
+
+const handleGateOutsideClick = (event: MouseEvent) => {
+  if (!gateDropdownOpen.value) return
+  const target = event.target as Node | null
+  if (!target || !gateDropdownRef.value) return
+  if (!gateDropdownRef.value.contains(target)) {
+    gateDropdownOpen.value = false
   }
 }
 
@@ -441,6 +497,14 @@ onUnmounted(() => {
   if (refreshTimer) window.clearInterval(refreshTimer)
 })
 
+onMounted(() => {
+  document.addEventListener('click', handleGateOutsideClick)
+})
+
+onUnmounted(() => {
+  document.removeEventListener('click', handleGateOutsideClick)
+})
+
 watch(
   () => route.query.detailId,
   (value) => {
@@ -567,23 +631,58 @@ watch(
         </div>
         <div class="p-4 space-y-3 text-sm">
           <p class="text-muted-foreground">Pilih Gate No untuk transaksi ini sebelum melanjutkan.</p>
-          <div>
+          <div ref="gateDropdownRef" class="relative">
             <label class="text-sm text-muted-foreground">Gate No</label>
-            <select
-              v-model="selectedGateId"
-              class="mt-1 w-full bg-transparent border rounded-md px-2 py-2 text-sm"
-              :disabled="gateLoading || masterGates.length === 0"
+            <div class="relative mt-1">
+              <input
+                v-model="gateSearchQuery"
+                type="text"
+                placeholder="Cari / pilih gate..."
+                class="w-full bg-transparent border rounded-md pl-2 pr-9 py-2 text-sm"
+                :disabled="gateLoading || masterGates.length === 0"
+                @focus="openGateDropdown"
+                @click="openGateDropdown"
+                @input="handleGateSearchInput"
+              />
+              <button
+                type="button"
+                class="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                :disabled="gateLoading || masterGates.length === 0"
+                @click="openGateDropdown"
+                aria-label="Toggle gate list"
+              >
+                <ChevronDown class="h-4 w-4" />
+              </button>
+            </div>
+            <div
+              v-if="gateDropdownOpen"
+              class="absolute z-10 mt-1 max-h-44 w-full overflow-auto rounded-md border bg-card shadow-sm"
             >
-              <option value="">Pilih Gate</option>
-              <option v-for="gate in masterGates" :key="gate.id" :value="gate.id">
-                {{ gate.gateNo }} - {{ gate.area }} ({{ gate.warehouse }})
-              </option>
-            </select>
+              <div v-if="gateLoading" class="px-3 py-2 text-xs text-muted-foreground">Memuat Master Gate...</div>
+              <div v-else-if="masterGates.length === 0" class="px-3 py-2 text-xs text-muted-foreground">
+                Master Gate masih kosong. Silakan isi Master Gate terlebih dahulu.
+              </div>
+              <div v-else-if="filteredGates.length === 0" class="px-3 py-2 text-xs text-muted-foreground">
+                Tidak ada gate yang cocok
+              </div>
+              <button
+                v-for="gate in filteredGates"
+                :key="gate.id"
+                type="button"
+                class="w-full px-3 py-2 text-left text-sm hover:bg-accent"
+                :class="selectedGateId === gate.id ? 'bg-accent' : ''"
+                @mousedown.prevent="selectGate(gate)"
+              >
+                {{ gateLabel(gate) }}
+              </button>
+            </div>
           </div>
-          <div v-if="gateLoading" class="text-xs text-muted-foreground">Memuat Master Gate...</div>
-          <div v-else-if="gateError" class="text-xs text-red-600">{{ gateError }}</div>
-          <div v-else-if="masterGates.length === 0" class="text-xs text-muted-foreground">
-            Master Gate masih kosong. Silakan isi Master Gate terlebih dahulu.
+          <div v-if="gateError" class="text-xs text-red-600">{{ gateError }}</div>
+          <div
+            v-else-if="!selectedGateId && gateSearchQuery.trim() && !gateLoading && masterGates.length > 0"
+            class="text-xs text-red-600"
+          >
+            Gate wajib dipilih
           </div>
         </div>
         <div class="p-4 border-t flex items-center justify-end gap-2">
