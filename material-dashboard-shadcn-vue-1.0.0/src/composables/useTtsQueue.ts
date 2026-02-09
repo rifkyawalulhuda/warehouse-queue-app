@@ -3,6 +3,12 @@ import { ref, watch, type Ref } from 'vue'
 type TtsQueueOptions = {
   enabled: Ref<boolean>
   lang?: string
+  gapMs?: number
+}
+
+type QueueItem = {
+  text: string
+  gapAfter?: number
 }
 
 const FEMALE_HINTS = ['female', 'woman', 'perempuan', 'wanita', 'putri', 'siti']
@@ -17,11 +23,11 @@ const pickBestVoice = (voices: SpeechSynthesisVoice[], lang: string) => {
   return preferred || pool[0]
 }
 
-export const useTtsQueue = ({ enabled, lang = 'id-ID' }: TtsQueueOptions) => {
+export const useTtsQueue = ({ enabled, lang = 'id-ID', gapMs = 0 }: TtsQueueOptions) => {
   const supported = typeof window !== 'undefined' && 'speechSynthesis' in window
   const blocked = ref(false)
   const speaking = ref(false)
-  const queue: string[] = []
+  const queue: QueueItem[] = []
   let cachedVoice: SpeechSynthesisVoice | null = null
 
   const refreshVoices = () => {
@@ -32,12 +38,13 @@ export const useTtsQueue = ({ enabled, lang = 'id-ID' }: TtsQueueOptions) => {
 
   const playNext = () => {
     if (!supported || speaking.value || blocked.value || !enabled.value) return
-    const nextText = queue.shift()
-    if (!nextText) return
-    speak(nextText)
+    const nextItem = queue.shift()
+    if (!nextItem) return
+    const gapAfter = nextItem.gapAfter ?? gapMs
+    speak(nextItem.text, gapAfter)
   }
 
-  const speak = (text: string) => {
+  const speak = (text: string, gapAfter: number) => {
     if (!supported || blocked.value || !enabled.value) return
     try {
       refreshVoices()
@@ -46,7 +53,11 @@ export const useTtsQueue = ({ enabled, lang = 'id-ID' }: TtsQueueOptions) => {
       utter.lang = cachedVoice?.lang || lang
       utter.onend = () => {
         speaking.value = false
-        playNext()
+        if (gapAfter > 0) {
+          window.setTimeout(() => playNext(), gapAfter)
+        } else {
+          playNext()
+        }
       }
       utter.onerror = () => {
         // Autoplay / permission block -> show banner to unlock
@@ -61,9 +72,9 @@ export const useTtsQueue = ({ enabled, lang = 'id-ID' }: TtsQueueOptions) => {
     }
   }
 
-  const enqueue = (text: string) => {
+  const enqueue = (text: string, gapAfter?: number) => {
     if (!supported || !enabled.value) return
-    queue.push(text)
+    queue.push({ text, gapAfter })
     playNext()
   }
 

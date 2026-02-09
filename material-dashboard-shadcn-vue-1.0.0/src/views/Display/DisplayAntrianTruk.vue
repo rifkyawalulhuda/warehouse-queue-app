@@ -56,6 +56,7 @@ if (typeof window !== 'undefined') {
 const { enqueue, blocked: soundBlocked, resume: resumeSound, supported: ttsSupported } = useTtsQueue({
   enabled: soundEnabled,
   lang: 'id-ID',
+  gapMs: 4000,
 })
 
 const getErrorMessage = (err: any, fallback: string) => {
@@ -183,7 +184,7 @@ const detectStatusTransitions = (newEntries: DisplayEntry[]) => {
     const prevStatus = prevStatusMap.value.get(entry.id)
     if (prevStatus === 'MENUNGGU' && entry.status === 'IN_WH') {
       const message = buildAnnouncement(entry)
-      enqueue(message)
+      enqueue(message, 1000)
       enqueue(`Saya Ulangi. ${message}`)
     }
     nextMap.set(entry.id, entry.status)
