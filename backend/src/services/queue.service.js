@@ -11,6 +11,7 @@ const SORTABLE_FIELDS = new Set([
   "customerName",
   "driverName",
   "truckNumber",
+  "gateNo",
   "status",
 ]);
 
@@ -99,6 +100,9 @@ function buildOrderBy(sortBy, sortDir) {
       break;
     case "truckNumber":
       orderBy.push({ truckNumber: sortDir });
+      break;
+    case "gateNo":
+      orderBy.push({ gate: { gateNo: sortDir } });
       break;
     case "status":
       orderBy.push({ status: sortDir });

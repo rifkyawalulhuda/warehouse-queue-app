@@ -166,7 +166,12 @@ const sortIndicator = (column: string) => {
             No Truck <span class="ml-1 text-xs">{{ sortIndicator('truckNumber') }}</span>
           </th>
           <th class="px-3 py-2 text-left font-medium">No Container</th>
-          <th class="px-3 py-2 text-left font-medium">Gate No</th>
+          <th
+            class="px-3 py-2 text-left font-medium cursor-pointer select-none"
+            @click="emit('toggle-sort', 'gateNo')"
+          >
+            Gate No <span class="ml-1 text-xs">{{ sortIndicator('gateNo') }}</span>
+          </th>
           <th
             class="px-3 py-2 text-left font-medium cursor-pointer select-none"
             @click="emit('toggle-sort', 'registerTime')"
