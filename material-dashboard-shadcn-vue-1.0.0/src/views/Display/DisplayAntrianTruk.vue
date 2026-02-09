@@ -112,6 +112,11 @@ const formatGateShort = (gate?: DisplayEntry['gate'] | null) => {
   return `${gateNo} - ${gate.warehouse}`
 }
 
+const formatGateArea = (gate?: DisplayEntry['gate'] | null) => {
+  if (!gate?.area) return ''
+  return gate.area.trim()
+}
+
 const formatStatusTime = (value?: string | null) => {
   if (!value) return '-'
   const date = new Date(value)
@@ -355,7 +360,12 @@ onUnmounted(() => {
               <td class="px-4 py-4 font-semibold">{{ entry.truckNumber || '-' }}</td>
               <td class="px-4 py-4">{{ entry.containerNumber || '-' }}</td>
               <td class="px-4 py-4 text-center font-semibold whitespace-nowrap">
-                {{ formatGateShort(entry.gate) }}
+                <div class="flex flex-col items-center leading-tight">
+                  <span>{{ formatGateShort(entry.gate) }}</span>
+                  <span v-if="formatGateArea(entry.gate)" class="text-xs font-normal text-muted-foreground">
+                    {{ formatGateArea(entry.gate) }}
+                  </span>
+                </div>
               </td>
               <td class="px-4 py-4">{{ entry.customer?.name || '-' }}</td>
               <td class="px-4 py-4">{{ formatTime(entry.registerTime) }}</td>
