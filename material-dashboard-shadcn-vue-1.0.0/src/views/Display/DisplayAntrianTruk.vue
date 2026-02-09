@@ -94,8 +94,10 @@ const statusBadgeClass = (status: DisplayEntry['status']) => {
   return 'bg-slate-200 text-slate-700'
 }
 
-const rowHighlightClass = (status: DisplayEntry['status']) => {
-  if (status === 'IN_WH' || status === 'PROSES') return 'bg-yellow-50'
+const rowHighlightClass = (entry: DisplayEntry) => {
+  const state = getSlaState(entry)
+  if (state !== 'normal') return ''
+  if (entry.status === 'IN_WH' || entry.status === 'PROSES') return 'bg-blue-50'
   return ''
 }
 
@@ -346,7 +348,7 @@ onUnmounted(() => {
             <tr
               v-for="entry in entries"
               :key="entry.id"
-              :class="['border-t', rowHighlightClass(entry.status), rowClass(entry)]"
+              :class="['border-t', rowHighlightClass(entry), rowClass(entry)]"
             >
               <td class="px-4 py-4">
                 <span
