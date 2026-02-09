@@ -140,7 +140,9 @@ const formatGateSpeech = (gate?: DisplayEntry['gate'] | null) => {
   if (!gate?.gateNo) return '-'
   const gateNo = gate.gateNo.trim()
   if (!gate.warehouse) return gateNo
-  return `${gateNo} - ${gate.warehouse}`
+  const warehouse = gate.warehouse.replace(/\s+/g, '')
+  const spelledWarehouse = warehouse ? warehouse.split('').join(' ') : gate.warehouse
+  return `${gateNo} - ${spelledWarehouse}`
 }
 
 const resolveAreaType = (category?: DisplayEntry['category']) => {
