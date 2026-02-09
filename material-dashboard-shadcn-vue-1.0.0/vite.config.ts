@@ -9,7 +9,9 @@ export default defineConfig(({ mode }) => ({
   plugins: [
     vue(),
     mode === "development" &&
-      VueDevTools(),
+      VueDevTools({
+        appendTo: "manually",
+      }),
     mode === "development" &&
       VueInspector({
         toggleButtonVisibility: "always",

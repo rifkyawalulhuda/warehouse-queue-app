@@ -6,8 +6,16 @@ import { useAuth } from './composables/useAuth'
 
 const app = createApp(App)
 
-if (import.meta.env.DEV) {
+const isLocalhostHost = () => {
+  const host = window.location.hostname
+  return host === 'localhost' || host === '127.0.0.1' || host === '::1'
+}
+
+if (import.meta.env.DEV && isLocalhostHost()) {
   app.config.devtools = true
+  import('virtual:vue-devtools-path:overlay.js')
+} else {
+  app.config.devtools = false
 }
 
 useAuth().initFromStorage()
