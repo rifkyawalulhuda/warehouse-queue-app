@@ -140,10 +140,17 @@ const formatGateArea = (gate?: DisplayEntry['gate'] | null) => {
 const formatGateSpeech = (gate?: DisplayEntry['gate'] | null) => {
   if (!gate?.gateNo) return '-'
   const gateNo = gate.gateNo.trim()
-  if (!gate.warehouse) return gateNo
-  const warehouse = gate.warehouse.replace(/\s+/g, '')
-  const spelledWarehouse = warehouse ? warehouse.split('').join(' ') : gate.warehouse
-  return `${gateNo} - ${spelledWarehouse}`
+  const parts: string[] = [gateNo]
+  if (gate.warehouse) {
+    const warehouse = gate.warehouse.replace(/\s+/g, '')
+    const spelledWarehouse = warehouse ? warehouse.split('').join(' ') : gate.warehouse
+    parts.push(spelledWarehouse)
+  }
+  if (gate.area) {
+    const area = gate.area.trim()
+    if (area) parts.push(area)
+  }
+  return parts.join(', ')
 }
 
 const resolveAreaType = (category?: DisplayEntry['category']) => {
