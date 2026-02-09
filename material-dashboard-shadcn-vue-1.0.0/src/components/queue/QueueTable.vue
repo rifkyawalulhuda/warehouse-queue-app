@@ -128,6 +128,11 @@ const isOverdue = (entry: QueueEntry) => {
   return remaining !== null && remaining <= 0
 }
 
+const isOverTimeRemaining = (entry: QueueEntry) => {
+  const remaining = getTimeRemaining(entry)
+  return remaining !== null && remaining <= 0
+}
+
 const sortIndicator = (column: string) => {
   if (props.sortBy !== column) return ''
   return props.sortDir === 'asc' ? '▲' : '▼'
@@ -207,8 +212,8 @@ const sortIndicator = (column: string) => {
             'border-t transition-colors',
             entry.status === 'BATAL'
               ? 'bg-red-50 hover:bg-red-100'
-              : isOverdue(entry)
-                ? 'bg-red-50 hover:bg-red-100'
+              : isOverTimeRemaining(entry)
+                ? 'bg-yellow-50 hover:bg-yellow-100'
                 : 'hover:bg-gray-50'
           ]"
         >
