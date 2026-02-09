@@ -10,7 +10,10 @@ type DisplayEntry = {
   truckNumber: string
   containerNumber?: string | null
   registerTime: string
+  inWhTime?: string | null
+  startTime?: string | null
   status: 'MENUNGGU' | 'IN_WH' | 'PROSES' | 'SELESAI' | 'BATAL'
+  remainingMinutes?: number | null
   statusTime?: string | null
   statusUpdatedAt?: string | null
   finishTime?: string | null
@@ -124,6 +127,63 @@ const getStatusTime = (entry: DisplayEntry) => {
   return null
 }
 
+const parseRemainingMinutes = (value: unknown) => {
+  if (value === null || value === undefined) return null
+  const num = typeof value === 'number' ? value : Number(value)
+  return Number.isFinite(num) ? num : null
+}
+
+const getSlaMinutes = (entry: DisplayEntry) => {
+  if (entry.status === 'MENUNGGU' || entry.status === 'IN_WH') return 30
+  if (entry.status === 'PROSES') return entry.category === 'RECEIVING' ? 120 : 90
+  return null
+}
+
+const getElapsedMinutes = (entry: DisplayEntry) => {
+  if (entry.status === 'SELESAI' || entry.status === 'BATAL') return null
+  const start =
+    entry.status === 'PROSES' ? entry.startTime : entry.registerTime
+  if (!start) return null
+  const startMs = new Date(start).getTime()
+  if (Number.isNaN(startMs)) return null
+  const diffMs = now.value.getTime() - startMs
+  if (diffMs < 0) return null
+  return Math.floor(diffMs / 60000)
+}
+
+const getEffectiveRemainingMinutes = (entry: DisplayEntry) => {
+  const fromApi = parseRemainingMinutes(entry.remainingMinutes)
+  if (fromApi !== null) return fromApi
+  const sla = getSlaMinutes(entry)
+  const elapsed = getElapsedMinutes(entry)
+  if (sla === null || elapsed === null) return null
+  return sla - elapsed
+}
+
+const getSlaState = (entry: DisplayEntry) => {
+  const remaining = getEffectiveRemainingMinutes(entry)
+  if (remaining === null) return 'normal'
+  if (remaining <= 0) return 'over'
+  if (remaining < 15) return 'warning'
+  return 'normal'
+}
+
+const rowClass = (entry: DisplayEntry) => {
+  const state = getSlaState(entry)
+  if (state === 'over') return 'bg-red-50 hover:bg-red-100 border-l-4 border-red-400'
+  if (state === 'warning') return 'bg-yellow-50 hover:bg-yellow-100 border-l-4 border-yellow-400'
+  return 'hover:bg-gray-50'
+}
+
+const formatRemaining = (mins?: number | null) => {
+  if (mins === null || mins === undefined) return '-'
+  if (mins <= 0) return `Lewat ${Math.abs(mins)} menit`
+  return `Sisa ${mins} menit`
+}
+
+const warningRows = computed(() => entries.value.filter((entry) => getSlaState(entry) === 'warning'))
+const overRows = computed(() => entries.value.filter((entry) => getSlaState(entry) === 'over'))
+
 const formatDisplayDateTime = (date: Date) => {
   const weekday = new Intl.DateTimeFormat('id-ID', { weekday: 'long' }).format(date)
   const day = String(date.getDate()).padStart(2, '0')
@@ -223,6 +283,32 @@ onUnmounted(() => {
       <div v-if="error" class="mb-4 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-red-700 text-sm">
         {{ error }}
       </div>
+      <div v-if="warningRows.length + overRows.length > 0" class="mb-4 space-y-2">
+        <div v-if="overRows.length" class="rounded-lg border border-red-200 bg-red-50 p-3 text-red-800">
+          <div class="font-semibold">Melewati batas waktu (OVER)</div>
+          <ul class="mt-1 list-disc pl-5 text-sm">
+            <li v-for="entry in overRows.slice(0, 5)" :key="entry.id">
+              {{ entry.driverName || '-' }} - {{ entry.truckNumber || '-' }}
+              ({{ formatRemaining(getEffectiveRemainingMinutes(entry)) }})
+            </li>
+          </ul>
+          <div v-if="overRows.length > 5" class="text-xs mt-1 opacity-80">
+            +{{ overRows.length - 5 }} lainnya
+          </div>
+        </div>
+        <div v-if="warningRows.length" class="rounded-lg border border-yellow-200 bg-yellow-50 p-3 text-yellow-900">
+          <div class="font-semibold">Hampir melewati batas (&lt; 15 menit)</div>
+          <ul class="mt-1 list-disc pl-5 text-sm">
+            <li v-for="entry in warningRows.slice(0, 5)" :key="entry.id">
+              {{ entry.driverName || '-' }} - {{ entry.truckNumber || '-' }}
+              ({{ formatRemaining(getEffectiveRemainingMinutes(entry)) }})
+            </li>
+          </ul>
+          <div v-if="warningRows.length > 5" class="text-xs mt-1 opacity-80">
+            +{{ warningRows.length - 5 }} lainnya
+          </div>
+        </div>
+      </div>
       <div class="overflow-x-auto rounded-lg border">
         <table class="min-w-full text-lg">
           <thead class="bg-muted/60 text-muted-foreground">
@@ -243,7 +329,11 @@ onUnmounted(() => {
             <tr v-else-if="entries.length === 0">
               <td colspan="7" class="px-4 py-6 text-center text-muted-foreground">Data kosong.</td>
             </tr>
-            <tr v-for="entry in entries" :key="entry.id" :class="['border-t', rowHighlightClass(entry.status)]">
+            <tr
+              v-for="entry in entries"
+              :key="entry.id"
+              :class="['border-t', rowHighlightClass(entry.status), rowClass(entry)]"
+            >
               <td class="px-4 py-4">
                 <span
                   class="inline-flex items-center rounded-lg px-3 py-2 text-sm font-semibold tracking-wide"
