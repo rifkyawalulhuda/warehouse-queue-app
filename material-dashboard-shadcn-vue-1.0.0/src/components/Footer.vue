@@ -25,37 +25,6 @@ import { Heart } from 'lucide-vue-next'
           ThemeWagon
         </a>
       </div>
-
-      <div class="flex items-center gap-6 text-sm">
-        <a 
-          href="#!" 
-          rel="noopener noreferrer"
-          class="text-muted-foreground hover:text-primary transition-colors"
-        >
-          Creative Tim
-        </a>
-        <a 
-          href="#!" 
-          rel="noopener noreferrer"
-          class="text-muted-foreground hover:text-primary transition-colors"
-        >
-          About Us
-        </a>
-        <a 
-          href="#!" 
-          rel="noopener noreferrer"
-          class="text-muted-foreground hover:text-primary transition-colors"
-        >
-          Blog
-        </a>
-        <a 
-          href="#!" 
-          rel="noopener noreferrer"
-          class="text-muted-foreground hover:text-primary transition-colors"
-        >
-          License
-        </a>
-      </div>
     </div>
   </footer>
 </template>
