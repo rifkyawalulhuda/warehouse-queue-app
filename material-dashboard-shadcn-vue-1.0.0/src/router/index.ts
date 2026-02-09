@@ -38,6 +38,12 @@ const router = createRouter({
           meta: { roles: ['ADMIN'] }
         },
         {
+          path: 'master-gate',
+          name: 'Master Gate',
+          component: () => import('@/views/MasterGate/GateList.vue'),
+          meta: { roles: ['ADMIN', 'WAREHOUSE'] }
+        },
+        {
           path: 'master-admin',
           name: 'Master Admin',
           component: () => import('@/views/MasterAdmin/AdminList.vue'),

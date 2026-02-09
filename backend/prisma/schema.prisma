@@ -25,6 +25,12 @@ enum AdminRole {
   WAREHOUSE
 }
 
+enum WarehouseGate {
+  WH1
+  WH2
+  DG
+}
+
 model QueueEntry {
   id              String        @id @default(uuid())
   customerId      String?
@@ -89,4 +95,16 @@ model AdminUser {
 
   @@index([role])
   @@index([username])
+}
+
+model Gate {
+  id        String         @id @default(uuid())
+  gateNo    String
+  area      String
+  warehouse WarehouseGate
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+
+  @@unique([gateNo, warehouse])
+  @@map("gates")
 }

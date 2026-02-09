@@ -8,6 +8,7 @@ import {
   LayoutDashboard,
   UserCog,
   UserPlus,
+  Warehouse,
   Truck,
   ChevronLeft,
   ChevronRight
@@ -21,6 +22,7 @@ const isMobile = ref(false)
 const navigation = [
   { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard, roles: ['ADMIN', 'WAREHOUSE'] },
   { name: 'Master Customer', path: '/master-customer', icon: UserPlus, roles: ['ADMIN'] },
+  { name: 'Master Gate', path: '/master-gate', icon: Warehouse, roles: ['ADMIN', 'WAREHOUSE'] },
   { name: 'Master Admin', path: '/master-admin', icon: UserCog, roles: ['ADMIN'] },
   { name: 'Antrian Truk', path: '/antrian-truk', icon: Truck, roles: ['ADMIN', 'WAREHOUSE'] }
 ]

@@ -2,6 +2,7 @@ const express = require("express");
 const cors = require("cors");
 const queueRoutes = require("./routes/queue.routes");
 const customerRoutes = require("./routes/customer.routes");
+const gateRoutes = require("./routes/gate.routes");
 const adminUserRoutes = require("./routes/adminUser.routes");
 const authRoutes = require("./routes/auth.routes");
 const dashboardRoutes = require("./routes/dashboard.routes");
@@ -16,6 +17,7 @@ app.get("/health", (req, res) => res.json({ ok: true }));
 
 app.use("/api", queueRoutes);
 app.use("/api", customerRoutes);
+app.use("/api", gateRoutes);
 app.use("/api", adminUserRoutes);
 app.use("/api", authRoutes);
 app.use("/api", dashboardRoutes);
