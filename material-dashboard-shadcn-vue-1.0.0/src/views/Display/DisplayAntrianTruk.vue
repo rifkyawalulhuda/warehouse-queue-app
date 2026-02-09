@@ -6,6 +6,7 @@ type DisplayEntry = {
   id: string
   customer?: { id: string; name: string } | null
   category?: 'RECEIVING' | 'DELIVERY' | null
+  gate?: { id: string; gateNo: string; area: string; warehouse: 'WH1' | 'WH2' | 'DG' } | null
   driverName: string
   truckNumber: string
   containerNumber?: string | null
@@ -102,6 +103,13 @@ const formatTime = (value?: string | null) => {
   if (!value) return '-'
   const date = new Date(value)
   return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+}
+
+const formatGateShort = (gate?: DisplayEntry['gate'] | null) => {
+  if (!gate?.gateNo) return '-'
+  const gateNo = gate.gateNo.trim()
+  if (!gate.warehouse) return gateNo
+  return `${gateNo} - ${gate.warehouse}`
 }
 
 const formatStatusTime = (value?: string | null) => {
@@ -317,6 +325,7 @@ onUnmounted(() => {
               <th class="px-4 py-3 text-left font-semibold">Driver Name</th>
               <th class="px-4 py-3 text-left font-semibold">No Truck</th>
               <th class="px-4 py-3 text-left font-semibold">No Container</th>
+              <th class="px-4 py-3 text-center font-semibold w-[80px]">Gate</th>
               <th class="px-4 py-3 text-left font-semibold">Customer Name</th>
               <th class="px-4 py-3 text-left font-semibold">Register Time</th>
               <th class="px-4 py-3 text-left font-semibold">Status</th>
@@ -324,10 +333,10 @@ onUnmounted(() => {
           </thead>
           <tbody>
             <tr v-if="loading">
-              <td colspan="7" class="px-4 py-6 text-center text-muted-foreground">Loading...</td>
+              <td colspan="8" class="px-4 py-6 text-center text-muted-foreground">Loading...</td>
             </tr>
             <tr v-else-if="entries.length === 0">
-              <td colspan="7" class="px-4 py-6 text-center text-muted-foreground">Data kosong.</td>
+              <td colspan="8" class="px-4 py-6 text-center text-muted-foreground">Data kosong.</td>
             </tr>
             <tr
               v-for="entry in entries"
@@ -345,6 +354,9 @@ onUnmounted(() => {
               <td class="px-4 py-4 font-bold">{{ entry.driverName || '-' }}</td>
               <td class="px-4 py-4 font-semibold">{{ entry.truckNumber || '-' }}</td>
               <td class="px-4 py-4">{{ entry.containerNumber || '-' }}</td>
+              <td class="px-4 py-4 text-center font-semibold whitespace-nowrap">
+                {{ formatGateShort(entry.gate) }}
+              </td>
               <td class="px-4 py-4">{{ entry.customer?.name || '-' }}</td>
               <td class="px-4 py-4">{{ formatTime(entry.registerTime) }}</td>
               <td class="px-4 py-4">
