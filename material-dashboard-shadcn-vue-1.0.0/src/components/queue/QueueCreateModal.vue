@@ -112,10 +112,16 @@ watch(
         <div class="grid gap-3 md:grid-cols-2">
           <div>
             <label class="text-muted-foreground">Kategori</label>
-            <select v-model="form.category" class="mt-1 w-full bg-transparent border rounded-md px-2 py-2 text-sm">
-              <option value="RECEIVING">Receiving</option>
-              <option value="DELIVERY">Delivery</option>
-            </select>
+            <div class="mt-2 flex items-center gap-4">
+              <label class="inline-flex items-center gap-2 text-sm">
+                <input v-model="form.category" type="radio" value="RECEIVING" class="h-4 w-4" />
+                Receiving
+              </label>
+              <label class="inline-flex items-center gap-2 text-sm">
+                <input v-model="form.category" type="radio" value="DELIVERY" class="h-4 w-4" />
+                Delivery
+              </label>
+            </div>
           </div>
           <div>
             <label class="text-muted-foreground">Register Time (opsional)</label>
