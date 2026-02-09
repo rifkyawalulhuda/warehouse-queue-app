@@ -218,7 +218,7 @@ async function listQueueEntriesForExport(query) {
 
   return prisma.queueEntry.findMany({
     where,
-    orderBy: [{ registerTime: "asc" }],
+    orderBy: [{ registerTime: "desc" }],
     include: {
       customer: true,
       gate: true,
