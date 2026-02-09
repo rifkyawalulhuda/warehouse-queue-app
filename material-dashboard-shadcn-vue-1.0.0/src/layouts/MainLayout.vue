@@ -34,6 +34,7 @@ const navigation: NavItem[] = [
   {
     name: 'Master Data',
     icon: Database,
+    roles: ['ADMIN'],
     children: [
       { name: 'Master Customer', path: '/master-customer', roles: ['ADMIN'] },
       { name: 'Master Gate', path: '/master-gate', roles: ['ADMIN', 'WAREHOUSE'] },
@@ -49,6 +50,7 @@ const filteredNavigation = computed(() => {
   return navigation
     .map((item) => {
       if (item.children) {
+        if (item.roles && !item.roles.includes(role)) return null
         const children = item.children.filter((child) => !child.roles || child.roles.includes(role))
         if (children.length === 0) return null
         return { ...item, children }
