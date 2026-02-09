@@ -182,7 +182,9 @@ const detectStatusTransitions = (newEntries: DisplayEntry[]) => {
   for (const entry of newEntries) {
     const prevStatus = prevStatusMap.value.get(entry.id)
     if (prevStatus === 'MENUNGGU' && entry.status === 'IN_WH') {
-      enqueue(buildAnnouncement(entry))
+      const message = buildAnnouncement(entry)
+      enqueue(message)
+      enqueue(`Saya Ulangi. ${message}`)
     }
     nextMap.set(entry.id, entry.status)
   }
