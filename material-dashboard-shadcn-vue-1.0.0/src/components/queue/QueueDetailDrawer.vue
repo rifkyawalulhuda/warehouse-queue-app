@@ -1,7 +1,9 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import QueueStatusBadge from './QueueStatusBadge.vue'
 import Button from '@/components/ui/Button.vue'
+import { useAuth } from '@/composables/useAuth'
+import { useTtsQueue } from '@/composables/useTtsQueue'
 
 type QueueLog = {
   id: string
@@ -40,6 +42,11 @@ const props = defineProps<{
 const emit = defineEmits<{
   (e: 'close'): void
 }>()
+
+const { user } = useAuth()
+const isAdmin = computed(() => user.value?.role === 'ADMIN')
+const soundEnabled = ref(true)
+const { enqueue, supported: ttsSupported } = useTtsQueue({ enabled: soundEnabled, lang: 'id-ID' })
 
 const parseDate = (value?: string | null) => {
   if (!value) return null
@@ -90,6 +97,43 @@ const categoryLabel = (category?: string) => {
   if (category === 'DELIVERY') return 'Delivery'
   return '-'
 }
+
+const resolveAreaType = (category?: QueueEntry['category']) => {
+  if (category === 'DELIVERY') return 'Loading'
+  if (category === 'RECEIVING') return 'Unloading'
+  return 'Loading'
+}
+
+const formatTruckSpeech = (value?: string | null) => {
+  if (!value) return '-'
+  let text = value.trim()
+  if (!text) return '-'
+  text = text.replace(/([A-Za-z])(\d)/g, '$1 $2').replace(/(\d)([A-Za-z])/g, '$1 $2')
+  text = text.replace(/\d+/g, (match) => match.split('').join(' '))
+  return text.replace(/\s+/g, ' ').trim()
+}
+
+const formatGateSpeech = (gate?: QueueEntry['gate'] | null) => {
+  if (!gate?.gateNo) return '-'
+  const gateNo = gate.gateNo.trim()
+  if (!gate.warehouse) return gateNo
+  const warehouse = gate.warehouse.replace(/\s+/g, '')
+  const spelledWarehouse = warehouse ? warehouse.split('').join(' ') : gate.warehouse
+  return `${gateNo} - ${spelledWarehouse}`
+}
+
+const buildAnnouncement = (entry: QueueEntry) => {
+  const driverName = entry.driverName || '-'
+  const truckNumber = formatTruckSpeech(entry.truckNumber)
+  const gateNo = formatGateSpeech(entry.gate)
+  const areaType = resolveAreaType(entry.category)
+  return `Perhatian. Driver ${driverName}, truk ${truckNumber}. Silakan menuju ${gateNo}. Anda sudah diperbolehkan masuk area ${areaType}.`
+}
+
+const handleAnnounce = () => {
+  if (!props.entry) return
+  enqueue(buildAnnouncement(props.entry))
+}
 </script>
 
 <template>
@@ -107,7 +151,18 @@ const categoryLabel = (category?: string) => {
             {{ formatCategoryLabel(entry?.category) }}
           </span>
         </div>
-        <Button variant="outline" size="sm" @click="emit('close')">Tutup</Button>
+        <div class="flex items-center gap-2">
+          <Button
+            v-if="isAdmin"
+            variant="outline"
+            size="sm"
+            :disabled="!entry?.gate?.gateNo || !ttsSupported"
+            @click="handleAnnounce"
+          >
+            Paging
+          </Button>
+          <Button variant="outline" size="sm" @click="emit('close')">Tutup</Button>
+        </div>
       </div>
 
       <div class="p-4 space-y-4">
