@@ -329,9 +329,9 @@ onUnmounted(() => {
               <th class="px-4 py-3 text-left font-semibold">Kategori</th>
               <th class="px-4 py-3 text-left font-semibold">Driver Name</th>
               <th class="px-4 py-3 text-left font-semibold">No Truck</th>
-              <th class="px-4 py-3 text-left font-semibold">No Container</th>
-              <th class="px-4 py-3 text-center font-semibold w-[80px]">Gate</th>
-              <th class="px-4 py-3 text-left font-semibold">Customer Name</th>
+              <th class="px-3 py-3 text-left font-semibold">No Container</th>
+              <th class="px-3 py-3 text-center font-semibold">Gate</th>
+              <th class="px-3 py-3 text-left font-semibold">Customer Name</th>
               <th class="px-4 py-3 text-left font-semibold">Register Time</th>
               <th class="px-4 py-3 text-left font-semibold">Status</th>
             </tr>
@@ -358,8 +358,8 @@ onUnmounted(() => {
               </td>
               <td class="px-4 py-4 font-bold">{{ entry.driverName || '-' }}</td>
               <td class="px-4 py-4 font-semibold">{{ entry.truckNumber || '-' }}</td>
-              <td class="px-4 py-4">{{ entry.containerNumber || '-' }}</td>
-              <td class="px-4 py-4 text-center font-semibold whitespace-nowrap">
+              <td class="px-3 py-4">{{ entry.containerNumber || '-' }}</td>
+              <td class="px-3 py-4 text-center font-semibold whitespace-nowrap">
                 <div class="flex flex-col items-center leading-tight">
                   <span>{{ formatGateShort(entry.gate) }}</span>
                   <span v-if="formatGateArea(entry.gate)" class="text-xs font-normal text-muted-foreground">
@@ -367,7 +367,7 @@ onUnmounted(() => {
                   </span>
                 </div>
               </td>
-              <td class="px-4 py-4">{{ entry.customer?.name || '-' }}</td>
+              <td class="px-3 py-4">{{ entry.customer?.name || '-' }}</td>
               <td class="px-4 py-4">{{ formatTime(entry.registerTime) }}</td>
               <td class="px-4 py-4">
                 <div class="flex flex-col items-start gap-1">
