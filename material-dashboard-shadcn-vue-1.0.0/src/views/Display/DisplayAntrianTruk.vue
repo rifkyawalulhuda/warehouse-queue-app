@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'
+import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import api from '@/services/api'
+import { useTtsQueue } from '@/composables/useTtsQueue'
 
 type DisplayEntry = {
   id: string
@@ -42,6 +43,20 @@ const loading = ref(false)
 const error = ref<string | null>(null)
 const now = ref(new Date())
 const isFullscreen = ref(false)
+const soundEnabled = ref(true)
+const soundPreferenceKey = 'monitorSoundEnabled'
+const prevStatusMap = ref(new Map<string, DisplayEntry['status']>())
+const initialized = ref(false)
+
+if (typeof window !== 'undefined') {
+  const saved = window.localStorage.getItem(soundPreferenceKey)
+  if (saved === '0') soundEnabled.value = false
+}
+
+const { enqueue, blocked: soundBlocked, resume: resumeSound, supported: ttsSupported } = useTtsQueue({
+  enabled: soundEnabled,
+  lang: 'id-ID',
+})
 
 const getErrorMessage = (err: any, fallback: string) => {
   return err?.response?.data?.message || err?.message || fallback
@@ -52,7 +67,9 @@ const fetchDisplay = async () => {
   error.value = null
   try {
     const response = await api.get('/queue/display')
-    entries.value = response.data?.data?.entries || []
+    const newEntries: DisplayEntry[] = response.data?.data?.entries || []
+    detectStatusTransitions(newEntries)
+    entries.value = newEntries
     const s = response.data?.data?.summary || {}
     summary.total = s.total || 0
     summary.delivery = s.delivery || 0
@@ -117,6 +134,46 @@ const formatGateShort = (gate?: DisplayEntry['gate'] | null) => {
 const formatGateArea = (gate?: DisplayEntry['gate'] | null) => {
   if (!gate?.area) return ''
   return gate.area.trim()
+}
+
+const formatGateSpeech = (gate?: DisplayEntry['gate'] | null) => {
+  if (!gate?.gateNo) return '-'
+  const gateNo = gate.gateNo.trim()
+  if (!gate.warehouse) return gateNo
+  return `${gateNo} - ${gate.warehouse}`
+}
+
+const resolveAreaType = (category?: DisplayEntry['category']) => {
+  if (category === 'DELIVERY') return 'Loading'
+  if (category === 'RECEIVING') return 'Unloading'
+  return 'Loading'
+}
+
+const buildAnnouncement = (entry: DisplayEntry) => {
+  const driverName = entry.driverName || '-'
+  const truckNumber = entry.truckNumber || '-'
+  const gateNo = formatGateSpeech(entry.gate)
+  const areaType = resolveAreaType(entry.category)
+  return `Perhatian. Driver ${driverName}, truk ${truckNumber}. Silakan menuju ${gateNo}. Anda sudah diperbolehkan masuk area ${areaType}.`
+}
+
+const detectStatusTransitions = (newEntries: DisplayEntry[]) => {
+  // Diff status between polling cycles; skip first load to avoid spam.
+  if (!initialized.value) {
+    initialized.value = true
+    prevStatusMap.value = new Map(newEntries.map((entry) => [entry.id, entry.status]))
+    return
+  }
+
+  const nextMap = new Map<string, DisplayEntry['status']>()
+  for (const entry of newEntries) {
+    const prevStatus = prevStatusMap.value.get(entry.id)
+    if (prevStatus === 'MENUNGGU' && entry.status === 'IN_WH') {
+      enqueue(buildAnnouncement(entry))
+    }
+    nextMap.set(entry.id, entry.status)
+  }
+  prevStatusMap.value = nextMap
 }
 
 const formatStatusTime = (value?: string | null) => {
@@ -232,6 +289,15 @@ const handleFullscreenChange = () => {
   isFullscreen.value = Boolean(document.fullscreenElement)
 }
 
+const toggleSound = () => {
+  soundEnabled.value = !soundEnabled.value
+}
+
+const enableSoundFromBanner = () => {
+  soundEnabled.value = true
+  resumeSound()
+}
+
 let pollTimer: number | undefined
 let clockTimer: number | undefined
 
@@ -249,6 +315,13 @@ onUnmounted(() => {
   if (clockTimer) window.clearInterval(clockTimer)
   document.removeEventListener('fullscreenchange', handleFullscreenChange)
 })
+
+watch(soundEnabled, (value) => {
+  if (typeof window === 'undefined') return
+  window.localStorage.setItem(soundPreferenceKey, value ? '1' : '0')
+})
+
+const showSoundBanner = computed(() => soundEnabled.value && ttsSupported && soundBlocked.value)
 </script>
 
 <template>
@@ -261,6 +334,13 @@ onUnmounted(() => {
       </div>
       <div class="flex items-center gap-3">
         <div class="text-lg md:text-xl font-semibold">{{ nowText }}</div>
+        <button
+          type="button"
+          class="px-4 py-2 rounded-md border bg-card text-sm font-semibold hover:bg-accent"
+          @click="toggleSound"
+        >
+          {{ soundEnabled ? '🔊 Sound: On' : '🔇 Sound: Off' }}
+        </button>
         <button
           type="button"
           class="px-4 py-2 rounded-md border bg-card text-sm font-semibold hover:bg-accent"
@@ -297,6 +377,13 @@ onUnmounted(() => {
     <section class="mt-6">
       <div v-if="error" class="mb-4 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-red-700 text-sm">
         {{ error }}
+      </div>
+      <div
+        v-if="showSoundBanner"
+        class="mb-4 rounded-md border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800 cursor-pointer"
+        @click="enableSoundFromBanner"
+      >
+        Klik untuk mengaktifkan suara.
       </div>
       <div v-if="warningRows.length + overRows.length > 0" class="mb-4 space-y-2">
         <div v-if="overRows.length" class="rounded-lg border border-red-200 bg-red-50 p-3 text-red-800">
