@@ -149,9 +149,20 @@ const resolveAreaType = (category?: DisplayEntry['category']) => {
   return 'Loading'
 }
 
+const formatTruckSpeech = (value?: string | null) => {
+  if (!value) return '-'
+  let text = value.trim()
+  if (!text) return '-'
+  // Separate letters and digits to help TTS clarity
+  text = text.replace(/([A-Za-z])(\d)/g, '$1 $2').replace(/(\d)([A-Za-z])/g, '$1 $2')
+  // Spell out all digit sequences to avoid thousands pronunciation
+  text = text.replace(/\d+/g, (match) => match.split('').join(' '))
+  return text.replace(/\s+/g, ' ').trim()
+}
+
 const buildAnnouncement = (entry: DisplayEntry) => {
   const driverName = entry.driverName || '-'
-  const truckNumber = entry.truckNumber || '-'
+  const truckNumber = formatTruckSpeech(entry.truckNumber)
   const gateNo = formatGateSpeech(entry.gate)
   const areaType = resolveAreaType(entry.category)
   return `Perhatian. Driver ${driverName}, truk ${truckNumber}. Silakan menuju ${gateNo}. Anda sudah diperbolehkan masuk area ${areaType}.`
