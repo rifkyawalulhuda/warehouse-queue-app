@@ -11,6 +11,11 @@ type DisplayEntry = {
   containerNumber?: string | null
   registerTime: string
   status: 'MENUNGGU' | 'IN_WH' | 'PROSES' | 'SELESAI' | 'BATAL'
+  statusTime?: string | null
+  statusUpdatedAt?: string | null
+  finishTime?: string | null
+  updatedAt?: string | null
+  lastStatusLog?: { createdAt?: string | null } | null
 }
 
 type Summary = {
@@ -94,6 +99,29 @@ const formatTime = (value?: string | null) => {
   if (!value) return '-'
   const date = new Date(value)
   return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+}
+
+const formatStatusTime = (value?: string | null) => {
+  if (!value) return '-'
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return '-'
+  const sameDay = date.toDateString() === now.value.toDateString()
+  if (sameDay) {
+    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+  }
+  const day = String(date.getDate()).padStart(2, '0')
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const time = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+  return `${day}/${month} ${time}`
+}
+
+const getStatusTime = (entry: DisplayEntry) => {
+  if (entry.statusTime) return entry.statusTime
+  if (entry.statusUpdatedAt) return entry.statusUpdatedAt
+  if (entry.lastStatusLog?.createdAt) return entry.lastStatusLog.createdAt
+  if (entry.status === 'SELESAI' && entry.finishTime) return entry.finishTime
+  if (entry.updatedAt) return entry.updatedAt
+  return null
 }
 
 const formatDisplayDateTime = (date: Date) => {
@@ -230,14 +258,19 @@ onUnmounted(() => {
               <td class="px-4 py-4">{{ entry.customer?.name || '-' }}</td>
               <td class="px-4 py-4">{{ formatTime(entry.registerTime) }}</td>
               <td class="px-4 py-4">
-                <span
-                  :class="[
-                    'inline-flex items-center rounded-full px-3 py-1 text-sm font-semibold tracking-wide',
-                    statusBadgeClass(entry.status)
-                  ]"
-                >
-                  {{ statusLabel(entry.status) }}
-                </span>
+                <div class="flex flex-col items-start gap-1">
+                  <span
+                    :class="[
+                      'inline-flex items-center rounded-full px-3 py-1 text-sm font-semibold tracking-wide',
+                      statusBadgeClass(entry.status)
+                    ]"
+                  >
+                    {{ statusLabel(entry.status) }}
+                  </span>
+                  <span class="text-xs text-muted-foreground">
+                    {{ formatStatusTime(getStatusTime(entry)) }}
+                  </span>
+                </div>
               </td>
             </tr>
           </tbody>
