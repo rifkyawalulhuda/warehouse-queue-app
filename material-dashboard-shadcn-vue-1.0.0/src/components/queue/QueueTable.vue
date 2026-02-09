@@ -9,6 +9,8 @@ type QueueEntry = {
   category: 'RECEIVING' | 'DELIVERY'
   customerId?: string | null
   customer?: { id: string; name: string } | null
+  gateId?: string | null
+  gate?: { id: string; gateNo: string; area: string; warehouse: 'WH1' | 'WH2' | 'DG' } | null
   driverName: string
   truckNumber: string
   containerNumber?: string | null
@@ -164,6 +166,7 @@ const sortIndicator = (column: string) => {
             No Truck <span class="ml-1 text-xs">{{ sortIndicator('truckNumber') }}</span>
           </th>
           <th class="px-3 py-2 text-left font-medium">No Container</th>
+          <th class="px-3 py-2 text-left font-medium">Gate No</th>
           <th
             class="px-3 py-2 text-left font-medium cursor-pointer select-none"
             @click="emit('toggle-sort', 'registerTime')"
@@ -200,10 +203,10 @@ const sortIndicator = (column: string) => {
       </thead>
       <tbody>
         <tr v-if="loading">
-          <td colspan="12" class="px-3 py-6 text-center text-muted-foreground">Loading...</td>
+          <td colspan="13" class="px-3 py-6 text-center text-muted-foreground">Loading...</td>
         </tr>
         <tr v-else-if="props.entries.length === 0">
-          <td colspan="12" class="px-3 py-6 text-center text-muted-foreground">Data kosong.</td>
+          <td colspan="13" class="px-3 py-6 text-center text-muted-foreground">Data kosong.</td>
         </tr>
         <tr
           v-for="(entry, index) in props.entries"
@@ -233,6 +236,7 @@ const sortIndicator = (column: string) => {
           <td class="px-3 py-2">{{ entry.driverName }}</td>
           <td class="px-3 py-2">{{ entry.truckNumber }}</td>
           <td class="px-3 py-2">{{ entry.containerNumber || '-' }}</td>
+          <td class="px-3 py-2">{{ entry.gate?.gateNo || '-' }}</td>
           <td class="px-3 py-2">{{ formatTime(entry.registerTime) }}</td>
           <td class="px-3 py-2">{{ formatTime(entry.inWhTime) }}</td>
           <td class="px-3 py-2">{{ formatTime(entry.startTime) }}</td>

@@ -69,8 +69,17 @@ function validateStatusChange(req, res, next) {
   return next();
 }
 
+function validateSetInWh(req, res, next) {
+  const { gateId } = req.body;
+  if (!isNonEmptyString(gateId)) {
+    return sendError(res, 400, "Validasi gagal", ["gateId wajib diisi"]);
+  }
+  return next();
+}
+
 module.exports = {
   validateQueueCreate,
   validateQueueUpdate,
   validateStatusChange,
+  validateSetInWh,
 };

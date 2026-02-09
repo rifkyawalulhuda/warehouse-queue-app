@@ -70,6 +70,7 @@ module.exports = {
   createGate,
   updateGate,
   deleteGate,
+  listMasterGates: listGates,
   downloadTemplate: function downloadTemplate(req, res, next) {
     try {
       const workbook = xlsx.utils.book_new();

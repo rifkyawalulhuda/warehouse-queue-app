@@ -18,6 +18,8 @@ type QueueEntry = {
   category: 'RECEIVING' | 'DELIVERY'
   customerId?: string | null
   customer?: { id: string; name: string } | null
+  gateId?: string | null
+  gate?: { id: string; gateNo: string; area: string; warehouse: 'WH1' | 'WH2' | 'DG' } | null
   driverName: string
   truckNumber: string
   containerNumber?: string | null
@@ -127,6 +129,18 @@ const categoryLabel = (category?: string) => {
             <p class="font-medium">{{ entry?.containerNumber || '-' }}</p>
           </div>
           <div>
+            <p class="text-muted-foreground">Gate No</p>
+            <p class="font-medium">{{ entry?.gate?.gateNo || '-' }}</p>
+          </div>
+          <div>
+            <p class="text-muted-foreground">Area</p>
+            <p class="font-medium">{{ entry?.gate?.area || '-' }}</p>
+          </div>
+          <div>
+            <p class="text-muted-foreground">Warehouse</p>
+            <p class="font-medium">{{ entry?.gate?.warehouse || '-' }}</p>
+          </div>
+          <div>
             <p class="text-muted-foreground">Category</p>
             <p class="font-medium">{{ categoryLabel(entry?.category) }}</p>
           </div>
@@ -172,6 +186,9 @@ const categoryLabel = (category?: string) => {
                 oleh: {{ log.actorUser?.name || log.userName || '-' }}
                 <span v-if="log.fromStatus || log.toStatus">
                   — {{ log.fromStatus || '-' }} -> {{ log.toStatus || '-' }}
+                </span>
+                <span v-if="log.toStatus === 'IN_WH' && entry?.gate?.gateNo">
+                  (Gate: {{ entry.gate.gateNo }})
                 </span>
               </div>
             </div>

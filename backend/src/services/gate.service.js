@@ -46,6 +46,8 @@ function validateInput({ gateNo, area, warehouse }) {
 
 async function listGates(query) {
   const search = typeof query.search === "string" ? query.search.trim() : "";
+  const warehouse =
+    typeof query.warehouse === "string" ? query.warehouse.trim().toUpperCase() : "";
   const { sortBy, sortDir } = normalizeSort(query);
   const where = {};
   if (search) {
@@ -53,6 +55,9 @@ async function listGates(query) {
       { gateNo: { contains: search, mode: "insensitive" } },
       { area: { contains: search, mode: "insensitive" } },
     ];
+  }
+  if (warehouse) {
+    where.warehouse = warehouse;
   }
 
   return prisma.gate.findMany({

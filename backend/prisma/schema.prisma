@@ -35,6 +35,8 @@ model QueueEntry {
   id              String        @id @default(uuid())
   customerId      String?
   customer        Customer?     @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  gateId          String?
+  gate            Gate?         @relation(fields: [gateId], references: [id], onDelete: SetNull)
   category        QueueCategory
   driverName      String
   truckNumber     String
@@ -53,6 +55,7 @@ model QueueEntry {
   @@index([truckNumber, registerTime])
   @@index([category, registerTime])
   @@index([customerId, registerTime])
+  @@index([gateId])
 }
 
 model QueueLog {
@@ -104,6 +107,7 @@ model Gate {
   warehouse WarehouseGate
   createdAt DateTime       @default(now())
   updatedAt DateTime       @updatedAt
+  entries   QueueEntry[]
 
   @@unique([gateNo, warehouse])
   @@map("gates")

@@ -89,7 +89,27 @@ async function updateQueue(req, res, next) {
 async function updateQueueStatus(req, res, next) {
   try {
     const actorUser = req.user?.sub ? await adminUserService.getAdminUserById(req.user.sub) : null;
-    const entry = await queueService.changeQueueStatus(req.params.id, req.body.newStatus, actorUser);
+    const entry = await queueService.changeQueueStatus(
+      req.params.id,
+      req.body.newStatus,
+      actorUser,
+      req.body.gateId
+    );
+    return sendSuccess(res, entry);
+  } catch (err) {
+    return next(err);
+  }
+}
+
+async function setInWh(req, res, next) {
+  try {
+    const actorUser = req.user?.sub ? await adminUserService.getAdminUserById(req.user.sub) : null;
+    const entry = await queueService.changeQueueStatus(
+      req.params.id,
+      "IN_WH",
+      actorUser,
+      req.body.gateId
+    );
     return sendSuccess(res, entry);
   } catch (err) {
     return next(err);
@@ -169,6 +189,7 @@ module.exports = {
   getQueueById,
   updateQueue,
   updateQueueStatus,
+  setInWh,
   exportQueue,
   displayQueue,
 };

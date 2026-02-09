@@ -10,6 +10,7 @@ import QueueDetailDrawer from '@/components/queue/QueueDetailDrawer.vue'
 import QueueCreateModal from '@/components/queue/QueueCreateModal.vue'
 import { RefreshCw, Search } from 'lucide-vue-next'
 import api from '@/services/api'
+import { getMasterGates, setInWh, type MasterGate } from '@/services/queueApi'
 
 type QueueLog = {
   id: string
@@ -26,6 +27,8 @@ type QueueEntry = {
   category: 'RECEIVING' | 'DELIVERY'
   customerId?: string | null
   customer?: { id: string; name: string } | null
+  gateId?: string | null
+  gate?: MasterGate | null
   driverName: string
   truckNumber: string
   containerNumber?: string | null
@@ -57,6 +60,14 @@ const createSubmitting = ref(false)
 const confirmOpen = ref(false)
 const confirmEntry = ref<QueueEntry | null>(null)
 const confirmNextStatus = ref<QueueEntry['status'] | null>(null)
+const setInWhOpen = ref(false)
+const setInWhEntry = ref<QueueEntry | null>(null)
+const selectedGateId = ref('')
+const masterGates = ref<MasterGate[]>([])
+const gateLoading = ref(false)
+const gateError = ref<string | null>(null)
+const setInWhSubmitting = ref(false)
+const success = ref<string | null>(null)
 const exportOpen = ref(false)
 const exporting = ref(false)
 const exportError = ref<string | null>(null)
@@ -72,6 +83,16 @@ const exportForm = reactive({
 
 const getErrorMessage = (err: any, fallback: string) => {
   return err?.response?.data?.message || err?.message || fallback
+}
+
+let successTimer: number | undefined
+
+const showSuccess = (message: string) => {
+  success.value = message
+  if (successTimer) window.clearTimeout(successTimer)
+  successTimer = window.setTimeout(() => {
+    success.value = null
+  }, 3000)
 }
 
 const todayString = () => {
@@ -148,6 +169,19 @@ const fetchCustomers = async () => {
   }
 }
 
+const fetchMasterGates = async () => {
+  gateLoading.value = true
+  gateError.value = null
+  try {
+    const response = await getMasterGates()
+    masterGates.value = response.data?.data || []
+  } catch (err: any) {
+    gateError.value = getErrorMessage(err, 'Gagal memuat Master Gate')
+  } finally {
+    gateLoading.value = false
+  }
+}
+
 const fetchDetail = async (id: string) => {
   try {
     const response = await api.get(`/queue/${id}`)
@@ -168,9 +202,45 @@ const openDetailById = async (id: string) => {
 }
 
 const handleChangeStatus = async (entry: QueueEntry, newStatus: QueueEntry['status']) => {
+  if (newStatus === 'IN_WH' && entry.status === 'MENUNGGU') {
+    setInWhEntry.value = entry
+    selectedGateId.value = ''
+    gateError.value = null
+    setInWhOpen.value = true
+    if (masterGates.value.length === 0) {
+      await fetchMasterGates()
+    }
+    return
+  }
   confirmEntry.value = entry
   confirmNextStatus.value = newStatus
   confirmOpen.value = true
+}
+
+const closeSetInWh = () => {
+  setInWhOpen.value = false
+  setInWhEntry.value = null
+  selectedGateId.value = ''
+  gateError.value = null
+}
+
+const submitSetInWh = async () => {
+  if (!setInWhEntry.value || !selectedGateId.value) return
+  setInWhSubmitting.value = true
+  error.value = null
+  try {
+    await setInWh(setInWhEntry.value.id, selectedGateId.value)
+    await fetchList()
+    if (drawerOpen.value && selectedEntry.value?.id === setInWhEntry.value.id) {
+      await fetchDetail(setInWhEntry.value.id)
+    }
+    closeSetInWh()
+    showSuccess('Status berhasil diubah ke IN_WH')
+  } catch (err: any) {
+    error.value = getErrorMessage(err, 'Gagal update status')
+  } finally {
+    setInWhSubmitting.value = false
+  }
 }
 
 const executeChangeStatus = async () => {
@@ -434,6 +504,9 @@ watch(
         <div v-if="error" class="mb-3 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
           {{ error }}
         </div>
+        <div v-if="success" class="mb-3 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
+          {{ success }}
+        </div>
         <QueueTable
           :entries="entries"
           :loading="loading"
@@ -485,6 +558,43 @@ watch(
       @close="createOpen = false"
       @submit="handleCreate"
     />
+
+    <div v-if="setInWhOpen" class="fixed inset-0 z-50">
+      <div class="absolute inset-0 bg-black/40" @click="closeSetInWh"></div>
+      <div class="absolute left-1/2 top-1/2 w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-lg bg-card shadow-xl border">
+        <div class="p-4 border-b">
+          <h3 class="text-lg font-semibold">Konfirmasi Set IN_WH</h3>
+        </div>
+        <div class="p-4 space-y-3 text-sm">
+          <p class="text-muted-foreground">Pilih Gate No untuk transaksi ini sebelum melanjutkan.</p>
+          <div>
+            <label class="text-sm text-muted-foreground">Gate No</label>
+            <select
+              v-model="selectedGateId"
+              class="mt-1 w-full bg-transparent border rounded-md px-2 py-2 text-sm"
+              :disabled="gateLoading || masterGates.length === 0"
+            >
+              <option value="">Pilih Gate</option>
+              <option v-for="gate in masterGates" :key="gate.id" :value="gate.id">
+                {{ gate.gateNo }} - {{ gate.area }} ({{ gate.warehouse }})
+              </option>
+            </select>
+          </div>
+          <div v-if="gateLoading" class="text-xs text-muted-foreground">Memuat Master Gate...</div>
+          <div v-else-if="gateError" class="text-xs text-red-600">{{ gateError }}</div>
+          <div v-else-if="masterGates.length === 0" class="text-xs text-muted-foreground">
+            Master Gate masih kosong. Silakan isi Master Gate terlebih dahulu.
+          </div>
+        </div>
+        <div class="p-4 border-t flex items-center justify-end gap-2">
+          <Button variant="ghost" @click="closeSetInWh">Batal</Button>
+          <Button :disabled="setInWhSubmitting || !selectedGateId || masterGates.length === 0" @click="submitSetInWh">
+            {{ setInWhSubmitting ? 'Menyimpan...' : 'Konfirmasi' }}
+          </Button>
+        </div>
+      </div>
+    </div>
+
     <div v-if="confirmOpen" class="fixed inset-0 z-50">
       <div class="absolute inset-0 bg-black/40" @click="confirmOpen = false"></div>
       <div class="absolute left-1/2 top-1/2 w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-lg bg-card shadow-xl border">

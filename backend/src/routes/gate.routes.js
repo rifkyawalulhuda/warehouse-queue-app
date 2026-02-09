@@ -8,6 +8,12 @@ const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage() });
 
 router.get("/gates", authMiddleware, requireRole("ADMIN", "WAREHOUSE"), gateController.listGates);
+router.get(
+  "/master-gates",
+  authMiddleware,
+  requireRole("ADMIN", "WAREHOUSE"),
+  gateController.listMasterGates
+);
 router.post("/gates", authMiddleware, requireRole("ADMIN"), gateController.createGate);
 router.patch("/gates/:id", authMiddleware, requireRole("ADMIN"), gateController.updateGate);
 router.put("/gates/:id", authMiddleware, requireRole("ADMIN"), gateController.updateGate);

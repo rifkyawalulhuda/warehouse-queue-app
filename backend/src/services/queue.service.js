@@ -189,6 +189,7 @@ async function listQueueEntries(query) {
     orderBy: buildOrderBy(sortBy, sortDir),
     include: {
       customer: true,
+      gate: true,
     },
     skip,
     take: limit,
@@ -220,6 +221,7 @@ async function listQueueEntriesForExport(query) {
     orderBy: [{ registerTime: "asc" }],
     include: {
       customer: true,
+      gate: true,
     },
   });
 }
@@ -243,6 +245,7 @@ async function listQueueEntriesForDisplay() {
     orderBy: [{ registerTime: "asc" }],
     include: {
       customer: true,
+      gate: true,
     },
   });
 
@@ -294,6 +297,7 @@ async function getQueueEntryById(id) {
         },
       },
       customer: true,
+      gate: true,
     },
   });
   if (!entry) {
@@ -331,6 +335,7 @@ async function updateQueueEntry(id, data, actorUser) {
     },
     include: {
       customer: true,
+      gate: true,
     },
   });
 }
@@ -349,7 +354,7 @@ function isPrevStatus(current, prev) {
   return prevIdx === idx - 1;
 }
 
-async function changeQueueStatus(id, newStatus, actorUser) {
+async function changeQueueStatus(id, newStatus, actorUser, gateId) {
   const entry = await prisma.queueEntry.findUnique({ where: { id } });
   if (!entry) throw createHttpError(404, "Data tidak ditemukan");
 
@@ -370,6 +375,17 @@ async function changeQueueStatus(id, newStatus, actorUser) {
   }
 
   const timeUpdates = {};
+  let gateUpdate = {};
+  if (newStatus === "IN_WH" && entry.status === "MENUNGGU") {
+    if (!gateId || typeof gateId !== "string") {
+      throw createHttpError(400, "Gate wajib dipilih");
+    }
+    const gate = await prisma.gate.findUnique({ where: { id: gateId } });
+    if (!gate) {
+      throw createHttpError(400, "Gate tidak ditemukan");
+    }
+    gateUpdate = { gateId: gate.id };
+  }
   if (newStatus === "IN_WH" && !entry.inWhTime) timeUpdates.inWhTime = new Date();
   if (newStatus === "PROSES" && !entry.startTime) timeUpdates.startTime = new Date();
   if (newStatus === "SELESAI" && !entry.finishTime) timeUpdates.finishTime = new Date();
@@ -381,6 +397,7 @@ async function changeQueueStatus(id, newStatus, actorUser) {
     where: { id },
     data: {
       status: newStatus,
+      ...gateUpdate,
       ...timeUpdates,
       logs: {
         create: {
@@ -394,6 +411,7 @@ async function changeQueueStatus(id, newStatus, actorUser) {
     },
     include: {
       customer: true,
+      gate: true,
     },
   });
 }
