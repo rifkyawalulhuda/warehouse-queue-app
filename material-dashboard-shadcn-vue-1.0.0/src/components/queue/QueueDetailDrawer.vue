@@ -156,7 +156,7 @@ const handleAnnounce = () => {
             v-if="isAdmin"
             variant="outline"
             size="sm"
-            :disabled="!entry?.gate?.gateNo || !ttsSupported"
+            :disabled="!entry?.gate?.gateNo || !ttsSupported || entry?.status !== 'IN_WH'"
             @click="handleAnnounce"
           >
             Paging
