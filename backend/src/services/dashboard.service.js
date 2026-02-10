@@ -212,9 +212,16 @@ async function getProgressSummary(dateQuery) {
     },
   };
 
-  const [targetPengiriman, selesaiCount, prosesCount] = await Promise.all([
-    prisma.shipmentSchedule.count({
-      where: { scheduleDate },
+  const [targetQtyAggregate, selesaiCount, prosesCount] = await Promise.all([
+    prisma.shipmentScheduleItem.aggregate({
+      where: {
+        schedule: {
+          scheduleDate,
+        },
+      },
+      _sum: {
+        qty: true,
+      },
     }),
     prisma.queueEntry.count({
       where: {
@@ -231,6 +238,8 @@ async function getProgressSummary(dateQuery) {
       },
     }),
   ]);
+
+  const targetPengiriman = targetQtyAggregate?._sum?.qty || 0;
 
   const selesaiPct = targetPengiriman > 0 ? (selesaiCount / targetPengiriman) * 100 : 0;
   const prosesPct = targetPengiriman > 0 ? (prosesCount / targetPengiriman) * 100 : 0;

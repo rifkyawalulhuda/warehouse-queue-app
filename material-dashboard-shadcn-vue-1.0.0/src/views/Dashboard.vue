@@ -353,7 +353,7 @@ onUnmounted(() => {
             </div>
           </div>
           <div class="grid gap-1 text-xs text-muted-foreground md:grid-cols-2">
-            <p>Target Pengiriman: {{ progressSummary.targetPengiriman }}</p>
+            <p>Target Receiving/Delivery: {{ progressSummary.targetPengiriman }}</p>
             <p>Total Progress: {{ rawTotalPctText }}%</p>
             <p v-if="!showSelesaiLabelInBar">Selesai: {{ progressSummary.selesaiCount }} ({{ rawSelesaiPctText }}%)</p>
             <p v-if="!showProsesLabelInBar">Proses: {{ progressSummary.prosesCount }} ({{ rawProsesPctText }}%)</p>
