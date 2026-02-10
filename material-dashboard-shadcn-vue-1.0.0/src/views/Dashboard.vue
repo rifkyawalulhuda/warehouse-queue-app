@@ -13,6 +13,7 @@ import TopCustomerDurationTable from '@/components/dashboard/TopCustomerDuration
 import OverSlaTable from '@/components/dashboard/OverSlaTable.vue'
 import {
   getDashboardHourly,
+  getDashboardProgressSummary,
   getDashboardScheduleSummary,
   getDashboardStatus,
   getDashboardSummary,
@@ -38,6 +39,15 @@ type StatusItem = { name: string; value: number }
 type TopCustomerItem = { customerName: string; avgDurationMinutes: number; totalTransactions: number }
 type OverSlaItem = { id: string; customerName: string; truckNumber: string; status: string; overMinutes: number }
 type ScheduleSummary = { date: string; storeIn: number; storeOut: number; total: number }
+type ProgressSummary = {
+  date: string
+  targetPengiriman: number
+  selesaiCount: number
+  prosesCount: number
+  selesaiPct: number
+  prosesPct: number
+  totalPct: number
+}
 
 const getToday = () => {
   const now = new Date()
@@ -74,10 +84,29 @@ const scheduleSummary = reactive<ScheduleSummary>({
   total: 0
 })
 const isLoadingScheduleSummary = ref(false)
+const progressSummary = reactive<ProgressSummary>({
+  date: selectedDate.value,
+  targetPengiriman: 0,
+  selesaiCount: 0,
+  prosesCount: 0,
+  selesaiPct: 0,
+  prosesPct: 0,
+  totalPct: 0
+})
+const isLoadingProgress = ref(false)
 const loading = ref(false)
 const error = ref<string | null>(null)
 
 const isToday = computed(() => selectedDate.value === today.value)
+const hasProgressTarget = computed(() => progressSummary.targetPengiriman > 0)
+const isOverTarget = computed(() => progressSummary.totalPct > 100)
+
+const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max)
+const selesaiWidth = computed(() => clamp(progressSummary.selesaiPct, 0, 100))
+const prosesWidth = computed(() => clamp(progressSummary.prosesPct, 0, 100 - selesaiWidth.value))
+const rawSelesaiPctText = computed(() => progressSummary.selesaiPct.toFixed(0))
+const rawProsesPctText = computed(() => progressSummary.prosesPct.toFixed(0))
+const rawTotalPctText = computed(() => progressSummary.totalPct.toFixed(0))
 
 const getErrorMessage = (err: any, fallback: string) => {
   return err?.response?.data?.message || err?.message || fallback
@@ -138,6 +167,32 @@ const fetchScheduleSummary = async () => {
   }
 }
 
+const fetchProgressSummary = async () => {
+  isLoadingProgress.value = true
+  try {
+    const response = await getDashboardProgressSummary(selectedDate.value)
+    const data = response.data?.data || response.data || {}
+    progressSummary.date = data.date || selectedDate.value
+    progressSummary.targetPengiriman = data.targetPengiriman || 0
+    progressSummary.selesaiCount = data.selesaiCount || 0
+    progressSummary.prosesCount = data.prosesCount || 0
+    progressSummary.selesaiPct = data.selesaiPct || 0
+    progressSummary.prosesPct = data.prosesPct || 0
+    progressSummary.totalPct = data.totalPct || 0
+  } catch (err: any) {
+    progressSummary.date = selectedDate.value
+    progressSummary.targetPengiriman = 0
+    progressSummary.selesaiCount = 0
+    progressSummary.prosesCount = 0
+    progressSummary.selesaiPct = 0
+    progressSummary.prosesPct = 0
+    progressSummary.totalPct = 0
+    error.value = getErrorMessage(err, 'Gagal memuat dashboard')
+  } finally {
+    isLoadingProgress.value = false
+  }
+}
+
 let refreshTimer: number | undefined
 let todayTimer: number | undefined
 
@@ -156,7 +211,7 @@ const openSchedulePage = (type: 'STORE_IN' | 'STORE_OUT' | null) => {
 }
 
 const handleRefresh = async () => {
-  await Promise.all([fetchDashboard(), fetchScheduleSummary()])
+  await Promise.all([fetchDashboard(), fetchScheduleSummary(), fetchProgressSummary()])
 }
 
 const setupAutoRefresh = () => {
@@ -255,6 +310,35 @@ onUnmounted(() => {
         </CardContent>
       </Card>
     </div>
+
+    <Card>
+      <CardHeader class="pb-3">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <CardTitle class="text-sm font-medium">Loading Progress Chart</CardTitle>
+          <span v-if="isOverTarget" class="rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-xs text-amber-700">
+            Over Target
+          </span>
+        </div>
+      </CardHeader>
+      <CardContent class="space-y-3">
+        <div v-if="isLoadingProgress" class="text-sm text-muted-foreground">Loading progress...</div>
+        <template v-else>
+          <p v-if="!hasProgressTarget" class="text-sm text-muted-foreground">Belum ada target pengiriman</p>
+          <div class="h-5 w-full overflow-hidden rounded-full bg-muted">
+            <div class="flex h-full">
+              <div class="h-full bg-[#28a745] transition-all duration-300" :style="{ width: `${selesaiWidth}%` }"></div>
+              <div class="h-full bg-[#0d6efd] transition-all duration-300" :style="{ width: `${prosesWidth}%` }"></div>
+            </div>
+          </div>
+          <div class="grid gap-1 text-xs text-muted-foreground md:grid-cols-2">
+            <p>Target Pengiriman: {{ progressSummary.targetPengiriman }}</p>
+            <p>Total Progress: {{ rawTotalPctText }}%</p>
+            <p>Selesai: {{ progressSummary.selesaiCount }} ({{ rawSelesaiPctText }}%)</p>
+            <p>Proses: {{ progressSummary.prosesCount }} ({{ rawProsesPctText }}%)</p>
+          </div>
+        </template>
+      </CardContent>
+    </Card>
 
     <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
       <Card>

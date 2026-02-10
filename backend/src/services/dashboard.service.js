@@ -198,6 +198,54 @@ async function getScheduleSummary(dateQuery) {
   };
 }
 
+async function getProgressSummary(dateQuery) {
+  const range = resolveDateRange(dateQuery);
+  const scheduleDate = parseDateOnlyUtc(range.date);
+  if (!scheduleDate) {
+    throw createHttpError(400, "Format date tidak valid. Gunakan YYYY-MM-DD");
+  }
+
+  const queueDateFilter = {
+    registerTime: {
+      gte: range.from,
+      lte: range.to,
+    },
+  };
+
+  const [targetPengiriman, selesaiCount, prosesCount] = await Promise.all([
+    prisma.shipmentSchedule.count({
+      where: { scheduleDate },
+    }),
+    prisma.queueEntry.count({
+      where: {
+        ...queueDateFilter,
+        status: "SELESAI",
+      },
+    }),
+    prisma.queueEntry.count({
+      where: {
+        ...queueDateFilter,
+        status: {
+          notIn: ["SELESAI", "BATAL"],
+        },
+      },
+    }),
+  ]);
+
+  const selesaiPct = targetPengiriman > 0 ? (selesaiCount / targetPengiriman) * 100 : 0;
+  const prosesPct = targetPengiriman > 0 ? (prosesCount / targetPengiriman) * 100 : 0;
+
+  return {
+    date: range.date,
+    targetPengiriman,
+    selesaiCount,
+    prosesCount,
+    selesaiPct,
+    prosesPct,
+    totalPct: selesaiPct + prosesPct,
+  };
+}
+
 async function getHourly(dateQuery) {
   const { range, entries } = await fetchEntries(dateQuery);
   const buckets = Array.from({ length: 24 }, (_, hour) => ({
@@ -353,6 +401,7 @@ async function getOverSla(dateQuery) {
 module.exports = {
   getSummary,
   getScheduleSummary,
+  getProgressSummary,
   getHourly,
   getStatus,
   getTopCustomers,
