@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import Card from '@/components/ui/Card.vue'
 import CardHeader from '@/components/ui/CardHeader.vue'
 import CardContent from '@/components/ui/CardContent.vue'
@@ -53,6 +53,7 @@ const loading = ref(false)
 const error = ref<string | null>(null)
 const { user } = useAuth()
 const route = useRoute()
+const router = useRouter()
 
 const selectedEntry = ref<QueueEntry | null>(null)
 const drawerOpen = ref(false)
@@ -430,6 +431,11 @@ const buildExportFileName = () => {
   return 'antrian_truk.xlsx'
 }
 
+const openDisplayPage = () => {
+  const target = router.resolve('/display/antrian-truk')
+  window.open(target.href, '_blank', 'noopener,noreferrer')
+}
+
 const handleExportDownload = async () => {
   exportError.value = null
   const hasFrom = Boolean(exportForm.dateFrom)
@@ -549,6 +555,7 @@ watch(
         <p class="text-muted-foreground">Monitoring antrian masuk gudang</p>
       </div>
       <div class="flex items-center gap-2">
+        <Button size="sm" variant="outline" class="border-blue-200 bg-blue-600 text-white hover:bg-blue-700 hover:text-white" @click="openDisplayPage">Display Antrian</Button>
         <Button size="sm" variant="outline" @click="exportOpen = true">Export Excel</Button>
         <Button v-if="canCreateTransaction" size="sm" @click="createOpen = true">Tambah Transaksi</Button>
         <Button size="sm" variant="outline" @click="fetchList">
