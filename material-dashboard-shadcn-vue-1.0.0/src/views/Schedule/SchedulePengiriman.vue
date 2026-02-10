@@ -742,7 +742,7 @@ watch(
                   <div class="flex items-center gap-2">
                     <Button size="sm" variant="outline" @click="openDetail(row)">Detail</Button>
                     <Button v-if="canManageSchedule" size="sm" variant="outline" @click="openEdit(row)">Edit</Button>
-                    <Button v-if="canManageSchedule" size="sm" variant="outline" @click="openConfirmDelete(row)">Hapus</Button>
+                    <Button v-if="canManageSchedule" size="sm" variant="outline" class="border-red-200 bg-red-600 text-white hover:bg-red-700 hover:text-white" @click="openConfirmDelete(row)">Hapus</Button>
                   </div>
                 </td>
               </tr>
@@ -907,6 +907,7 @@ watch(
                   <Button
                     size="sm"
                     variant="outline"
+                    class="border-red-200 bg-red-600 text-white hover:bg-red-700 hover:text-white"
                     :disabled="form.items.length === 1"
                     @click="removeItem(idx)"
                   >
