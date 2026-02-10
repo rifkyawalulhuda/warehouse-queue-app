@@ -163,6 +163,7 @@ const handleAnnounce = () => {
             v-if="isAdmin"
             variant="outline"
             size="sm"
+            class="border-emerald-200 bg-emerald-600 text-white hover:bg-emerald-700 hover:text-white"
             :disabled="!entry?.gate?.gateNo || !ttsSupported || entry?.status !== 'IN_WH'"
             @click="handleAnnounce"
           >
