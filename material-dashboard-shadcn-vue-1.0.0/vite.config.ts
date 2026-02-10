@@ -8,10 +8,7 @@ export default defineConfig(({ mode }) => ({
   base: "/material-dashboard-shadcn-vue/",
   plugins: [
     vue(),
-    mode === "development" &&
-      VueDevTools({
-        appendTo: "manually",
-      }),
+    mode === "development" && VueDevTools(),
     mode === "development" &&
       VueInspector({
         toggleButtonVisibility: "always",

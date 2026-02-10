@@ -631,8 +631,8 @@ watch(
   <div class="space-y-6">
     <div class="flex items-center justify-between">
       <div>
-        <h1 class="text-xl font-bold tracking-tight">Schedule Pengiriman</h1>
-        <p class="text-muted-foreground">Monitoring & input jadwal pengiriman</p>
+        <h1 class="text-xl font-bold tracking-tight">Schedule Delivery & Receiving</h1>
+        <p class="text-muted-foreground">Monitoring Jadwal Delivery & Receiving</p>
       </div>
       <div class="flex items-center gap-2">
         <Button size="sm" variant="outline" @click="exportOpen = true">Export Excel</Button>
