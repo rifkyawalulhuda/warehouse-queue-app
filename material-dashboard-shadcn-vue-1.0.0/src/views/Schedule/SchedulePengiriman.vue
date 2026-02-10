@@ -6,7 +6,7 @@ import Card from '@/components/ui/Card.vue'
 import CardHeader from '@/components/ui/CardHeader.vue'
 import CardContent from '@/components/ui/CardContent.vue'
 import Button from '@/components/ui/Button.vue'
-import { RefreshCw, Search } from 'lucide-vue-next'
+import { CalendarDays, RefreshCw, Search } from 'lucide-vue-next'
 import api from '@/services/api'
 
 type StoreType = 'STORE_IN' | 'STORE_OUT'
@@ -96,6 +96,7 @@ const confirmData = ref<ScheduleListItem | null>(null)
 const exportOpen = ref(false)
 const exporting = ref(false)
 const exportError = ref<string | null>(null)
+const filterDateInputRef = ref<HTMLInputElement | null>(null)
 const customerDropdownOpen = ref(false)
 const customerSearch = ref('')
 const route = useRoute()
@@ -556,6 +557,17 @@ const handleExportDownload = async () => {
   }
 }
 
+const openFilterDatePicker = () => {
+  const input = filterDateInputRef.value
+  if (!input) return
+  const pickerInput = input as HTMLInputElement & { showPicker?: () => void }
+  if (typeof pickerInput.showPicker === 'function') {
+    pickerInput.showPicker()
+  } else {
+    input.focus()
+  }
+}
+
 const closeExport = () => {
   exportOpen.value = false
   exportError.value = null
@@ -652,7 +664,22 @@ watch(
             </select>
           </div>
           <div>
-            <input v-model="filters.date" type="date" class="w-full bg-transparent border rounded-md px-2 py-2 text-sm" />
+            <div class="relative">
+              <input
+                ref="filterDateInputRef"
+                v-model="filters.date"
+                type="date"
+                class="w-full appearance-none bg-transparent border rounded-md px-2 py-2 pr-10 text-sm"
+              />
+              <button
+                type="button"
+                class="absolute inset-y-0 right-0 inline-flex items-center px-3 text-muted-foreground hover:text-foreground"
+                @click="openFilterDatePicker"
+                aria-label="Pilih tanggal"
+              >
+                <CalendarDays class="h-4 w-4" />
+              </button>
+            </div>
           </div>
         </div>
       </CardHeader>
