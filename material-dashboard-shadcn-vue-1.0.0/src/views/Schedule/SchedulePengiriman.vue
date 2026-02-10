@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
+import { useAuth } from '@/composables/useAuth'
 import Card from '@/components/ui/Card.vue'
 import CardHeader from '@/components/ui/CardHeader.vue'
 import CardContent from '@/components/ui/CardContent.vue'
@@ -96,6 +97,8 @@ const exportOpen = ref(false)
 const exporting = ref(false)
 const exportError = ref<string | null>(null)
 const route = useRoute()
+const { user } = useAuth()
+const canManageSchedule = computed(() => user.value?.role === 'ADMIN' || user.value?.role === 'CS')
 
 const filters = reactive({
   date: '',
@@ -290,6 +293,7 @@ const resetForm = () => {
 }
 
 const openCreate = () => {
+  if (!canManageSchedule.value) return
   formMode.value = 'create'
   editingId.value = null
   resetForm()
@@ -300,6 +304,7 @@ const openCreate = () => {
 }
 
 const openEdit = async (row: ScheduleListItem) => {
+  if (!canManageSchedule.value) return
   formMode.value = 'edit'
   editingId.value = row.id
   formError.value = null
@@ -385,6 +390,7 @@ const buildPayload = () => {
 }
 
 const submitForm = async () => {
+  if (!canManageSchedule.value) return
   const validationError = validateForm()
   if (validationError) {
     formError.value = validationError
@@ -418,6 +424,7 @@ const submitForm = async () => {
 }
 
 const openConfirmDelete = (row: ScheduleListItem) => {
+  if (!canManageSchedule.value) return
   confirmData.value = row
   confirmOpen.value = true
 }
@@ -428,7 +435,7 @@ const closeConfirmDelete = () => {
 }
 
 const confirmDelete = async () => {
-  if (!confirmData.value) return
+  if (!canManageSchedule.value || !confirmData.value) return
   deleting.value = true
   try {
     await api.delete(`/schedules/${confirmData.value.id}`)
@@ -540,7 +547,9 @@ watch(
 
 onMounted(() => {
   applyFiltersFromRoute()
-  fetchCustomers()
+  if (canManageSchedule.value) {
+    fetchCustomers()
+  }
   fetchList()
 })
 
@@ -548,6 +557,15 @@ watch(
   () => [route.query.date, route.query.type],
   () => {
     applyFiltersFromRoute()
+  }
+)
+
+watch(
+  () => canManageSchedule.value,
+  (allowed) => {
+    if (allowed && customers.value.length === 0) {
+      fetchCustomers()
+    }
   }
 )
 </script>
@@ -561,7 +579,7 @@ watch(
       </div>
       <div class="flex items-center gap-2">
         <Button size="sm" variant="outline" @click="exportOpen = true">Export Excel</Button>
-        <Button size="sm" @click="openCreate">Tambah Jadwal</Button>
+        <Button v-if="canManageSchedule" size="sm" @click="openCreate">Tambah Jadwal</Button>
         <Button size="sm" variant="outline" @click="fetchList">
           <RefreshCw class="mr-2 h-4 w-4" />
           Refresh
@@ -651,8 +669,8 @@ watch(
                 <td class="px-3 py-2">
                   <div class="flex items-center gap-2">
                     <Button size="sm" variant="outline" @click="openDetail(row)">Detail</Button>
-                    <Button size="sm" variant="outline" @click="openEdit(row)">Edit</Button>
-                    <Button size="sm" variant="outline" @click="openConfirmDelete(row)">Hapus</Button>
+                    <Button v-if="canManageSchedule" size="sm" variant="outline" @click="openEdit(row)">Edit</Button>
+                    <Button v-if="canManageSchedule" size="sm" variant="outline" @click="openConfirmDelete(row)">Hapus</Button>
                   </div>
                 </td>
               </tr>

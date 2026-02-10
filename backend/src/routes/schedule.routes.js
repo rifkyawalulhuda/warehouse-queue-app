@@ -10,11 +10,21 @@ const {
 const router = express.Router();
 
 router.use("/schedules", authMiddleware, requireRole("ADMIN", "WAREHOUSE", "CS"));
-router.post("/schedules", validateScheduleCreate, scheduleController.createSchedule);
+router.post(
+  "/schedules",
+  requireRole("ADMIN", "CS"),
+  validateScheduleCreate,
+  scheduleController.createSchedule
+);
 router.get("/schedules", scheduleController.listSchedules);
 router.get("/schedules/export", scheduleController.exportSchedules);
 router.get("/schedules/:id", scheduleController.getScheduleById);
-router.put("/schedules/:id", validateScheduleUpdate, scheduleController.updateSchedule);
-router.delete("/schedules/:id", scheduleController.deleteSchedule);
+router.put(
+  "/schedules/:id",
+  requireRole("ADMIN", "CS"),
+  validateScheduleUpdate,
+  scheduleController.updateSchedule
+);
+router.delete("/schedules/:id", requireRole("ADMIN", "CS"), scheduleController.deleteSchedule);
 
 module.exports = router;
