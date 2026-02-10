@@ -96,6 +96,8 @@ const confirmData = ref<ScheduleListItem | null>(null)
 const exportOpen = ref(false)
 const exporting = ref(false)
 const exportError = ref<string | null>(null)
+const customerDropdownOpen = ref(false)
+const customerSearch = ref('')
 const route = useRoute()
 const { user } = useAuth()
 const canManageSchedule = computed(() => user.value?.role === 'ADMIN' || user.value?.role === 'CS')
@@ -195,6 +197,45 @@ const getErrorMessage = (err: any, fallback: string) => {
   return err?.response?.data?.message || err?.message || fallback
 }
 
+const selectedCustomerLabel = computed(() => {
+  if (!form.customerId) return ''
+  return customers.value.find((item) => item.id === form.customerId)?.name || ''
+})
+
+const filteredCustomers = computed(() => {
+  const keyword = customerSearch.value.trim().toLowerCase()
+  if (!keyword) return customers.value
+  return customers.value.filter((item) => item.name.toLowerCase().includes(keyword))
+})
+
+const handleCustomerSearchInput = () => {
+  form.customerId = ''
+  customerDropdownOpen.value = true
+}
+
+const handleCustomerInputFocus = () => {
+  customerDropdownOpen.value = true
+}
+
+const handleCustomerInputBlur = () => {
+  window.setTimeout(() => {
+    customerDropdownOpen.value = false
+    if (!form.customerId) {
+      customerSearch.value = ''
+      return
+    }
+    if (selectedCustomerLabel.value) {
+      customerSearch.value = selectedCustomerLabel.value
+    }
+  }, 120)
+}
+
+const selectCustomer = (customer: Customer) => {
+  form.customerId = customer.id
+  customerSearch.value = customer.name
+  customerDropdownOpen.value = false
+}
+
 const parseStoreTypeQuery = (value: unknown): '' | StoreType => {
   if (value === 'STORE_IN' || value === 'STORE_OUT') return value
   return ''
@@ -289,6 +330,8 @@ const resetForm = () => {
   form.storeType = 'STORE_IN'
   form.customerId = ''
   form.items = [createEmptyItem()]
+  customerSearch.value = ''
+  customerDropdownOpen.value = false
   formError.value = null
 }
 
@@ -320,6 +363,7 @@ const openEdit = async (row: ScheduleListItem) => {
     form.scheduleDate = toDateInput(data.scheduleDate)
     form.storeType = data.storeType
     form.customerId = data.customerId
+    customerSearch.value = data.customer?.name || ''
     form.items = (data.items || []).map((item) => ({
       key: itemKey++,
       truckType: item.truckType,
@@ -338,6 +382,7 @@ const openEdit = async (row: ScheduleListItem) => {
 const closeForm = () => {
   formOpen.value = false
   editingId.value = null
+  customerDropdownOpen.value = false
   formError.value = null
 }
 
@@ -752,12 +797,37 @@ watch(
 
           <div>
             <label class="text-muted-foreground">Customer</label>
-            <select v-model="form.customerId" class="mt-1 w-full bg-transparent border rounded-md px-2 py-2 text-sm">
-              <option value="" disabled>Pilih customer</option>
-              <option v-for="customer in customers" :key="customer.id" :value="customer.id">
-                {{ customer.name }}
-              </option>
-            </select>
+            <div class="relative mt-1">
+              <input
+                v-model="customerSearch"
+                type="text"
+                placeholder="Cari customer..."
+                class="w-full bg-transparent border rounded-md px-2 py-2 text-sm"
+                @focus="handleCustomerInputFocus"
+                @input="handleCustomerSearchInput"
+                @blur="handleCustomerInputBlur"
+              />
+              <div
+                v-if="customerDropdownOpen"
+                class="absolute z-20 mt-1 max-h-56 w-full overflow-y-auto rounded-md border bg-background shadow-sm"
+              >
+                <button
+                  v-for="customer in filteredCustomers"
+                  :key="customer.id"
+                  type="button"
+                  class="w-full px-3 py-2 text-left text-sm hover:bg-muted"
+                  @click="selectCustomer(customer)"
+                >
+                  {{ customer.name }}
+                </button>
+                <div v-if="filteredCustomers.length === 0" class="px-3 py-2 text-sm text-muted-foreground">
+                  Customer tidak ditemukan.
+                </div>
+              </div>
+            </div>
+            <p v-if="form.customerId" class="mt-1 text-xs text-muted-foreground">
+              Terpilih: {{ selectedCustomerLabel || '-' }}
+            </p>
           </div>
 
           <div class="space-y-3">
