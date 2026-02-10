@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import Card from '@/components/ui/Card.vue'
 import CardHeader from '@/components/ui/CardHeader.vue'
 import CardContent from '@/components/ui/CardContent.vue'
@@ -94,6 +95,7 @@ const confirmData = ref<ScheduleListItem | null>(null)
 const exportOpen = ref(false)
 const exporting = ref(false)
 const exportError = ref<string | null>(null)
+const route = useRoute()
 
 const filters = reactive({
   date: '',
@@ -188,6 +190,19 @@ const buildExportFileName = () => {
 
 const getErrorMessage = (err: any, fallback: string) => {
   return err?.response?.data?.message || err?.message || fallback
+}
+
+const parseStoreTypeQuery = (value: unknown): '' | StoreType => {
+  if (value === 'STORE_IN' || value === 'STORE_OUT') return value
+  return ''
+}
+
+const applyFiltersFromRoute = () => {
+  const queryDate = typeof route.query.date === 'string' ? toDateInput(route.query.date) : ''
+  const queryType = parseStoreTypeQuery(route.query.type)
+
+  filters.date = queryDate || todayString()
+  filters.storeType = queryType
 }
 
 const queryString = computed(() => {
@@ -524,10 +539,17 @@ watch(
 )
 
 onMounted(() => {
-  filters.date = todayString()
+  applyFiltersFromRoute()
   fetchCustomers()
   fetchList()
 })
+
+watch(
+  () => [route.query.date, route.query.type],
+  () => {
+    applyFiltersFromRoute()
+  }
+)
 </script>
 
 <template>

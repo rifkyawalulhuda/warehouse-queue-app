@@ -18,6 +18,15 @@ async function hourly(req, res, next) {
   }
 }
 
+async function scheduleSummary(req, res, next) {
+  try {
+    const result = await dashboardService.getScheduleSummary(req.query.date);
+    return res.json(result);
+  } catch (err) {
+    return next(err);
+  }
+}
+
 async function status(req, res, next) {
   try {
     const result = await dashboardService.getStatus(req.query.date);
@@ -47,6 +56,7 @@ async function overSla(req, res, next) {
 
 module.exports = {
   summary,
+  scheduleSummary,
   hourly,
   status,
   topCustomers,

@@ -38,6 +38,26 @@ function parseDateOnly(dateStr) {
   return date;
 }
 
+function parseDateOnlyUtc(dateStr) {
+  if (!dateStr || typeof dateStr !== "string") return null;
+  const match = /^\d{4}-\d{2}-\d{2}$/.exec(dateStr);
+  if (!match) return null;
+  const [yearStr, monthStr, dayStr] = dateStr.split("-");
+  const year = Number(yearStr);
+  const month = Number(monthStr);
+  const day = Number(dayStr);
+  if (!year || !month || !day) return null;
+  const date = new Date(Date.UTC(year, month - 1, day));
+  if (
+    date.getUTCFullYear() !== year ||
+    date.getUTCMonth() !== month - 1 ||
+    date.getUTCDate() !== day
+  ) {
+    return null;
+  }
+  return date;
+}
+
 function resolveDateRange(dateQuery) {
   if (!dateQuery) {
     const today = new Date();
@@ -145,6 +165,36 @@ async function getSummary(dateQuery) {
     cancelled,
     avgProcessMinutes,
     overSlaPercent,
+  };
+}
+
+async function getScheduleSummary(dateQuery) {
+  const range = resolveDateRange(dateQuery);
+  const scheduleDate = parseDateOnlyUtc(range.date);
+  if (!scheduleDate) {
+    throw createHttpError(400, "Format date tidak valid. Gunakan YYYY-MM-DD");
+  }
+
+  const [storeIn, storeOut] = await Promise.all([
+    prisma.shipmentSchedule.count({
+      where: {
+        scheduleDate,
+        storeType: "STORE_IN",
+      },
+    }),
+    prisma.shipmentSchedule.count({
+      where: {
+        scheduleDate,
+        storeType: "STORE_OUT",
+      },
+    }),
+  ]);
+
+  return {
+    date: range.date,
+    storeIn,
+    storeOut,
+    total: storeIn + storeOut,
   };
 }
 
@@ -302,6 +352,7 @@ async function getOverSla(dateQuery) {
 
 module.exports = {
   getSummary,
+  getScheduleSummary,
   getHourly,
   getStatus,
   getTopCustomers,

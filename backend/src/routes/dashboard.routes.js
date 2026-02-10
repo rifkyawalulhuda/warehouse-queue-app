@@ -8,6 +8,7 @@ const router = express.Router();
 router.use(authMiddleware, requireRole("ADMIN", "WAREHOUSE", "CS"));
 
 router.get("/dashboard/summary", dashboardController.summary);
+router.get("/dashboard/schedule-summary", dashboardController.scheduleSummary);
 router.get("/dashboard/hourly", dashboardController.hourly);
 router.get("/dashboard/status", dashboardController.status);
 router.get("/dashboard/top-customers", dashboardController.topCustomers);

@@ -11,7 +11,14 @@ import HourlyCategoryStackedBar from '@/components/dashboard/HourlyCategoryStack
 import StatusPieChart from '@/components/dashboard/StatusPieChart.vue'
 import TopCustomerDurationTable from '@/components/dashboard/TopCustomerDurationTable.vue'
 import OverSlaTable from '@/components/dashboard/OverSlaTable.vue'
-import { getDashboardHourly, getDashboardStatus, getDashboardSummary, getOverSla, getTopCustomers } from '@/services/dashboardApi'
+import {
+  getDashboardHourly,
+  getDashboardScheduleSummary,
+  getDashboardStatus,
+  getDashboardSummary,
+  getOverSla,
+  getTopCustomers
+} from '@/services/dashboardApi'
 
 type Summary = {
   date: string
@@ -30,6 +37,7 @@ type HourlyItem = { hour: string; total: number; receiving: number; delivery: nu
 type StatusItem = { name: string; value: number }
 type TopCustomerItem = { customerName: string; avgDurationMinutes: number; totalTransactions: number }
 type OverSlaItem = { id: string; customerName: string; truckNumber: string; status: string; overMinutes: number }
+type ScheduleSummary = { date: string; storeIn: number; storeOut: number; total: number }
 
 const getToday = () => {
   const now = new Date()
@@ -59,6 +67,13 @@ const hourlyItems = ref<HourlyItem[]>([])
 const statusItems = ref<StatusItem[]>([])
 const topCustomers = ref<TopCustomerItem[]>([])
 const overSlaItems = ref<OverSlaItem[]>([])
+const scheduleSummary = reactive<ScheduleSummary>({
+  date: selectedDate.value,
+  storeIn: 0,
+  storeOut: 0,
+  total: 0
+})
+const isLoadingScheduleSummary = ref(false)
 const loading = ref(false)
 const error = ref<string | null>(null)
 
@@ -103,6 +118,26 @@ const fetchDashboard = async () => {
   }
 }
 
+const fetchScheduleSummary = async () => {
+  isLoadingScheduleSummary.value = true
+  try {
+    const response = await getDashboardScheduleSummary(selectedDate.value)
+    const data = response.data?.data || response.data || {}
+    scheduleSummary.date = data.date || selectedDate.value
+    scheduleSummary.storeIn = data.storeIn || 0
+    scheduleSummary.storeOut = data.storeOut || 0
+    scheduleSummary.total = data.total || 0
+  } catch (err: any) {
+    scheduleSummary.date = selectedDate.value
+    scheduleSummary.storeIn = 0
+    scheduleSummary.storeOut = 0
+    scheduleSummary.total = 0
+    error.value = getErrorMessage(err, 'Gagal memuat dashboard')
+  } finally {
+    isLoadingScheduleSummary.value = false
+  }
+}
+
 let refreshTimer: number | undefined
 let todayTimer: number | undefined
 
@@ -110,11 +145,25 @@ const openQueueDetail = (id: string) => {
   router.push({ path: '/antrian-truk', query: { detailId: id } })
 }
 
+const openSchedulePage = (type: 'STORE_IN' | 'STORE_OUT' | null) => {
+  const query: Record<string, string> = {
+    date: selectedDate.value
+  }
+  if (type) {
+    query.type = type
+  }
+  router.push({ path: '/schedule-pengiriman', query })
+}
+
+const handleRefresh = async () => {
+  await Promise.all([fetchDashboard(), fetchScheduleSummary()])
+}
+
 const setupAutoRefresh = () => {
   if (refreshTimer) window.clearInterval(refreshTimer)
   if (!isToday.value) return
   refreshTimer = window.setInterval(() => {
-    fetchDashboard()
+    handleRefresh()
   }, 30000)
 }
 
@@ -122,7 +171,7 @@ watch(
   () => selectedDate.value,
   (value) => {
     autoFollowToday.value = value === today.value
-    fetchDashboard()
+    handleRefresh()
     setupAutoRefresh()
   }
 )
@@ -134,7 +183,7 @@ onMounted(() => {
       selectedDate.value = today.value
     }
   }, 10000)
-  fetchDashboard()
+  handleRefresh()
   setupAutoRefresh()
 })
 
@@ -157,13 +206,54 @@ onUnmounted(() => {
           type="date"
           class="bg-transparent border rounded-md px-2 py-2 text-sm"
         />
-        <Button size="sm" variant="outline" @click="fetchDashboard">Refresh</Button>
+        <Button size="sm" variant="outline" @click="handleRefresh">Refresh</Button>
       </div>
     </div>
 
     <div v-if="error" class="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
       {{ error }}
-      <Button size="sm" variant="ghost" class="ml-2" @click="fetchDashboard">Retry</Button>
+      <Button size="sm" variant="ghost" class="ml-2" @click="handleRefresh">Retry</Button>
+    </div>
+
+    <div class="grid gap-4 md:grid-cols-3">
+      <Card
+        class="cursor-pointer transition-all hover:border-primary/40 hover:shadow-md"
+        @click="openSchedulePage('STORE_IN')"
+      >
+        <CardHeader class="flex flex-row items-center justify-between pb-2">
+          <CardTitle class="text-sm font-medium">Jumlah Store In</CardTitle>
+          <span class="text-xs text-muted-foreground">View</span>
+        </CardHeader>
+        <CardContent>
+          <div class="text-2xl font-bold">{{ isLoadingScheduleSummary ? '...' : scheduleSummary.storeIn }}</div>
+        </CardContent>
+      </Card>
+
+      <Card
+        class="cursor-pointer transition-all hover:border-primary/40 hover:shadow-md"
+        @click="openSchedulePage('STORE_OUT')"
+      >
+        <CardHeader class="flex flex-row items-center justify-between pb-2">
+          <CardTitle class="text-sm font-medium">Jumlah Store Out</CardTitle>
+          <span class="text-xs text-muted-foreground">View</span>
+        </CardHeader>
+        <CardContent>
+          <div class="text-2xl font-bold">{{ isLoadingScheduleSummary ? '...' : scheduleSummary.storeOut }}</div>
+        </CardContent>
+      </Card>
+
+      <Card
+        class="cursor-pointer transition-all hover:border-primary/40 hover:shadow-md"
+        @click="openSchedulePage(null)"
+      >
+        <CardHeader class="flex flex-row items-center justify-between pb-2">
+          <CardTitle class="text-sm font-medium">Total Pengiriman</CardTitle>
+          <span class="text-xs text-muted-foreground">View</span>
+        </CardHeader>
+        <CardContent>
+          <div class="text-2xl font-bold">{{ isLoadingScheduleSummary ? '...' : scheduleSummary.total }}</div>
+        </CardContent>
+      </Card>
     </div>
 
     <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
