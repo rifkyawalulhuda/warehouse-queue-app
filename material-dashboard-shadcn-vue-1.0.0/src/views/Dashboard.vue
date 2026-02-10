@@ -107,6 +107,14 @@ const prosesWidth = computed(() => clamp(progressSummary.prosesPct, 0, 100 - sel
 const rawSelesaiPctText = computed(() => progressSummary.selesaiPct.toFixed(0))
 const rawProsesPctText = computed(() => progressSummary.prosesPct.toFixed(0))
 const rawTotalPctText = computed(() => progressSummary.totalPct.toFixed(0))
+const selesaiBarLabel = computed(
+  () => `Selesai: ${progressSummary.selesaiCount} (${rawSelesaiPctText.value}%)`
+)
+const prosesBarLabel = computed(
+  () => `Proses: ${progressSummary.prosesCount} (${rawProsesPctText.value}%)`
+)
+const showSelesaiLabelInBar = computed(() => selesaiWidth.value >= 18)
+const showProsesLabelInBar = computed(() => prosesWidth.value >= 18)
 
 const getErrorMessage = (err: any, fallback: string) => {
   return err?.response?.data?.message || err?.message || fallback
@@ -326,15 +334,29 @@ onUnmounted(() => {
           <p v-if="!hasProgressTarget" class="text-sm text-muted-foreground">Belum ada target pengiriman</p>
           <div class="h-5 w-full overflow-hidden rounded-full bg-muted">
             <div class="flex h-full">
-              <div class="h-full bg-[#28a745] transition-all duration-300" :style="{ width: `${selesaiWidth}%` }"></div>
-              <div class="h-full bg-[#0d6efd] transition-all duration-300" :style="{ width: `${prosesWidth}%` }"></div>
+              <div
+                class="flex h-full items-center justify-center overflow-hidden bg-[#28a745] transition-all duration-300"
+                :style="{ width: `${selesaiWidth}%` }"
+              >
+                <span v-if="showSelesaiLabelInBar" class="truncate px-2 text-[11px] font-semibold text-white">
+                  {{ selesaiBarLabel }}
+                </span>
+              </div>
+              <div
+                class="flex h-full items-center justify-center overflow-hidden bg-[#0d6efd] transition-all duration-300"
+                :style="{ width: `${prosesWidth}%` }"
+              >
+                <span v-if="showProsesLabelInBar" class="truncate px-2 text-[11px] font-semibold text-white">
+                  {{ prosesBarLabel }}
+                </span>
+              </div>
             </div>
           </div>
           <div class="grid gap-1 text-xs text-muted-foreground md:grid-cols-2">
             <p>Target Pengiriman: {{ progressSummary.targetPengiriman }}</p>
             <p>Total Progress: {{ rawTotalPctText }}%</p>
-            <p>Selesai: {{ progressSummary.selesaiCount }} ({{ rawSelesaiPctText }}%)</p>
-            <p>Proses: {{ progressSummary.prosesCount }} ({{ rawProsesPctText }}%)</p>
+            <p v-if="!showSelesaiLabelInBar">Selesai: {{ progressSummary.selesaiCount }} ({{ rawSelesaiPctText }}%)</p>
+            <p v-if="!showProsesLabelInBar">Proses: {{ progressSummary.prosesCount }} ({{ rawProsesPctText }}%)</p>
           </div>
         </template>
       </CardContent>
