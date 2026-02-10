@@ -23,6 +23,7 @@ enum QueueCategory {
 enum AdminRole {
   ADMIN
   WAREHOUSE
+  CS
 }
 
 enum WarehouseGate {

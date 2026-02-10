@@ -11,7 +11,7 @@ type AdminUser = {
   name: string
   position: string
   phone: string
-  role: 'ADMIN' | 'WAREHOUSE'
+  role: 'ADMIN' | 'WAREHOUSE' | 'CS'
   username: string
   createdAt: string
 }
@@ -49,6 +49,7 @@ const editForm = reactive({
 const formatRole = (role?: string | null) => {
   if (role === 'ADMIN') return 'admin'
   if (role === 'WAREHOUSE') return 'warehouse'
+  if (role === 'CS') return 'cs'
   return '-'
 }
 
@@ -249,6 +250,7 @@ onMounted(() => {
               <option value="" disabled>Pilih role</option>
               <option value="admin">admin</option>
               <option value="warehouse">warehouse</option>
+              <option value="cs">cs</option>
             </select>
           </div>
           <div>
@@ -348,6 +350,7 @@ onMounted(() => {
               <option value="" disabled>Pilih role</option>
               <option value="admin">admin</option>
               <option value="warehouse">warehouse</option>
+              <option value="cs">cs</option>
             </select>
           </div>
           <div>

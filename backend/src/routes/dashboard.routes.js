@@ -5,7 +5,7 @@ const { requireRole } = require("../middlewares/role.middleware");
 
 const router = express.Router();
 
-router.use(authMiddleware, requireRole("ADMIN", "WAREHOUSE"));
+router.use(authMiddleware, requireRole("ADMIN", "WAREHOUSE", "CS"));
 
 router.get("/dashboard/summary", dashboardController.summary);
 router.get("/dashboard/hourly", dashboardController.hourly);

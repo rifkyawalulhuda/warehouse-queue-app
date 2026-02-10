@@ -10,7 +10,7 @@ const upload = multer({ storage: multer.memoryStorage() });
 router.get(
   "/customers",
   authMiddleware,
-  requireRole("ADMIN", "WAREHOUSE"),
+  requireRole("ADMIN", "WAREHOUSE", "CS"),
   customerController.listCustomers
 );
 router.post("/customers", authMiddleware, requireRole("ADMIN"), customerController.createCustomer);

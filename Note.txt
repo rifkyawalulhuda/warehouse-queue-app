@@ -13,6 +13,7 @@ SETIAP KALI PINDAH LAPTOP (RITUAL WAJIB
 git pull
 docker compose up -d (docker)
 npx prisma migrate dev (backend)
+npm run migrate:deploy (backend)
 npm install (jika ada perubahan dependency) (Backend)
 npm run dev (front end)
 

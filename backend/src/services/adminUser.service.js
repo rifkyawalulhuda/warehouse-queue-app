@@ -6,6 +6,7 @@ const prisma = new PrismaClient();
 const ADMIN_ROLES = {
   admin: "ADMIN",
   warehouse: "WAREHOUSE",
+  cs: "CS",
 };
 
 const adminSelect = {
@@ -86,7 +87,7 @@ async function createAdminUser(data) {
   if (!isNonEmptyString(data.password)) errors.push("Password wajib diisi");
 
   const role = normalizeRole(data.role);
-  if (!role) errors.push("Role harus admin atau warehouse");
+  if (!role) errors.push("Role harus admin, warehouse, atau cs");
 
   if (errors.length) {
     throw createHttpError(400, "Validasi gagal", errors);
@@ -121,7 +122,7 @@ async function updateAdminUser(id, data) {
   if (!isNonEmptyString(data.username)) errors.push("Username wajib diisi");
 
   const role = normalizeRole(data.role);
-  if (!role) errors.push("Role harus admin atau warehouse");
+  if (!role) errors.push("Role harus admin, warehouse, atau cs");
 
   if (errors.length) {
     throw createHttpError(400, "Validasi gagal", errors);

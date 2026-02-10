@@ -41,7 +41,7 @@ const router = createRouter({
           path: 'master-gate',
           name: 'Master Gate',
           component: () => import('@/views/MasterGate/GateList.vue'),
-          meta: { roles: ['ADMIN', 'WAREHOUSE'] }
+          meta: { roles: ['ADMIN', 'WAREHOUSE', 'CS'] }
         },
         {
           path: 'master-admin',
@@ -53,7 +53,7 @@ const router = createRouter({
           path: 'antrian-truk',
           name: 'Antrian Truk',
           component: () => import('@/views/Queue/QueueList.vue'),
-          meta: { roles: ['ADMIN', 'WAREHOUSE'] }
+          meta: { roles: ['ADMIN', 'WAREHOUSE', 'CS'] }
         }
       ]
     }
@@ -66,7 +66,7 @@ router.beforeEach((to) => {
 
   if (to.meta.public) {
     if (to.name === 'Login' && isAuthenticated.value) {
-      return user.value?.role === 'WAREHOUSE' ? '/antrian-truk' : '/dashboard'
+      return user.value?.role === 'WAREHOUSE' || user.value?.role === 'CS' ? '/antrian-truk' : '/dashboard'
     }
     return true
   }
@@ -80,7 +80,7 @@ router.beforeEach((to) => {
 
   const roles = to.meta.roles as string[] | undefined
   if (roles && !roles.includes(user.value.role)) {
-    return user.value.role === 'WAREHOUSE' ? '/antrian-truk' : '/dashboard'
+    return user.value.role === 'WAREHOUSE' || user.value.role === 'CS' ? '/antrian-truk' : '/dashboard'
   }
 
   return true

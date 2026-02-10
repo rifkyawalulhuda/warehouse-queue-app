@@ -31,7 +31,7 @@ const handleSubmit = async () => {
     const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : ''
     if (redirect) {
       router.replace(redirect)
-    } else if (user.role === 'WAREHOUSE') {
+    } else if (user.role === 'WAREHOUSE' || user.role === 'CS') {
       router.replace('/antrian-truk')
     } else {
       router.replace('/dashboard')

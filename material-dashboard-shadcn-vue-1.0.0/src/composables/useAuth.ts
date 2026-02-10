@@ -6,7 +6,7 @@ type AuthUser = {
   id: string
   name: string
   username: string
-  role: 'ADMIN' | 'WAREHOUSE'
+  role: 'ADMIN' | 'WAREHOUSE' | 'CS'
 }
 
 const token = ref<string | null>(null)

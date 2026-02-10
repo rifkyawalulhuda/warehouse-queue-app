@@ -30,18 +30,18 @@ type NavItem = {
 }
 
 const navigation: NavItem[] = [
-  { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard, roles: ['ADMIN', 'WAREHOUSE'] },
+  { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard, roles: ['ADMIN', 'WAREHOUSE', 'CS'] },
   {
     name: 'Master Data',
     icon: Database,
     roles: ['ADMIN'],
     children: [
       { name: 'Master Customer', path: '/master-customer', roles: ['ADMIN'] },
-      { name: 'Master Gate', path: '/master-gate', roles: ['ADMIN', 'WAREHOUSE'] },
+      { name: 'Master Gate', path: '/master-gate', roles: ['ADMIN', 'WAREHOUSE', 'CS'] },
       { name: 'Master Admin', path: '/master-admin', roles: ['ADMIN'] }
     ]
   },
-  { name: 'Antrian Truk', path: '/antrian-truk', icon: Truck, roles: ['ADMIN', 'WAREHOUSE'] }
+  { name: 'Antrian Truk', path: '/antrian-truk', icon: Truck, roles: ['ADMIN', 'WAREHOUSE', 'CS'] }
 ]
 
 const filteredNavigation = computed(() => {
