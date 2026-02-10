@@ -332,7 +332,7 @@ onUnmounted(() => {
         <div v-if="isLoadingProgress" class="text-sm text-muted-foreground">Loading progress...</div>
         <template v-else>
           <p v-if="!hasProgressTarget" class="text-sm text-muted-foreground">Belum ada target pengiriman</p>
-          <div class="h-5 w-full overflow-hidden rounded-full bg-muted">
+          <div class="h-8 w-full overflow-hidden rounded-full bg-muted">
             <div class="flex h-full">
               <div
                 class="flex h-full items-center justify-center overflow-hidden bg-[#28a745] transition-all duration-300"
