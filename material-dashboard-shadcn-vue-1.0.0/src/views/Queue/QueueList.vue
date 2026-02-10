@@ -143,6 +143,7 @@ const categoryOptions = [
 ]
 
 const canCreateTransaction = computed(() => user.value?.role === 'ADMIN' || user.value?.role === 'CS')
+const canOpenDisplay = computed(() => user.value?.role === 'ADMIN')
 
 const queryString = computed(() => {
   const params = new URLSearchParams()
@@ -432,6 +433,7 @@ const buildExportFileName = () => {
 }
 
 const openDisplayPage = () => {
+  if (!canOpenDisplay.value) return
   const target = router.resolve('/display/antrian-truk')
   window.open(target.href, '_blank', 'noopener,noreferrer')
 }
@@ -555,7 +557,15 @@ watch(
         <p class="text-muted-foreground">Monitoring antrian masuk gudang</p>
       </div>
       <div class="flex items-center gap-2">
-        <Button size="sm" variant="outline" class="border-blue-200 bg-blue-600 text-white hover:bg-blue-700 hover:text-white" @click="openDisplayPage">Display Antrian</Button>
+        <Button
+          v-if="canOpenDisplay"
+          size="sm"
+          variant="outline"
+          class="border-blue-200 bg-blue-600 text-white hover:bg-blue-700 hover:text-white"
+          @click="openDisplayPage"
+        >
+          Display Antrian
+        </Button>
         <Button size="sm" variant="outline" @click="exportOpen = true">Export Excel</Button>
         <Button v-if="canCreateTransaction" size="sm" @click="createOpen = true">Tambah Transaksi</Button>
         <Button size="sm" variant="outline" @click="fetchList">

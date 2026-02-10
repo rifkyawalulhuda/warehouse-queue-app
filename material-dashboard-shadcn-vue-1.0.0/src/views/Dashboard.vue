@@ -218,6 +218,18 @@ const openSchedulePage = (type: 'STORE_IN' | 'STORE_OUT' | null) => {
   router.push({ path: '/schedule-pengiriman', query })
 }
 
+const formatPrintDate = (value: string) => {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value)
+  if (!match) return value
+  return `${match[3]}/${match[2]}/${match[1]}`
+}
+
+const handlePrintDashboard = () => {
+  window.setTimeout(() => {
+    window.print()
+  }, 100)
+}
+
 const handleRefresh = async () => {
   await Promise.all([fetchDashboard(), fetchScheduleSummary(), fetchProgressSummary()])
 }
@@ -257,18 +269,20 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="space-y-6">
+  <div id="dashboard-print-root" class="space-y-6">
     <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-      <div>
-        <h1 class="text-xl font-bold tracking-tight">Dashboard Antrian Truk</h1>
-        <p class="text-muted-foreground">Ringkasan operasional</p>
+      <div class="dashboard-print-title">
+        <h1 class="text-xl font-bold tracking-tight">Dashboard Progress Delivery & Receiving</h1>
+        <p class="text-muted-foreground">Monitoring Ringkasan operasional</p>
+        <p class="dashboard-print-date">Tanggal: {{ formatPrintDate(selectedDate) }}</p>
       </div>
-      <div class="flex flex-wrap items-center gap-2">
+      <div class="dashboard-actions flex flex-wrap items-center gap-2">
         <input
           v-model="selectedDate"
           type="date"
           class="bg-transparent border rounded-md px-2 py-2 text-sm"
         />
+        <Button size="sm" variant="outline" class="border-emerald-200 bg-emerald-600 text-white hover:bg-emerald-700 hover:text-white" @click="handlePrintDashboard">Print</Button>
         <Button size="sm" variant="outline" @click="handleRefresh">Refresh</Button>
       </div>
     </div>
@@ -472,3 +486,52 @@ onUnmounted(() => {
     </div>
   </div>
 </template>
+
+<style>
+.dashboard-print-date {
+  display: none;
+}
+
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 10mm;
+  }
+
+  aside,
+  nav.bg-card.border-b,
+  footer,
+  .dashboard-actions {
+    display: none !important;
+  }
+
+  .flex.h-screen.bg-background {
+    display: block !important;
+    height: auto !important;
+  }
+
+  .flex-1.flex.flex-col.overflow-hidden,
+  main.flex-1.overflow-auto,
+  .p-4.md\:p-8 {
+    overflow: visible !important;
+    height: auto !important;
+  }
+
+  #dashboard-print-root {
+    margin: 0 !important;
+    padding: 0 !important;
+    font-size: 11px;
+  }
+
+  #dashboard-print-root canvas {
+    max-width: 100% !important;
+  }
+
+  .dashboard-print-date {
+    display: block !important;
+    font-size: 12px;
+    color: #555;
+    margin-top: 4px;
+  }
+}
+</style>
