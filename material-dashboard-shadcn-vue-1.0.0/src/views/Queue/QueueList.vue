@@ -11,6 +11,7 @@ import QueueCreateModal from '@/components/queue/QueueCreateModal.vue'
 import { RefreshCw, Search, ChevronDown } from 'lucide-vue-next'
 import api from '@/services/api'
 import { getMasterGates, setInWh, type MasterGate } from '@/services/queueApi'
+import { useAuth } from '@/composables/useAuth'
 
 type QueueLog = {
   id: string
@@ -50,6 +51,7 @@ const entries = ref<QueueEntry[]>([])
 const customers = ref<Customer[]>([])
 const loading = ref(false)
 const error = ref<string | null>(null)
+const { user } = useAuth()
 const route = useRoute()
 const router = useRouter()
 
@@ -131,6 +133,8 @@ const categoryOptions = [
   { label: 'Receiving', value: 'RECEIVING' },
   { label: 'Delivery', value: 'DELIVERY' }
 ]
+
+const canCreateTransaction = computed(() => user.value?.role === 'ADMIN' || user.value?.role === 'CS')
 
 const queryString = computed(() => {
   const params = new URLSearchParams()
@@ -525,7 +529,7 @@ watch(
       </div>
       <div class="flex items-center gap-2">
         <Button size="sm" variant="outline" @click="exportOpen = true">Export Excel</Button>
-        <Button size="sm" @click="createOpen = true">Tambah Transaksi</Button>
+        <Button v-if="canCreateTransaction" size="sm" @click="createOpen = true">Tambah Transaksi</Button>
         <Button size="sm" variant="outline" @click="fetchList">
           <RefreshCw class="mr-2 h-4 w-4" />
           Refresh
@@ -616,6 +620,7 @@ watch(
 
     <QueueDetailDrawer :open="drawerOpen" :entry="selectedEntry" @close="closeDrawer" />
     <QueueCreateModal
+      v-if="canCreateTransaction"
       :open="createOpen"
       :submitting="createSubmitting"
       :customers="customers"
