@@ -55,6 +55,17 @@ type FormItem = {
   qty: number | ''
 }
 
+type PrintColumn = {
+  key: TruckType
+  label: string
+}
+
+type PrintRow = {
+  customerName: string
+  storeIn: Record<string, number>
+  storeOut: Record<string, number>
+}
+
 const storeTypeOptions: Array<{ label: string; value: '' | StoreType }> = [
   { label: 'Semua', value: '' },
   { label: 'Store In', value: 'STORE_IN' },
@@ -98,6 +109,8 @@ const confirmRemoveItemIndex = ref<number | null>(null)
 const exportOpen = ref(false)
 const exporting = ref(false)
 const exportError = ref<string | null>(null)
+const printing = ref(false)
+const printError = ref<string | null>(null)
 const filterDateInputRef = ref<HTMLInputElement | null>(null)
 const customerDropdownOpen = ref(false)
 const customerSearch = ref('')
@@ -207,6 +220,103 @@ const buildExportFileName = () => {
 
 const getErrorMessage = (err: any, fallback: string) => {
   return err?.response?.data?.message || err?.message || fallback
+}
+
+const escapeHtml = (value: string) =>
+  value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;')
+
+const printDateLabel = (value?: string) => {
+  const normalized = toDateInput(value)
+  if (!normalized) return '-'
+  return formatDate(normalized)
+}
+
+const buildPrintHtml = (payload: { date?: string | null; columns: PrintColumn[]; rows: PrintRow[] }) => {
+  const columns = payload.columns || []
+  const rows = payload.rows || []
+  const columnHeaders = columns.map((col) => `<th>${escapeHtml(col.label)}</th>`).join('')
+  const bodyRows =
+    rows.length > 0
+      ? rows
+          .map((row) => {
+            const storeInCells = columns
+              .map((col) => `<td>${row.storeIn?.[col.key] > 0 ? row.storeIn[col.key] : ''}</td>`)
+              .join('')
+            const storeOutCells = columns
+              .map((col) => `<td>${row.storeOut?.[col.key] > 0 ? row.storeOut[col.key] : ''}</td>`)
+              .join('')
+            return `<tr><td class="left">${escapeHtml(row.customerName || '-')}</td>${storeInCells}${storeOutCells}</tr>`
+          })
+          .join('')
+      : `<tr><td colspan="${columns.length * 2 + 1}" class="empty">Tidak ada data schedule.</td></tr>`
+
+  const dateText = printDateLabel(payload.date || filters.date)
+  const filterStoreTypeText = filters.storeType ? storeTypeLabel(filters.storeType) : 'Semua'
+  return `<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>Print Schedule Delivery & Receiving</title>
+    <style>
+      @page { size: A4 landscape; margin: 8mm; }
+      * { box-sizing: border-box; }
+      body { margin: 0; font-family: Arial, Helvetica, sans-serif; color: #111; }
+      .sheet { width: 100%; }
+      .header { text-align: center; margin-bottom: 8px; }
+      .header h1 { margin: 0; font-size: 20px; letter-spacing: 0.4px; }
+      .header .subtitle { margin-top: 2px; font-size: 11px; }
+      .header .meta { margin-top: 4px; display: flex; justify-content: space-between; font-size: 11px; }
+      table { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: 11px; }
+      th, td { border: 1px solid #222; padding: 3px 4px; text-align: center; }
+      thead th { background: #f2f2f2; font-weight: 700; }
+      th.left, td.left { text-align: left; }
+      tbody tr:nth-child(even) { background: #fafafa; }
+      .customer-col { width: 240px; }
+      .empty { text-align: center; color: #666; padding: 10px; }
+      @media print {
+        .sheet { page-break-after: auto; }
+        thead { display: table-header-group; }
+        tr { page-break-inside: avoid; }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="sheet">
+      <div class="header">
+        <h1>PT. SANKYU INDONESIA INTERNATIONAL</h1>
+        <div class="subtitle">Schedule Delivery &amp; Receiving</div>
+        <div class="meta">
+          <span>Filter Store Type: ${escapeHtml(filterStoreTypeText)}</span>
+          <span>Date: ${escapeHtml(dateText)}</span>
+        </div>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th rowspan="3" class="left customer-col">CUSTOMER</th>
+            <th colspan="${columns.length}">STORE IN</th>
+            <th colspan="${columns.length}">STORE OUT</th>
+          </tr>
+          <tr>
+            <th colspan="${columns.length}">Type of Truck</th>
+            <th colspan="${columns.length}">Type of Truck</th>
+          </tr>
+          <tr>
+            ${columnHeaders}${columnHeaders}
+          </tr>
+        </thead>
+        <tbody>
+          ${bodyRows}
+        </tbody>
+      </table>
+    </div>
+  </body>
+</html>`
 }
 
 const selectedCustomerLabel = computed(() => {
@@ -599,6 +709,85 @@ const handleExportDownload = async () => {
   }
 }
 
+const handlePrintSchedule = async () => {
+  printError.value = null
+  printing.value = true
+  const printWindow = window.open('', '_blank')
+  if (!printWindow) {
+    printError.value = 'Popup print diblokir browser. Izinkan popup lalu coba lagi.'
+    printing.value = false
+    return
+  }
+
+  printWindow.document.open()
+  printWindow.document.write(`
+    <!doctype html>
+    <html>
+      <head>
+        <meta charset="UTF-8" />
+        <title>Menyiapkan Print...</title>
+        <style>
+          body { font-family: Arial, Helvetica, sans-serif; margin: 24px; color: #111; }
+          .muted { color: #666; }
+        </style>
+      </head>
+      <body>
+        <h3>Menyiapkan Print...</h3>
+        <p class="muted">Mohon tunggu, data schedule sedang diproses.</p>
+      </body>
+    </html>
+  `)
+  printWindow.document.close()
+
+  try {
+    const response = await api.get('/schedules/print-summary', {
+      params: {
+        date: filters.date || undefined,
+        storeType: filters.storeType || undefined,
+        search: filters.search.trim() || undefined
+      }
+    })
+    const payload = response.data?.data || {}
+
+    const html = buildPrintHtml({
+      date: payload.date || filters.date,
+      columns: (payload.columns || []) as PrintColumn[],
+      rows: (payload.rows || []) as PrintRow[]
+    })
+
+    printWindow.document.open()
+    printWindow.document.write(html)
+    printWindow.document.close()
+    printWindow.focus()
+    window.setTimeout(() => {
+      printWindow.print()
+    }, 300)
+  } catch (err: any) {
+    printError.value = getErrorMessage(err, 'Gagal menyiapkan print schedule')
+    printWindow.document.open()
+    printWindow.document.write(`
+      <!doctype html>
+      <html>
+        <head>
+          <meta charset="UTF-8" />
+          <title>Gagal Print</title>
+          <style>
+            body { font-family: Arial, Helvetica, sans-serif; margin: 24px; color: #111; }
+            .error { color: #b91c1c; }
+          </style>
+        </head>
+        <body>
+          <h3 class="error">Gagal menyiapkan print</h3>
+          <p>${escapeHtml(printError.value || 'Terjadi kesalahan')}</p>
+        </body>
+      </html>
+    `)
+    printWindow.document.close()
+  } finally {
+    printing.value = false
+  }
+}
+
 const openFilterDatePicker = () => {
   const input = filterDateInputRef.value
   if (!input) return
@@ -678,6 +867,9 @@ watch(
       </div>
       <div class="flex items-center gap-2">
         <Button size="sm" variant="outline" @click="exportOpen = true">Export Excel</Button>
+        <Button size="sm" variant="outline" :disabled="printing" @click="handlePrintSchedule">
+          {{ printing ? 'Menyiapkan...' : 'Print Out' }}
+        </Button>
         <Button v-if="canManageSchedule" size="sm" @click="openCreate">Tambah Jadwal</Button>
         <Button size="sm" variant="outline" @click="fetchList">
           <RefreshCw class="mr-2 h-4 w-4" />
@@ -728,6 +920,12 @@ watch(
       <CardContent>
         <div v-if="error" class="mb-3 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
           {{ error }}
+        </div>
+        <div
+          v-if="printError"
+          class="mb-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-700"
+        >
+          {{ printError }}
         </div>
         <div v-if="success" class="mb-3 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
           {{ success }}

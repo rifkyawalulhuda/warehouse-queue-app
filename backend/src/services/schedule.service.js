@@ -15,6 +15,7 @@ const TRUCK_TYPE_LABELS = {
   FT40: "40 ft",
   OTHER: "Other",
 };
+const PRINT_TRUCK_COLUMNS = ["CDD", "CDE", "FUSO", "WB", "FT20", "FT40", "OTHER"];
 
 function createHttpError(status, message, details) {
   const err = new Error(message);
@@ -272,6 +273,68 @@ async function listSchedulesForExport(query) {
   });
 }
 
+function createPrintTruckMap() {
+  return PRINT_TRUCK_COLUMNS.reduce((acc, key) => {
+    acc[key] = 0;
+    return acc;
+  }, {});
+}
+
+async function listSchedulesForPrint(query) {
+  const where = buildWhere(query);
+  const rows = await prisma.shipmentSchedule.findMany({
+    where,
+    orderBy: [{ customer: { name: "asc" } }, { createdAt: "desc" }],
+    include: {
+      customer: {
+        select: {
+          id: true,
+          name: true,
+        },
+      },
+      items: {
+        select: {
+          truckType: true,
+          qty: true,
+        },
+      },
+    },
+  });
+
+  const grouped = new Map();
+
+  rows.forEach((schedule) => {
+    const customerName = schedule.customer?.name?.trim() || "-";
+    const customerKey = customerName.toLowerCase();
+    if (!grouped.has(customerKey)) {
+      grouped.set(customerKey, {
+        customerName,
+        storeIn: createPrintTruckMap(),
+        storeOut: createPrintTruckMap(),
+      });
+    }
+    const target = grouped.get(customerKey);
+    const bucket = schedule.storeType === "STORE_OUT" ? target.storeOut : target.storeIn;
+
+    schedule.items.forEach((item) => {
+      const key = PRINT_TRUCK_COLUMNS.includes(item.truckType) ? item.truckType : "OTHER";
+      bucket[key] += item.qty || 0;
+    });
+  });
+
+  const data = Array.from(grouped.values()).sort((a, b) =>
+    a.customerName.localeCompare(b.customerName)
+  );
+
+  return {
+    columns: PRINT_TRUCK_COLUMNS.map((key) => ({
+      key,
+      label: TRUCK_TYPE_LABELS[key] || key,
+    })),
+    data,
+  };
+}
+
 async function getScheduleById(id) {
   if (!id) {
     throw createHttpError(400, "ID schedule tidak valid");
@@ -352,9 +415,11 @@ async function deleteSchedule(id) {
 
 module.exports = {
   TRUCK_TYPE_LABELS,
+  PRINT_TRUCK_COLUMNS,
   createSchedule,
   listSchedules,
   listSchedulesForExport,
+  listSchedulesForPrint,
   getScheduleById,
   updateSchedule,
   deleteSchedule,

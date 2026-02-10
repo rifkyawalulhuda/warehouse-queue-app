@@ -159,6 +159,21 @@ async function exportSchedules(req, res, next) {
   }
 }
 
+async function printSummary(req, res, next) {
+  try {
+    const result = await scheduleService.listSchedulesForPrint(req.query);
+    return sendSuccess(res, {
+      date: req.query.date || null,
+      storeType: req.query.storeType || null,
+      search: req.query.search || "",
+      columns: result.columns,
+      rows: result.data,
+    });
+  } catch (err) {
+    return next(err);
+  }
+}
+
 module.exports = {
   createSchedule,
   listSchedules,
@@ -166,4 +181,5 @@ module.exports = {
   updateSchedule,
   deleteSchedule,
   exportSchedules,
+  printSummary,
 };

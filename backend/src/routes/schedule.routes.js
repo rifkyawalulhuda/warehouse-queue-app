@@ -18,6 +18,7 @@ router.post(
 );
 router.get("/schedules", scheduleController.listSchedules);
 router.get("/schedules/export", scheduleController.exportSchedules);
+router.get("/schedules/print-summary", scheduleController.printSummary);
 router.get("/schedules/:id", scheduleController.getScheduleById);
 router.put(
   "/schedules/:id",
