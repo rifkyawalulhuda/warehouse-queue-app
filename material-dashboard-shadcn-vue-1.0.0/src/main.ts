@@ -12,10 +12,7 @@ const isLocalhostHost = () => {
 }
 
 if (import.meta.env.DEV && isLocalhostHost()) {
-  app.config.devtools = true
-  import('virtual:vue-devtools-path:overlay.js')
-} else {
-  app.config.devtools = false
+  // keep explicit branch for future local-dev hooks
 }
 
 useAuth().initFromStorage()

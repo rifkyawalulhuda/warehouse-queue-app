@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { Search, Menu, User, CreditCard, LogOut, ChevronDown } from 'lucide-vue-next'
+import { Search, Menu, User, LogOut, ChevronDown } from 'lucide-vue-next'
 import { useAuth } from '@/composables/useAuth'
 
 defineProps<{
@@ -25,11 +25,6 @@ const toggleAccountDropdown = () => {
 
 const closeAccountDropdown = () => {
   accountDropdownOpen.value = false
-}
-
-const navigateToBilling = () => {
-  router.push('/billing')
-  closeAccountDropdown()
 }
 
 const handleLogout = async () => {

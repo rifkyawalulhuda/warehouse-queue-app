@@ -7,10 +7,8 @@ import { useAuth } from '@/composables/useAuth'
 import {
   LayoutDashboard,
   Database,
-  UserCog,
-  UserPlus,
-  Warehouse,
   Truck,
+  CalendarDays,
   ChevronDown,
   ChevronLeft,
   ChevronRight
@@ -26,7 +24,11 @@ type NavItem = {
   path?: string
   icon?: any
   roles?: string[]
-  children?: NavItem[]
+  children?: Array<{
+    name: string
+    path: string
+    roles?: string[]
+  }>
 }
 
 const navigation: NavItem[] = [
@@ -41,7 +43,8 @@ const navigation: NavItem[] = [
       { name: 'Master Admin', path: '/master-admin', roles: ['ADMIN'] }
     ]
   },
-  { name: 'Antrian Truk', path: '/antrian-truk', icon: Truck, roles: ['ADMIN', 'WAREHOUSE', 'CS'] }
+  { name: 'Antrian Truk', path: '/antrian-truk', icon: Truck, roles: ['ADMIN', 'WAREHOUSE', 'CS'] },
+  { name: 'Schedule Pengiriman', path: '/schedule-pengiriman', icon: CalendarDays, roles: ['ADMIN', 'WAREHOUSE', 'CS'] }
 ]
 
 const filteredNavigation = computed(() => {
@@ -179,7 +182,7 @@ watch(
             </div>
           </div>
           <router-link
-            v-else
+            v-else-if="item.path"
             :key="item.path"
             :to="item.path"
             @click="closeSidebarOnMobile"

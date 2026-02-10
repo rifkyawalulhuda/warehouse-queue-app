@@ -6,6 +6,7 @@ const gateRoutes = require("./routes/gate.routes");
 const adminUserRoutes = require("./routes/adminUser.routes");
 const authRoutes = require("./routes/auth.routes");
 const dashboardRoutes = require("./routes/dashboard.routes");
+const scheduleRoutes = require("./routes/schedule.routes");
 const errorMiddleware = require("./middlewares/error.middleware");
 
 const app = express();
@@ -21,6 +22,7 @@ app.use("/api", gateRoutes);
 app.use("/api", adminUserRoutes);
 app.use("/api", authRoutes);
 app.use("/api", dashboardRoutes);
+app.use("/api", scheduleRoutes);
 
 app.use(errorMiddleware);
 

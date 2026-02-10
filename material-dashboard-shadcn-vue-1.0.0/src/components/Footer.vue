@@ -1,7 +1,3 @@
-<script setup lang="ts">
-import { Heart } from 'lucide-vue-next'
-</script>
-
 <template>
   <footer class="bg-card border-t py-6 px-4 md:px-8">
     <div class="flex flex-col md:flex-row items-center justify-between gap-4">

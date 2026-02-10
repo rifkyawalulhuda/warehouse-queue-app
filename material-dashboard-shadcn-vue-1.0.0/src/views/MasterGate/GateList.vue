@@ -51,13 +51,21 @@ type ImportSummary = {
 
 const importSummary = ref<ImportSummary | null>(null)
 
-const form = reactive({
+const form = reactive<{
+  gateNo: string
+  area: string
+  warehouse: Gate['warehouse']
+}>({
   gateNo: '',
   area: '',
   warehouse: 'WH1'
 })
 
-const editForm = reactive({
+const editForm = reactive<{
+  gateNo: string
+  area: string
+  warehouse: Gate['warehouse']
+}>({
   gateNo: '',
   area: '',
   warehouse: 'WH1'

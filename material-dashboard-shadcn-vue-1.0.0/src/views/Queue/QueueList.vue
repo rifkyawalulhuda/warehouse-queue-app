@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { useRoute } from 'vue-router'
 import Card from '@/components/ui/Card.vue'
 import CardHeader from '@/components/ui/CardHeader.vue'
 import CardContent from '@/components/ui/CardContent.vue'
@@ -53,7 +53,6 @@ const loading = ref(false)
 const error = ref<string | null>(null)
 const { user } = useAuth()
 const route = useRoute()
-const router = useRouter()
 
 const selectedEntry = ref<QueueEntry | null>(null)
 const drawerOpen = ref(false)
@@ -107,6 +106,16 @@ const todayString = () => {
   return `${now.getFullYear()}-${month}-${day}`
 }
 
+type QueueSortColumn =
+  | 'registerTime'
+  | 'inWhTime'
+  | 'startTime'
+  | 'finishTime'
+  | 'customerName'
+  | 'driverName'
+  | 'truckNumber'
+  | 'status'
+
 const filters = reactive({
   date: todayString(),
   status: '',
@@ -114,9 +123,7 @@ const filters = reactive({
   search: ''
 })
 
-const sortBy = ref<
-  'registerTime' | 'inWhTime' | 'startTime' | 'finishTime' | 'customerName' | 'driverName' | 'truckNumber' | 'status'
->('registerTime')
+const sortBy = ref<QueueSortColumn>('registerTime')
 const sortDir = ref<'asc' | 'desc'>('desc')
 
 const statusOptions = [
@@ -369,7 +376,21 @@ const closeDrawer = () => {
   selectedEntry.value = null
 }
 
-const toggleSort = (column: typeof sortBy.value) => {
+const isQueueSortColumn = (column: string): column is QueueSortColumn => {
+  return (
+    column === 'registerTime' ||
+    column === 'inWhTime' ||
+    column === 'startTime' ||
+    column === 'finishTime' ||
+    column === 'customerName' ||
+    column === 'driverName' ||
+    column === 'truckNumber' ||
+    column === 'status'
+  )
+}
+
+const toggleSort = (column: string) => {
+  if (!isQueueSortColumn(column)) return
   if (sortBy.value !== column) {
     sortBy.value = column
     sortDir.value = 'desc'

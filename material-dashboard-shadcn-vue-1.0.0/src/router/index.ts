@@ -54,6 +54,12 @@ const router = createRouter({
           name: 'Antrian Truk',
           component: () => import('@/views/Queue/QueueList.vue'),
           meta: { roles: ['ADMIN', 'WAREHOUSE', 'CS'] }
+        },
+        {
+          path: 'schedule-pengiriman',
+          name: 'Schedule Pengiriman',
+          component: () => import('@/views/Schedule/SchedulePengiriman.vue'),
+          meta: { roles: ['ADMIN', 'WAREHOUSE', 'CS'] }
         }
       ]
     }
