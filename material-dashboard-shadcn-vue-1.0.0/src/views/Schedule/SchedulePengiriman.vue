@@ -93,6 +93,8 @@ const detailLoading = ref(false)
 const detailData = ref<ScheduleDetail | null>(null)
 const confirmOpen = ref(false)
 const confirmData = ref<ScheduleListItem | null>(null)
+const confirmRemoveItemOpen = ref(false)
+const confirmRemoveItemIndex = ref<number | null>(null)
 const exportOpen = ref(false)
 const exporting = ref(false)
 const exportError = ref<string | null>(null)
@@ -183,6 +185,15 @@ const truckTypeLabel = (item: Pick<ScheduleItem, 'truckType' | 'truckTypeOther'>
   if (item.truckType === 'OTHER') {
     return item.truckTypeOther?.trim() ? `Other - ${item.truckTypeOther}` : 'Other'
   }
+  const found = truckTypeOptions.find((opt) => opt.value === item.truckType)
+  return found?.label || item.truckType
+}
+
+const formTruckTypeLabel = (item: Pick<FormItem, 'truckType' | 'truckTypeOther'>) => {
+  if (item.truckType === 'OTHER') {
+    return item.truckTypeOther?.trim() ? `Other - ${item.truckTypeOther}` : 'Other'
+  }
+  if (!item.truckType) return '-'
   const found = truckTypeOptions.find((opt) => opt.value === item.truckType)
   return found?.label || item.truckType
 }
@@ -384,6 +395,8 @@ const closeForm = () => {
   formOpen.value = false
   editingId.value = null
   customerDropdownOpen.value = false
+  confirmRemoveItemOpen.value = false
+  confirmRemoveItemIndex.value = null
   formError.value = null
 }
 
@@ -394,6 +407,35 @@ const addItem = () => {
 const removeItem = (index: number) => {
   if (form.items.length <= 1) return
   form.items.splice(index, 1)
+}
+
+const requestRemoveItem = (index: number) => {
+  if (form.items.length <= 1) return
+  if (formMode.value !== 'edit') {
+    removeItem(index)
+    return
+  }
+  confirmRemoveItemIndex.value = index
+  confirmRemoveItemOpen.value = true
+}
+
+const closeConfirmRemoveItem = () => {
+  confirmRemoveItemOpen.value = false
+  confirmRemoveItemIndex.value = null
+}
+
+const confirmRemoveItem = () => {
+  const index = confirmRemoveItemIndex.value
+  if (index === null) {
+    closeConfirmRemoveItem()
+    return
+  }
+  if (index < 0 || index >= form.items.length) {
+    closeConfirmRemoveItem()
+    return
+  }
+  removeItem(index)
+  closeConfirmRemoveItem()
 }
 
 const onTruckTypeChange = (item: FormItem) => {
@@ -909,7 +951,7 @@ watch(
                     variant="outline"
                     class="border-red-200 bg-red-600 text-white hover:bg-red-700 hover:text-white"
                     :disabled="form.items.length === 1"
-                    @click="removeItem(idx)"
+                    @click="requestRemoveItem(idx)"
                   >
                     Hapus
                   </Button>
@@ -926,6 +968,32 @@ watch(
           <Button :disabled="submitting" @click="submitForm">
             {{ submitting ? 'Menyimpan...' : formMode === 'create' ? 'Simpan' : 'Update' }}
           </Button>
+        </div>
+      </div>
+    </div>
+
+    <div v-if="confirmRemoveItemOpen" class="fixed inset-0 z-[60]">
+      <div class="absolute inset-0 bg-black/40" @click="closeConfirmRemoveItem"></div>
+      <div class="absolute left-1/2 top-1/2 w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-lg bg-card shadow-xl border">
+        <div class="p-4 border-b">
+          <h3 class="text-lg font-semibold">Konfirmasi Hapus Jenis Truck</h3>
+        </div>
+        <div class="p-4 text-sm">
+          <p>
+            Hapus item
+            <span class="font-semibold">
+              {{
+                confirmRemoveItemIndex !== null && form.items[confirmRemoveItemIndex]
+                  ? formTruckTypeLabel(form.items[confirmRemoveItemIndex])
+                  : '-'
+              }}
+            </span>
+            dari jadwal ini?
+          </p>
+        </div>
+        <div class="p-4 border-t flex items-center justify-end gap-2">
+          <Button variant="ghost" @click="closeConfirmRemoveItem">Batal</Button>
+          <Button @click="confirmRemoveItem">Ya, Hapus</Button>
         </div>
       </div>
     </div>
