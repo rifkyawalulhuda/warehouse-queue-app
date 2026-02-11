@@ -3,6 +3,7 @@ import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Search, Menu, User, LogOut, ChevronDown } from 'lucide-vue-next'
 import { useAuth } from '@/composables/useAuth'
+import Button from '@/components/ui/Button.vue'
 
 defineProps<{
   onToggleSidebar: () => void
@@ -13,6 +14,8 @@ const route = useRoute()
 const { user, logout } = useAuth()
 const searchQuery = ref('')
 const accountDropdownOpen = ref(false)
+const confirmLogoutOpen = ref(false)
+const loggingOut = ref(false)
 const displayUserName = computed(() => user.value?.name || 'Account')
 
 const handleSearch = (e: Event) => {
@@ -41,10 +44,26 @@ const closeAccountDropdown = () => {
   accountDropdownOpen.value = false
 }
 
-const handleLogout = async () => {
-  await logout()
+const openLogoutConfirm = () => {
+  confirmLogoutOpen.value = true
   closeAccountDropdown()
-  router.push('/login')
+}
+
+const closeLogoutConfirm = () => {
+  if (loggingOut.value) return
+  confirmLogoutOpen.value = false
+}
+
+const handleLogout = async () => {
+  if (loggingOut.value) return
+  loggingOut.value = true
+  try {
+    await logout()
+    confirmLogoutOpen.value = false
+    await router.push('/login')
+  } finally {
+    loggingOut.value = false
+  }
 }
 
 watch(
@@ -128,7 +147,7 @@ watch(
                 </div>
 
                 <button
-                  @click="handleLogout"
+                  @click="openLogoutConfirm"
                   class="w-full flex items-center gap-2 px-4 py-2 text-sm hover:bg-accent text-red-600"
                 >
                   <LogOut :size="16" />
@@ -155,4 +174,24 @@ watch(
       </div>
     </div>
   </nav>
+
+  <div v-if="confirmLogoutOpen" class="fixed inset-0 z-50">
+    <div class="absolute inset-0 bg-black/40" @click="closeLogoutConfirm"></div>
+    <div
+      class="absolute left-1/2 top-1/2 w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-lg bg-card shadow-xl border"
+    >
+      <div class="p-4 border-b">
+        <h3 class="text-lg font-semibold">Konfirmasi Logout</h3>
+        <p class="text-sm text-muted-foreground mt-1">
+          Apakah Anda yakin ingin keluar dari akun ini?
+        </p>
+      </div>
+      <div class="p-4 border-t flex items-center justify-end gap-2">
+        <Button variant="ghost" :disabled="loggingOut" @click="closeLogoutConfirm">Batal</Button>
+        <Button variant="outline" :disabled="loggingOut" @click="handleLogout">
+          {{ loggingOut ? 'Memproses...' : 'Ya, Logout' }}
+        </Button>
+      </div>
+    </div>
+  </div>
 </template>
