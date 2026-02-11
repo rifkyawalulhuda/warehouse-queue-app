@@ -14,6 +14,7 @@ import TopCustomerDurationTable from '@/components/dashboard/TopCustomerDuration
 import OverSlaTable from '@/components/dashboard/OverSlaTable.vue'
 import {
   getDashboardHourly,
+  getDashboardMonthlyReport,
   getMonthlyScheduleTruckSummary,
   getDashboardProgressSummary,
   getDashboardScheduleSummary,
@@ -49,6 +50,55 @@ type MonthlyTruckCategoryItem = {
   totalQty: number
 }
 type MonthlyTruckSummary = { month: string; totalQty: number; items: MonthlyTruckCategoryItem[] }
+type MonthlyReportQueueStatusItem = { name: string; value: number }
+type MonthlyReportDailyQueueItem = {
+  date: string
+  total: number
+  delivery: number
+  receiving: number
+  done: number
+}
+type MonthlyReportDailyScheduleItem = {
+  date: string
+  storeInQty: number
+  storeOutQty: number
+  totalQty: number
+}
+type MonthlyReportTopCustomerItem = {
+  customerName: string
+  avgDurationMinutes: number
+  totalTransactions: number
+}
+type MonthlyReportOverSlaItem = {
+  id: string
+  date: string
+  customerName: string
+  driverName: string
+  truckNumber: string
+  category: string
+  status: string
+  overMinutes: number
+  durationMinutes: number
+}
+type MonthlyReportScheduleTopCustomerItem = {
+  customerName: string
+  storeInQty: number
+  storeOutQty: number
+  totalQty: number
+}
+type MonthlyReportPayload = {
+  month: string
+  generatedAt: string
+  queueSummary: Summary
+  scheduleSummary: { storeInQty: number; storeOutQty: number; totalQty: number }
+  queueStatusItems: MonthlyReportQueueStatusItem[]
+  dailyQueue: MonthlyReportDailyQueueItem[]
+  dailySchedule: MonthlyReportDailyScheduleItem[]
+  truckCategoryItems: MonthlyTruckCategoryItem[]
+  topCustomers: MonthlyReportTopCustomerItem[]
+  overSlaItems: MonthlyReportOverSlaItem[]
+  scheduleTopCustomers: MonthlyReportScheduleTopCustomerItem[]
+}
 type ProgressSummary = {
   date: string
   targetPengiriman: number
@@ -120,6 +170,10 @@ const isLoadingMonthlyTruckSummary = ref(false)
 const isLoadingProgress = ref(false)
 const loading = ref(false)
 const error = ref<string | null>(null)
+const monthlyReportOpen = ref(false)
+const monthlyReportMonth = ref(getCurrentMonth())
+const monthlyReportPrinting = ref(false)
+const monthlyReportError = ref<string | null>(null)
 
 const isToday = computed(() => selectedDate.value === today.value)
 const hasProgressTarget = computed(() => progressSummary.targetPengiriman > 0)
@@ -149,6 +203,255 @@ const formatMonthLabel = (value: string) => {
   if (!match) return value
   const date = new Date(Number(match[1]), Number(match[2]) - 1, 1)
   return date.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' })
+}
+
+const formatNumber = (value: number) => new Intl.NumberFormat('id-ID').format(value || 0)
+
+const escapeHtml = (value: string) =>
+  value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;')
+
+const formatDateToDisplay = (value: string) => {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value)
+  if (!match) return value
+  return `${match[3]}/${match[2]}/${match[1]}`
+}
+
+const openMonthlyReportDialog = () => {
+  monthlyReportError.value = null
+  if (!monthlyReportMonth.value) {
+    monthlyReportMonth.value = getCurrentMonth()
+  }
+  monthlyReportOpen.value = true
+}
+
+const closeMonthlyReportDialog = () => {
+  if (monthlyReportPrinting.value) return
+  monthlyReportOpen.value = false
+  monthlyReportError.value = null
+}
+
+const buildMonthlyReportHtml = (report: MonthlyReportPayload) => {
+  const monthLabel = formatMonthLabel(report.month || monthlyReportMonth.value)
+  const generatedAt = report.generatedAt
+    ? new Date(report.generatedAt).toLocaleString('id-ID')
+    : new Date().toLocaleString('id-ID')
+
+  const queueStatusRows =
+    report.queueStatusItems?.length > 0
+      ? report.queueStatusItems
+          .map(
+            (item) =>
+              `<tr><td>${escapeHtml(item.name)}</td><td class="num">${formatNumber(item.value)}</td></tr>`
+          )
+          .join('')
+      : '<tr><td colspan="2" class="empty">Tidak ada data</td></tr>'
+
+  const truckCategoryRows =
+    report.truckCategoryItems?.length > 0
+      ? report.truckCategoryItems
+          .map(
+            (item) =>
+              `<tr><td>${escapeHtml(item.label)}</td><td class="num">${formatNumber(item.storeInQty)}</td><td class="num">${formatNumber(item.storeOutQty)}</td><td class="num strong">${formatNumber(item.totalQty)}</td></tr>`
+          )
+          .join('')
+      : '<tr><td colspan="4" class="empty">Tidak ada data</td></tr>'
+
+  const topCustomerRows =
+    report.topCustomers?.length > 0
+      ? report.topCustomers
+          .map(
+            (item, idx) =>
+              `<tr><td class="num">${idx + 1}</td><td>${escapeHtml(item.customerName)}</td><td class="num">${formatNumber(item.totalTransactions)}</td><td class="num">${formatNumber(item.avgDurationMinutes)} menit</td></tr>`
+          )
+          .join('')
+      : '<tr><td colspan="4" class="empty">Tidak ada data</td></tr>'
+
+  const scheduleTopCustomerRows =
+    report.scheduleTopCustomers?.length > 0
+      ? report.scheduleTopCustomers
+          .map(
+            (item, idx) =>
+              `<tr><td class="num">${idx + 1}</td><td>${escapeHtml(item.customerName)}</td><td class="num">${formatNumber(item.storeInQty)}</td><td class="num">${formatNumber(item.storeOutQty)}</td><td class="num strong">${formatNumber(item.totalQty)}</td></tr>`
+          )
+          .join('')
+      : '<tr><td colspan="5" class="empty">Tidak ada data</td></tr>'
+
+  const overSlaRows =
+    report.overSlaItems?.length > 0
+      ? report.overSlaItems
+          .map(
+            (item, idx) =>
+              `<tr><td class="num">${idx + 1}</td><td>${formatDateToDisplay(item.date)}</td><td>${escapeHtml(item.customerName)}</td><td>${escapeHtml(item.driverName)}</td><td>${escapeHtml(item.truckNumber)}</td><td>${escapeHtml(item.status)}</td><td class="num">${formatNumber(item.overMinutes)} menit</td></tr>`
+          )
+          .join('')
+      : '<tr><td colspan="7" class="empty">Tidak ada data</td></tr>'
+
+  const dailyQueueRows =
+    report.dailyQueue?.length > 0
+      ? report.dailyQueue
+          .map(
+            (item) =>
+              `<tr><td>${formatDateToDisplay(item.date)}</td><td class="num">${formatNumber(item.total)}</td><td class="num">${formatNumber(item.delivery)}</td><td class="num">${formatNumber(item.receiving)}</td><td class="num">${formatNumber(item.done)}</td></tr>`
+          )
+          .join('')
+      : '<tr><td colspan="5" class="empty">Tidak ada data</td></tr>'
+
+  const dailyScheduleRows =
+    report.dailySchedule?.length > 0
+      ? report.dailySchedule
+          .map(
+            (item) =>
+              `<tr><td>${formatDateToDisplay(item.date)}</td><td class="num">${formatNumber(item.storeInQty)}</td><td class="num">${formatNumber(item.storeOutQty)}</td><td class="num strong">${formatNumber(item.totalQty)}</td></tr>`
+          )
+          .join('')
+      : '<tr><td colspan="4" class="empty">Tidak ada data</td></tr>'
+
+  return `<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>Laporan Bulanan Dashboard</title>
+    <style>
+      @page { size: A4 portrait; margin: 10mm; }
+      * { box-sizing: border-box; }
+      body { margin: 0; font-family: Arial, Helvetica, sans-serif; color: #111827; background: #fff; }
+      .report { width: 100%; }
+      .header { border-bottom: 2px solid #0f172a; padding-bottom: 8px; margin-bottom: 12px; }
+      .title { margin: 0; font-size: 20px; font-weight: 800; letter-spacing: 0.2px; }
+      .subtitle { margin: 3px 0 0 0; color: #4b5563; font-size: 12px; }
+      .meta { margin-top: 8px; display: flex; justify-content: space-between; gap: 8px; font-size: 11px; color: #374151; }
+      .section { margin-top: 12px; border: 1px solid #d1d5db; border-radius: 8px; overflow: hidden; }
+      .section h3 { margin: 0; padding: 8px 10px; font-size: 13px; background: #f3f4f6; border-bottom: 1px solid #d1d5db; }
+      .section-body { padding: 10px; }
+      .cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+      .card { border: 1px solid #d1d5db; border-radius: 8px; padding: 8px; background: #ffffff; }
+      .card .label { font-size: 10px; color: #6b7280; }
+      .card .value { margin-top: 4px; font-size: 18px; font-weight: 700; color: #0f172a; }
+      table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+      th, td { border: 1px solid #d1d5db; padding: 5px 6px; font-size: 11px; vertical-align: top; word-wrap: break-word; }
+      th { background: #f9fafb; text-align: left; font-weight: 700; }
+      td.num { text-align: right; white-space: nowrap; }
+      td.strong { font-weight: 700; }
+      .empty { text-align: center; color: #6b7280; padding: 10px 0; }
+      .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+      .page-break { page-break-before: always; }
+      @media print {
+        .section, .card { break-inside: avoid; }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="report">
+      <div class="header">
+        <h1 class="title">PT. SANKYU INDONESIA - Laporan Bulanan Dashboard</h1>
+        <p class="subtitle">Ringkasan seluruh data operasional Queue & Schedule Store In-Out</p>
+        <div class="meta">
+          <span>Periode: ${escapeHtml(monthLabel)}</span>
+          <span>Generated: ${escapeHtml(generatedAt)}</span>
+        </div>
+      </div>
+
+      <div class="section">
+        <h3>Ringkasan Queue (Bulanan)</h3>
+        <div class="section-body">
+          <div class="cards">
+            <div class="card"><div class="label">Total Transaksi</div><div class="value">${formatNumber(report.queueSummary?.total || 0)}</div></div>
+            <div class="card"><div class="label">Delivery</div><div class="value">${formatNumber(report.queueSummary?.delivery || 0)}</div></div>
+            <div class="card"><div class="label">Receiving</div><div class="value">${formatNumber(report.queueSummary?.receiving || 0)}</div></div>
+            <div class="card"><div class="label">Avg Process</div><div class="value">${formatNumber(report.queueSummary?.avgProcessMinutes || 0)} m</div></div>
+          </div>
+          <div class="cards" style="margin-top:8px;">
+            <div class="card"><div class="label">Menunggu</div><div class="value">${formatNumber(report.queueSummary?.waiting || 0)}</div></div>
+            <div class="card"><div class="label">Sedang Diproses</div><div class="value">${formatNumber(report.queueSummary?.processing || 0)}</div></div>
+            <div class="card"><div class="label">Selesai</div><div class="value">${formatNumber(report.queueSummary?.done || 0)}</div></div>
+            <div class="card"><div class="label">Over SLA</div><div class="value">${formatNumber(report.queueSummary?.overSlaPercent || 0)}%</div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="section">
+        <h3>Ringkasan Schedule In & Out (Total Qty Bulanan)</h3>
+        <div class="section-body">
+          <div class="cards">
+            <div class="card"><div class="label">Store In Qty</div><div class="value">${formatNumber(report.scheduleSummary?.storeInQty || 0)}</div></div>
+            <div class="card"><div class="label">Store Out Qty</div><div class="value">${formatNumber(report.scheduleSummary?.storeOutQty || 0)}</div></div>
+            <div class="card"><div class="label">Total Qty</div><div class="value">${formatNumber(report.scheduleSummary?.totalQty || 0)}</div></div>
+            <div class="card"><div class="label">Kategori Truk Aktif</div><div class="value">${formatNumber(report.truckCategoryItems?.filter((x) => x.totalQty > 0).length || 0)}</div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="section">
+        <h3>Distribusi Status Queue</h3>
+        <div class="section-body">
+          <table>
+            <thead><tr><th>Status</th><th>Jumlah</th></tr></thead>
+            <tbody>${queueStatusRows}</tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="section page-break">
+        <h3>Distribusi Jenis Truk Schedule (Store In vs Store Out)</h3>
+        <div class="section-body">
+          <table>
+            <thead><tr><th>Kategori Truk</th><th>Store In Qty</th><th>Store Out Qty</th><th>Total Qty</th></tr></thead>
+            <tbody>${truckCategoryRows}</tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="section">
+        <h3>Top Customer & Over SLA</h3>
+        <div class="section-body two-col">
+          <table>
+            <thead><tr><th>No</th><th>Customer</th><th>Total Transaksi</th><th>Avg Durasi</th></tr></thead>
+            <tbody>${topCustomerRows}</tbody>
+          </table>
+          <table>
+            <thead><tr><th>No</th><th>Tanggal</th><th>Customer</th><th>Driver</th><th>Truck</th><th>Status</th><th>Over SLA</th></tr></thead>
+            <tbody>${overSlaRows}</tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="section">
+        <h3>Top Customer Schedule (Berdasarkan Qty)</h3>
+        <div class="section-body">
+          <table>
+            <thead><tr><th>No</th><th>Customer</th><th>Store In Qty</th><th>Store Out Qty</th><th>Total Qty</th></tr></thead>
+            <tbody>${scheduleTopCustomerRows}</tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="section page-break">
+        <h3>Rekap Harian Queue</h3>
+        <div class="section-body">
+          <table>
+            <thead><tr><th>Tanggal</th><th>Total</th><th>Delivery</th><th>Receiving</th><th>Selesai</th></tr></thead>
+            <tbody>${dailyQueueRows}</tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="section">
+        <h3>Rekap Harian Schedule (Qty)</h3>
+        <div class="section-body">
+          <table>
+            <thead><tr><th>Tanggal</th><th>Store In Qty</th><th>Store Out Qty</th><th>Total Qty</th></tr></thead>
+            <tbody>${dailyScheduleRows}</tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>`
 }
 
 const fetchDashboard = async () => {
@@ -279,6 +582,76 @@ const handlePrintDashboard = () => {
   }, 100)
 }
 
+const handlePrintMonthlyReport = async () => {
+  monthlyReportError.value = null
+  monthlyReportPrinting.value = true
+
+  const printWindow = window.open('', '_blank')
+  if (!printWindow) {
+    monthlyReportPrinting.value = false
+    monthlyReportError.value = 'Popup print diblokir browser. Izinkan popup lalu coba lagi.'
+    return
+  }
+
+  printWindow.document.open()
+  printWindow.document.write(`
+    <!doctype html>
+    <html>
+      <head>
+        <meta charset="UTF-8" />
+        <title>Menyiapkan Laporan Bulanan...</title>
+        <style>
+          body { font-family: Arial, Helvetica, sans-serif; margin: 24px; color: #111; }
+          .muted { color: #666; }
+        </style>
+      </head>
+      <body>
+        <h3>Menyiapkan Laporan Bulanan...</h3>
+        <p class="muted">Mohon tunggu, data sedang diproses.</p>
+      </body>
+    </html>
+  `)
+  printWindow.document.close()
+
+  try {
+    const response = await getDashboardMonthlyReport(monthlyReportMonth.value)
+    const payload = (response.data?.data || response.data || {}) as MonthlyReportPayload
+    const html = buildMonthlyReportHtml(payload)
+    printWindow.document.open()
+    printWindow.document.write(html)
+    printWindow.document.close()
+    printWindow.focus()
+    window.setTimeout(() => {
+      printWindow.print()
+    }, 300)
+    monthlyReportOpen.value = false
+  } catch (err: any) {
+    const message = getErrorMessage(err, 'Gagal menyiapkan laporan bulanan')
+    monthlyReportError.value = message
+    printWindow.document.open()
+    printWindow.document.write(`
+      <!doctype html>
+      <html>
+        <head>
+          <meta charset="UTF-8" />
+          <title>Gagal Print</title>
+          <style>
+            body { font-family: Arial, Helvetica, sans-serif; margin: 24px; color: #111; }
+            .error { color: #b91c1c; }
+          </style>
+        </head>
+        <body>
+          <h3 class="error">Gagal menyiapkan laporan bulanan</h3>
+          <p>${escapeHtml(message)}</p>
+        </body>
+      </html>
+    `)
+    printWindow.document.close()
+  } finally {
+    monthlyReportPrinting.value = false
+  }
+}
+
 const handleRefresh = async () => {
   await Promise.all([
     fetchDashboard(),
@@ -343,6 +716,14 @@ onUnmounted(() => {
           type="date"
           class="bg-transparent border rounded-md px-2 py-2 text-sm"
         />
+        <Button
+          size="sm"
+          variant="outline"
+          class="border-blue-200 bg-blue-600 text-white hover:bg-blue-700 hover:text-white"
+          @click="openMonthlyReportDialog"
+        >
+          Print Laporan Bulanan
+        </Button>
         <Button size="sm" variant="outline" class="border-emerald-200 bg-emerald-600 text-white hover:bg-emerald-700 hover:text-white" @click="handlePrintDashboard">Print</Button>
         <Button size="sm" variant="outline" @click="handleRefresh">Refresh</Button>
       </div>
@@ -571,6 +952,33 @@ onUnmounted(() => {
           <OverSlaTable :items="overSlaItems" @select="openQueueDetail" />
         </CardContent>
       </Card>
+    </div>
+
+    <div v-if="monthlyReportOpen" class="fixed inset-0 z-50">
+      <div class="absolute inset-0 bg-black/40" @click="closeMonthlyReportDialog"></div>
+      <div class="absolute left-1/2 top-1/2 w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-lg bg-card shadow-xl border">
+        <div class="p-4 border-b">
+          <h3 class="text-lg font-semibold">Print Laporan Bulanan</h3>
+          <p class="text-sm text-muted-foreground">Pilih bulan untuk cetak laporan dashboard menyeluruh.</p>
+        </div>
+        <div class="p-4 space-y-3 text-sm">
+          <div>
+            <label class="text-sm text-muted-foreground">Bulan Laporan</label>
+            <input
+              v-model="monthlyReportMonth"
+              type="month"
+              class="mt-1 w-full bg-transparent border rounded-md px-2 py-2 text-sm"
+            />
+          </div>
+          <p v-if="monthlyReportError" class="text-xs text-red-600">{{ monthlyReportError }}</p>
+        </div>
+        <div class="p-4 border-t flex items-center justify-end gap-2">
+          <Button variant="ghost" :disabled="monthlyReportPrinting" @click="closeMonthlyReportDialog">Batal</Button>
+          <Button :disabled="monthlyReportPrinting || !monthlyReportMonth" @click="handlePrintMonthlyReport">
+            {{ monthlyReportPrinting ? 'Menyiapkan...' : 'Print Sekarang' }}
+          </Button>
+        </div>
+      </div>
     </div>
   </div>
 </template>

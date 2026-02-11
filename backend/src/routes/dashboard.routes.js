@@ -18,5 +18,6 @@ router.get(
   "/dashboard/monthly-schedule-truck-summary",
   dashboardController.monthlyScheduleTruckSummary
 );
+router.get("/dashboard/monthly-report", dashboardController.monthlyReport);
 
 module.exports = router;

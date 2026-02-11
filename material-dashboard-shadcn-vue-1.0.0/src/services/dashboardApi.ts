@@ -18,3 +18,6 @@ export const getOverSla = (date: string) => api.get(`/dashboard/over-sla`, { par
 
 export const getMonthlyScheduleTruckSummary = (month: string) =>
   api.get(`/dashboard/monthly-schedule-truck-summary`, { params: { month } })
+
+export const getDashboardMonthlyReport = (month: string) =>
+  api.get(`/dashboard/monthly-report`, { params: { month } })

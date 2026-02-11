@@ -27,6 +27,13 @@ function formatDateOnly(date) {
   return `${year}-${month}-${day}`;
 }
 
+function formatDateOnlyUtc(date) {
+  const day = String(date.getUTCDate()).padStart(2, "0");
+  const month = String(date.getUTCMonth() + 1).padStart(2, "0");
+  const year = date.getUTCFullYear();
+  return `${year}-${month}-${day}`;
+}
+
 function parseDateOnly(dateStr) {
   if (!dateStr || typeof dateStr !== "string") return null;
   const match = /^\d{4}-\d{2}-\d{2}$/.exec(dateStr);
@@ -77,10 +84,20 @@ function resolveMonthRange(monthQuery) {
   if (!monthQuery) {
     const now = new Date();
     const year = now.getFullYear();
-    const month = now.getMonth();
-    const from = new Date(Date.UTC(year, month, 1));
-    const to = new Date(Date.UTC(year, month + 1, 1));
-    return { month: formatMonthOnly(now), from, to };
+    const monthIndex = now.getMonth();
+    const from = new Date(Date.UTC(year, monthIndex, 1));
+    const to = new Date(Date.UTC(year, monthIndex + 1, 1));
+    const queueFrom = new Date(year, monthIndex, 1, 0, 0, 0, 0);
+    const queueTo = new Date(year, monthIndex + 1, 1, 0, 0, 0, 0);
+    return {
+      month: formatMonthOnly(now),
+      year,
+      monthIndex,
+      from,
+      to,
+      queueFrom,
+      queueTo,
+    };
   }
 
   const match = /^(\d{4})-(\d{2})$/.exec(monthQuery);
@@ -94,9 +111,20 @@ function resolveMonthRange(monthQuery) {
     throw createHttpError(400, "Format month tidak valid. Gunakan YYYY-MM");
   }
 
-  const from = new Date(Date.UTC(year, month - 1, 1));
-  const to = new Date(Date.UTC(year, month, 1));
-  return { month: `${year}-${String(month).padStart(2, "0")}`, from, to };
+  const monthIndex = month - 1;
+  const from = new Date(Date.UTC(year, monthIndex, 1));
+  const to = new Date(Date.UTC(year, monthIndex + 1, 1));
+  const queueFrom = new Date(year, monthIndex, 1, 0, 0, 0, 0);
+  const queueTo = new Date(year, monthIndex + 1, 1, 0, 0, 0, 0);
+  return {
+    month: `${year}-${String(month).padStart(2, "0")}`,
+    year,
+    monthIndex,
+    from,
+    to,
+    queueFrom,
+    queueTo,
+  };
 }
 
 function resolveDateRange(dateQuery) {
@@ -516,6 +544,275 @@ async function getMonthlyScheduleTruckSummary(monthQuery) {
   };
 }
 
+async function getMonthlyReport(monthQuery) {
+  const range = resolveMonthRange(monthQuery);
+
+  const [queueEntries, scheduleItems, monthlyTruckSummary] = await Promise.all([
+    prisma.queueEntry.findMany({
+      where: {
+        registerTime: {
+          gte: range.queueFrom,
+          lt: range.queueTo,
+        },
+      },
+      select: {
+        id: true,
+        category: true,
+        status: true,
+        registerTime: true,
+        finishTime: true,
+        driverName: true,
+        truckNumber: true,
+        customer: {
+          select: {
+            name: true,
+          },
+        },
+      },
+    }),
+    prisma.shipmentScheduleItem.findMany({
+      where: {
+        schedule: {
+          scheduleDate: {
+            gte: range.from,
+            lt: range.to,
+          },
+        },
+      },
+      select: {
+        qty: true,
+        truckType: true,
+        truckTypeOther: true,
+        schedule: {
+          select: {
+            scheduleDate: true,
+            storeType: true,
+            customer: {
+              select: {
+                name: true,
+              },
+            },
+          },
+        },
+      },
+    }),
+    getMonthlyScheduleTruckSummary(range.month),
+  ]);
+
+  const now = new Date();
+
+  const queueSummary = {
+    total: 0,
+    delivery: 0,
+    receiving: 0,
+    waiting: 0,
+    processing: 0,
+    done: 0,
+    cancelled: 0,
+    avgProcessMinutes: 0,
+    overSlaPercent: 0,
+  };
+
+  const dailyQueueMap = new Map();
+  const dailyScheduleMap = new Map();
+  const queueStatusCounts = {
+    MENUNGGU: 0,
+    IN_WH: 0,
+    PROSES: 0,
+    SELESAI: 0,
+    BATAL: 0,
+  };
+
+  const queueDurationByCustomer = new Map();
+  let finishedCount = 0;
+  let finishedMinutesSum = 0;
+  let overSlaCount = 0;
+
+  const monthCursor = new Date(Date.UTC(range.year, range.monthIndex, 1));
+  const monthEnd = new Date(Date.UTC(range.year, range.monthIndex + 1, 1));
+  while (monthCursor < monthEnd) {
+    const dateKey = formatDateOnlyUtc(monthCursor);
+    dailyQueueMap.set(dateKey, {
+      date: dateKey,
+      total: 0,
+      delivery: 0,
+      receiving: 0,
+      done: 0,
+    });
+    dailyScheduleMap.set(dateKey, {
+      date: dateKey,
+      storeInQty: 0,
+      storeOutQty: 0,
+      totalQty: 0,
+    });
+    monthCursor.setUTCDate(monthCursor.getUTCDate() + 1);
+  }
+
+  const overSlaItemsRaw = [];
+
+  queueEntries.forEach((entry) => {
+    queueSummary.total += 1;
+    if (entry.category === "DELIVERY") queueSummary.delivery += 1;
+    if (entry.category === "RECEIVING") queueSummary.receiving += 1;
+    if (entry.status === "MENUNGGU") queueSummary.waiting += 1;
+    if (entry.status === "IN_WH" || entry.status === "PROSES") queueSummary.processing += 1;
+    if (entry.status === "SELESAI") queueSummary.done += 1;
+    if (entry.status === "BATAL") queueSummary.cancelled += 1;
+
+    if (queueStatusCounts[entry.status] !== undefined) {
+      queueStatusCounts[entry.status] += 1;
+    }
+
+    const queueDateKey = formatDateOnly(new Date(entry.registerTime));
+    if (!dailyQueueMap.has(queueDateKey)) {
+      dailyQueueMap.set(queueDateKey, {
+        date: queueDateKey,
+        total: 0,
+        delivery: 0,
+        receiving: 0,
+        done: 0,
+      });
+    }
+    const queueDay = dailyQueueMap.get(queueDateKey);
+    queueDay.total += 1;
+    if (entry.category === "DELIVERY") queueDay.delivery += 1;
+    if (entry.category === "RECEIVING") queueDay.receiving += 1;
+    if (entry.status === "SELESAI") queueDay.done += 1;
+
+    if (entry.finishTime) {
+      const minutes = durationMinutes(new Date(entry.registerTime), new Date(entry.finishTime));
+      if (minutes !== null) {
+        finishedMinutesSum += minutes;
+        finishedCount += 1;
+
+        const customerName = entry.customer?.name || "-";
+        const current = queueDurationByCustomer.get(customerName) || {
+          totalMinutes: 0,
+          totalTransactions: 0,
+        };
+        current.totalMinutes += minutes;
+        current.totalTransactions += 1;
+        queueDurationByCustomer.set(customerName, current);
+      }
+    }
+
+    if (entry.status !== "BATAL") {
+      const slaMinutes = getSlaMinutes(entry.category);
+      if (slaMinutes) {
+        const end = entry.finishTime ? new Date(entry.finishTime) : now;
+        const minutes = durationMinutes(new Date(entry.registerTime), end);
+        if (minutes !== null && minutes >= slaMinutes) {
+          overSlaCount += 1;
+          overSlaItemsRaw.push({
+            id: entry.id,
+            date: formatDateOnly(new Date(entry.registerTime)),
+            customerName: entry.customer?.name || "-",
+            driverName: entry.driverName,
+            truckNumber: entry.truckNumber,
+            category: entry.category,
+            status: entry.status,
+            overMinutes: minutes - slaMinutes,
+            durationMinutes: minutes,
+          });
+        }
+      }
+    }
+  });
+
+  queueSummary.avgProcessMinutes = finishedCount ? Math.round(finishedMinutesSum / finishedCount) : 0;
+  queueSummary.overSlaPercent = queueSummary.total
+    ? Math.round((overSlaCount / queueSummary.total) * 100)
+    : 0;
+
+  const scheduleSummary = {
+    storeInQty: 0,
+    storeOutQty: 0,
+    totalQty: 0,
+  };
+
+  const scheduleQtyByCustomer = new Map();
+
+  scheduleItems.forEach((item) => {
+    const qty = Number(item.qty) || 0;
+    const storeType = item.schedule?.storeType;
+    const dateKey = formatDateOnlyUtc(new Date(item.schedule?.scheduleDate));
+
+    if (!dailyScheduleMap.has(dateKey)) {
+      dailyScheduleMap.set(dateKey, {
+        date: dateKey,
+        storeInQty: 0,
+        storeOutQty: 0,
+        totalQty: 0,
+      });
+    }
+
+    const scheduleDay = dailyScheduleMap.get(dateKey);
+    if (storeType === "STORE_OUT") {
+      scheduleSummary.storeOutQty += qty;
+      scheduleDay.storeOutQty += qty;
+    } else {
+      scheduleSummary.storeInQty += qty;
+      scheduleDay.storeInQty += qty;
+    }
+    scheduleSummary.totalQty += qty;
+    scheduleDay.totalQty += qty;
+
+    const customerName = item.schedule?.customer?.name || "-";
+    const current = scheduleQtyByCustomer.get(customerName) || {
+      customerName,
+      storeInQty: 0,
+      storeOutQty: 0,
+      totalQty: 0,
+    };
+    if (storeType === "STORE_OUT") {
+      current.storeOutQty += qty;
+    } else {
+      current.storeInQty += qty;
+    }
+    current.totalQty += qty;
+    scheduleQtyByCustomer.set(customerName, current);
+  });
+
+  const topCustomers = Array.from(queueDurationByCustomer.entries())
+    .map(([customerName, data]) => ({
+      customerName,
+      avgDurationMinutes: data.totalTransactions
+        ? Math.round(data.totalMinutes / data.totalTransactions)
+        : 0,
+      totalTransactions: data.totalTransactions,
+    }))
+    .sort((a, b) => b.avgDurationMinutes - a.avgDurationMinutes)
+    .slice(0, 10);
+
+  const overSlaItems = overSlaItemsRaw
+    .sort((a, b) => b.overMinutes - a.overMinutes)
+    .slice(0, 10);
+
+  const scheduleTopCustomers = Array.from(scheduleQtyByCustomer.values())
+    .sort((a, b) => b.totalQty - a.totalQty)
+    .slice(0, 10);
+
+  const queueDaily = Array.from(dailyQueueMap.values()).sort((a, b) => a.date.localeCompare(b.date));
+  const scheduleDaily = Array.from(dailyScheduleMap.values()).sort((a, b) => a.date.localeCompare(b.date));
+
+  return {
+    month: range.month,
+    generatedAt: new Date().toISOString(),
+    queueSummary,
+    scheduleSummary,
+    queueStatusItems: STATUS_ORDER.map((status) => ({
+      name: status,
+      value: queueStatusCounts[status] || 0,
+    })),
+    dailyQueue: queueDaily,
+    dailySchedule: scheduleDaily,
+    truckCategoryItems: monthlyTruckSummary.items,
+    topCustomers,
+    overSlaItems,
+    scheduleTopCustomers,
+  };
+}
+
 module.exports = {
   getSummary,
   getScheduleSummary,
@@ -525,4 +822,5 @@ module.exports = {
   getTopCustomers,
   getOverSla,
   getMonthlyScheduleTruckSummary,
+  getMonthlyReport,
 };
