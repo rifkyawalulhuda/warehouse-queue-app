@@ -107,6 +107,12 @@ const todayString = () => {
   return `${now.getFullYear()}-${month}-${day}`
 }
 
+const parseSearchQuery = (value: unknown) => {
+  if (typeof value === 'string') return value
+  if (Array.isArray(value) && typeof value[0] === 'string') return value[0]
+  return ''
+}
+
 type QueueSortColumn =
   | 'registerTime'
   | 'inWhTime'
@@ -121,7 +127,7 @@ const filters = reactive({
   date: todayString(),
   status: '',
   category: '',
-  search: ''
+  search: parseSearchQuery(route.query.search)
 })
 
 const sortBy = ref<QueueSortColumn>('registerTime')
@@ -543,6 +549,16 @@ watch(
   (value) => {
     if (typeof value === 'string' && value) {
       openDetailById(value)
+    }
+  }
+)
+
+watch(
+  () => route.query.search,
+  (value) => {
+    const nextSearch = parseSearchQuery(value)
+    if (filters.search !== nextSearch) {
+      filters.search = nextSearch
     }
   }
 )

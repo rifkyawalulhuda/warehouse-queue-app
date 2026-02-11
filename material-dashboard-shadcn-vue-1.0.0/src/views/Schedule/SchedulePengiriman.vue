@@ -363,12 +363,20 @@ const parseStoreTypeQuery = (value: unknown): '' | StoreType => {
   return ''
 }
 
+const parseSearchQuery = (value: unknown) => {
+  if (typeof value === 'string') return value
+  if (Array.isArray(value) && typeof value[0] === 'string') return value[0]
+  return ''
+}
+
 const applyFiltersFromRoute = () => {
   const queryDate = typeof route.query.date === 'string' ? toDateInput(route.query.date) : ''
   const queryType = parseStoreTypeQuery(route.query.type)
+  const querySearch = parseSearchQuery(route.query.search)
 
   filters.date = queryDate || todayString()
   filters.storeType = queryType
+  filters.search = querySearch
 }
 
 const queryString = computed(() => {
@@ -842,7 +850,7 @@ onMounted(() => {
 })
 
 watch(
-  () => [route.query.date, route.query.type],
+  () => [route.query.date, route.query.type, route.query.search],
   () => {
     applyFiltersFromRoute()
   }

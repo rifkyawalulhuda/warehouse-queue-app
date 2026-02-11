@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { computed, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { Search, Menu, User, LogOut, ChevronDown } from 'lucide-vue-next'
 import { useAuth } from '@/composables/useAuth'
 
@@ -9,6 +9,7 @@ defineProps<{
 }>()
 
 const router = useRouter()
+const route = useRoute()
 const { user, logout } = useAuth()
 const searchQuery = ref('')
 const accountDropdownOpen = ref(false)
@@ -16,7 +17,20 @@ const displayUserName = computed(() => user.value?.name || 'Account')
 
 const handleSearch = (e: Event) => {
   e.preventDefault()
-  console.log('Search:', searchQuery.value)
+  const query = searchQuery.value.trim()
+  const currentPath = route.path
+  const targetPath =
+    currentPath === '/antrian-truk' || currentPath === '/schedule-pengiriman'
+      ? currentPath
+      : '/antrian-truk'
+
+  const nextQuery: Record<string, any> = targetPath === currentPath ? { ...route.query } : {}
+  if (query) {
+    nextQuery.search = query
+  } else {
+    delete nextQuery.search
+  }
+  router.push({ path: targetPath, query: nextQuery })
 }
 
 const toggleAccountDropdown = () => {
@@ -32,6 +46,14 @@ const handleLogout = async () => {
   closeAccountDropdown()
   router.push('/login')
 }
+
+watch(
+  () => route.query.search,
+  (value) => {
+    searchQuery.value = typeof value === 'string' ? value : ''
+  },
+  { immediate: true }
+)
 </script>
 
 <template>
