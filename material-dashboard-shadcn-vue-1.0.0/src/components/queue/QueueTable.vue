@@ -130,14 +130,30 @@ const isOverdue = (entry: QueueEntry) => {
   return remaining !== null && remaining <= 0
 }
 
-const isOverTimeRemaining = (entry: QueueEntry) => {
+const isNearOverdue = (entry: QueueEntry) => {
   const remaining = getTimeRemaining(entry)
-  return remaining !== null && remaining <= 0
+  return remaining !== null && remaining > 0 && remaining <= 15
 }
+
+const getPriorityRank = (entry: QueueEntry) => {
+  if (isOverdue(entry)) return 0
+  if (isNearOverdue(entry)) return 1
+  return 2
+}
+
+const prioritizedEntries = computed(() => {
+  return props.entries
+    .map((entry, index) => ({ entry, index, rank: getPriorityRank(entry) }))
+    .sort((a, b) => {
+      if (a.rank !== b.rank) return a.rank - b.rank
+      return a.index - b.index
+    })
+    .map((item) => item.entry)
+})
 
 const sortIndicator = (column: string) => {
   if (props.sortBy !== column) return ''
-  return props.sortDir === 'asc' ? '▲' : '▼'
+  return props.sortDir === 'asc' ? '^' : 'v'
 }
 </script>
 
@@ -214,15 +230,17 @@ const sortIndicator = (column: string) => {
           <td colspan="13" class="px-3 py-6 text-center text-muted-foreground">Data kosong.</td>
         </tr>
         <tr
-          v-for="(entry, index) in props.entries"
+          v-for="(entry, index) in prioritizedEntries"
           :key="entry.id"
           :class="[
             'border-t transition-colors',
-            entry.status === 'BATAL'
-              ? 'bg-red-50 hover:bg-red-100'
-              : isOverTimeRemaining(entry)
-                ? 'bg-yellow-50 hover:bg-yellow-100'
-                : 'hover:bg-gray-50'
+            isOverdue(entry)
+              ? 'bg-red-100 hover:bg-red-200'
+              : isNearOverdue(entry)
+                ? 'bg-yellow-100 hover:bg-yellow-200'
+                : entry.status === 'BATAL'
+                  ? 'bg-gray-100 hover:bg-gray-200'
+                  : 'hover:bg-gray-50'
           ]"
         >
           <td class="px-3 py-2">{{ index + 1 }}</td>
@@ -249,7 +267,13 @@ const sortIndicator = (column: string) => {
           <td class="px-3 py-2">
             <span
               v-if="getTimeRemaining(entry) !== null"
-              :class="isOverdue(entry) ? 'text-red-600 font-semibold' : 'text-muted-foreground'"
+              :class="
+                isOverdue(entry)
+                  ? 'text-red-700 font-semibold'
+                  : isNearOverdue(entry)
+                    ? 'text-yellow-700 font-semibold'
+                    : 'text-muted-foreground'
+              "
             >
               {{ getTimeRemaining(entry) }} menit
             </span>

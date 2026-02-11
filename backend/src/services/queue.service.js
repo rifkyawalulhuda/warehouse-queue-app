@@ -130,6 +130,33 @@ function buildOrderBy(sortBy, sortDir) {
   return orderBy;
 }
 
+function getRemainingSlaMinutes(entry) {
+  if (entry.status === "MENUNGGU" || entry.status === "IN_WH") return 30;
+  if (entry.status === "PROSES") return entry.category === "RECEIVING" ? 120 : 90;
+  return null;
+}
+
+function getRemainingStartTime(entry) {
+  if (entry.status === "MENUNGGU" || entry.status === "IN_WH") return entry.registerTime;
+  if (entry.status === "PROSES") return entry.startTime;
+  return null;
+}
+
+function getEntryRemainingPriority(entry, nowMs) {
+  const slaMinutes = getRemainingSlaMinutes(entry);
+  const startTime = getRemainingStartTime(entry);
+  if (slaMinutes === null || !startTime) return 2;
+
+  const startMs = new Date(startTime).getTime();
+  if (Number.isNaN(startMs)) return 2;
+  const elapsedMinutes = Math.floor((nowMs - startMs) / 60000);
+  const remainingMinutes = slaMinutes - elapsedMinutes;
+
+  if (remainingMinutes <= 0) return 0;
+  if (remainingMinutes <= 15) return 1;
+  return 2;
+}
+
 async function createQueueEntry(data, actorUser) {
   const resolvedName = actorUser?.name || "system";
   const actorUserId = actorUser?.id || null;
@@ -183,21 +210,32 @@ async function listQueueEntries(query) {
     ];
   }
 
-  const totalItems = await prisma.queueEntry.count({ where });
-  const totalPages = Math.max(1, Math.ceil(totalItems / limit));
-  if (page > totalPages) page = totalPages;
-  const skip = (page - 1) * limit;
-
-  const data = await prisma.queueEntry.findMany({
+  const rows = await prisma.queueEntry.findMany({
     where,
     orderBy: buildOrderBy(sortBy, sortDir),
     include: {
       customer: true,
       gate: true,
     },
-    skip,
-    take: limit,
   });
+
+  const nowMs = Date.now();
+  const prioritizedRows = rows
+    .map((entry, index) => ({
+      entry,
+      index,
+      rank: getEntryRemainingPriority(entry, nowMs),
+    }))
+    .sort((a, b) => {
+      if (a.rank !== b.rank) return a.rank - b.rank;
+      return a.index - b.index;
+    });
+
+  const totalItems = prioritizedRows.length;
+  const totalPages = Math.max(1, Math.ceil(totalItems / limit));
+  if (page > totalPages) page = totalPages;
+  const skip = (page - 1) * limit;
+  const data = prioritizedRows.slice(skip, skip + limit).map((item) => item.entry);
 
   return {
     data,
