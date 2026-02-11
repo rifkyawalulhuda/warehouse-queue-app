@@ -267,14 +267,15 @@ const getSlaState = (entry: DisplayEntry) => {
   const remaining = getEffectiveRemainingMinutes(entry)
   if (remaining === null) return 'normal'
   if (remaining <= 0) return 'over'
-  if (remaining < 15) return 'warning'
+  if (remaining <= 15) return 'warning'
   return 'normal'
 }
 
 const rowClass = (entry: DisplayEntry) => {
+  if (entry.status === 'BATAL') return 'bg-gray-100 hover:bg-gray-200'
   const state = getSlaState(entry)
-  if (state === 'over') return 'bg-red-50 hover:bg-red-100 border-l-4 border-red-400'
-  if (state === 'warning') return 'bg-yellow-50 hover:bg-yellow-100 border-l-4 border-yellow-400'
+  if (state === 'over') return 'bg-red-100 hover:bg-red-200 border-l-4 border-red-400'
+  if (state === 'warning') return 'bg-yellow-100 hover:bg-yellow-200 border-l-4 border-yellow-400'
   return 'hover:bg-gray-50'
 }
 
@@ -286,6 +287,19 @@ const formatRemaining = (mins?: number | null) => {
 
 const warningRows = computed(() => entries.value.filter((entry) => getSlaState(entry) === 'warning'))
 const overRows = computed(() => entries.value.filter((entry) => getSlaState(entry) === 'over'))
+const prioritizedEntries = computed(() => {
+  return entries.value
+    .map((entry, index) => {
+      const state = getSlaState(entry)
+      const rank = state === 'over' ? 0 : state === 'warning' ? 1 : 2
+      return { entry, index, rank }
+    })
+    .sort((a, b) => {
+      if (a.rank !== b.rank) return a.rank - b.rank
+      return a.index - b.index
+    })
+    .map((item) => item.entry)
+})
 
 const formatDisplayDateTime = (date: Date) => {
   const weekday = new Intl.DateTimeFormat('id-ID', { weekday: 'long' }).format(date)
@@ -464,7 +478,7 @@ const showSoundBanner = computed(() => soundEnabled.value && ttsSupported && sou
               <td colspan="8" class="px-4 py-6 text-center text-muted-foreground">Data kosong.</td>
             </tr>
             <tr
-              v-for="entry in entries"
+              v-for="entry in prioritizedEntries"
               :key="entry.id"
               :class="['border-t', rowHighlightClass(entry), rowClass(entry)]"
             >
