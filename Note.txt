@@ -17,4 +17,8 @@ npm run migrate:deploy (backend)
 npm install (jika ada perubahan dependency) (Backend)
 npm run dev (front end)
 
+Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned
+
+
+
 http://localhost:5000/material-dashboard-shadcn-vue/display/antrian-truk

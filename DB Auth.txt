@@ -7,3 +7,9 @@ DB: queue_db
 User: sankyu
 
 Password: sankyu39
+
+
+login postgresql server 192.168.60.151
+
+username: admin
+password: admin123
