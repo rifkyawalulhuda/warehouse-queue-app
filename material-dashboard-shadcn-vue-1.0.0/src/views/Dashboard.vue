@@ -8,11 +8,13 @@ import CardContent from '@/components/ui/CardContent.vue'
 import Button from '@/components/ui/Button.vue'
 import HourlyTotalLineChart from '@/components/dashboard/HourlyTotalLineChart.vue'
 import HourlyCategoryStackedBar from '@/components/dashboard/HourlyCategoryStackedBar.vue'
+import MonthlyTruckCategoryStackedBar from '@/components/dashboard/MonthlyTruckCategoryStackedBar.vue'
 import StatusPieChart from '@/components/dashboard/StatusPieChart.vue'
 import TopCustomerDurationTable from '@/components/dashboard/TopCustomerDurationTable.vue'
 import OverSlaTable from '@/components/dashboard/OverSlaTable.vue'
 import {
   getDashboardHourly,
+  getMonthlyScheduleTruckSummary,
   getDashboardProgressSummary,
   getDashboardScheduleSummary,
   getDashboardStatus,
@@ -39,6 +41,14 @@ type StatusItem = { name: string; value: number }
 type TopCustomerItem = { customerName: string; avgDurationMinutes: number; totalTransactions: number }
 type OverSlaItem = { id: string; customerName: string; truckNumber: string; status: string; overMinutes: number }
 type ScheduleSummary = { date: string; storeIn: number; storeOut: number; total: number }
+type MonthlyTruckCategoryItem = {
+  key: string
+  label: string
+  storeInQty: number
+  storeOutQty: number
+  totalQty: number
+}
+type MonthlyTruckSummary = { month: string; totalQty: number; items: MonthlyTruckCategoryItem[] }
 type ProgressSummary = {
   date: string
   targetPengiriman: number
@@ -57,8 +67,16 @@ const getToday = () => {
   return `${yyyy}-${mm}-${dd}`
 }
 
+const getCurrentMonth = () => {
+  const now = new Date()
+  const yyyy = now.getFullYear()
+  const mm = String(now.getMonth() + 1).padStart(2, '0')
+  return `${yyyy}-${mm}`
+}
+
 const today = ref(getToday())
 const selectedDate = ref(today.value)
+const selectedScheduleMonth = ref(getCurrentMonth())
 const autoFollowToday = ref(true)
 const router = useRouter()
 const summary = reactive<Summary>({
@@ -93,6 +111,12 @@ const progressSummary = reactive<ProgressSummary>({
   prosesPct: 0,
   totalPct: 0
 })
+const monthlyTruckSummary = reactive<MonthlyTruckSummary>({
+  month: selectedScheduleMonth.value,
+  totalQty: 0,
+  items: []
+})
+const isLoadingMonthlyTruckSummary = ref(false)
 const isLoadingProgress = ref(false)
 const loading = ref(false)
 const error = ref<string | null>(null)
@@ -118,6 +142,13 @@ const showProsesLabelInBar = computed(() => prosesWidth.value >= 18)
 
 const getErrorMessage = (err: any, fallback: string) => {
   return err?.response?.data?.message || err?.message || fallback
+}
+
+const formatMonthLabel = (value: string) => {
+  const match = /^(\d{4})-(\d{2})$/.exec(value)
+  if (!match) return value
+  const date = new Date(Number(match[1]), Number(match[2]) - 1, 1)
+  return date.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' })
 }
 
 const fetchDashboard = async () => {
@@ -201,6 +232,24 @@ const fetchProgressSummary = async () => {
   }
 }
 
+const fetchMonthlyTruckSummary = async () => {
+  isLoadingMonthlyTruckSummary.value = true
+  try {
+    const response = await getMonthlyScheduleTruckSummary(selectedScheduleMonth.value)
+    const data = response.data?.data || response.data || {}
+    monthlyTruckSummary.month = data.month || selectedScheduleMonth.value
+    monthlyTruckSummary.totalQty = data.totalQty || 0
+    monthlyTruckSummary.items = data.items || []
+  } catch (err: any) {
+    monthlyTruckSummary.month = selectedScheduleMonth.value
+    monthlyTruckSummary.totalQty = 0
+    monthlyTruckSummary.items = []
+    error.value = getErrorMessage(err, 'Gagal memuat dashboard')
+  } finally {
+    isLoadingMonthlyTruckSummary.value = false
+  }
+}
+
 let refreshTimer: number | undefined
 let todayTimer: number | undefined
 
@@ -231,7 +280,12 @@ const handlePrintDashboard = () => {
 }
 
 const handleRefresh = async () => {
-  await Promise.all([fetchDashboard(), fetchScheduleSummary(), fetchProgressSummary()])
+  await Promise.all([
+    fetchDashboard(),
+    fetchScheduleSummary(),
+    fetchProgressSummary(),
+    fetchMonthlyTruckSummary()
+  ])
 }
 
 const setupAutoRefresh = () => {
@@ -248,6 +302,13 @@ watch(
     autoFollowToday.value = value === today.value
     handleRefresh()
     setupAutoRefresh()
+  }
+)
+
+watch(
+  () => selectedScheduleMonth.value,
+  () => {
+    fetchMonthlyTruckSummary()
   }
 )
 
@@ -462,6 +523,33 @@ onUnmounted(() => {
         </CardHeader>
         <CardContent>
           <StatusPieChart :items="statusItems" />
+        </CardContent>
+      </Card>
+
+      <Card class="lg:col-span-2">
+        <CardHeader class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <div>
+            <CardTitle>Schedule Pengiriman per Jenis Truk (Bulanan)</CardTitle>
+            <p class="text-xs text-muted-foreground">
+              Total Qty Store In + Store Out untuk bulan {{ formatMonthLabel(monthlyTruckSummary.month) }}
+            </p>
+          </div>
+          <input
+            v-model="selectedScheduleMonth"
+            type="month"
+            class="w-full bg-transparent border rounded-md px-2 py-2 text-sm md:w-auto"
+          />
+        </CardHeader>
+        <CardContent>
+          <div v-if="isLoadingMonthlyTruckSummary" class="text-sm text-muted-foreground">
+            Loading chart...
+          </div>
+          <template v-else>
+            <p class="mb-3 text-xs text-muted-foreground">
+              Total Qty Bulan Ini: {{ monthlyTruckSummary.totalQty }}
+            </p>
+            <MonthlyTruckCategoryStackedBar :items="monthlyTruckSummary.items" />
+          </template>
         </CardContent>
       </Card>
     </div>

@@ -15,3 +15,6 @@ export const getDashboardStatus = (date: string) => api.get(`/dashboard/status`,
 export const getTopCustomers = (date: string) => api.get(`/dashboard/top-customers`, { params: { date } })
 
 export const getOverSla = (date: string) => api.get(`/dashboard/over-sla`, { params: { date } })
+
+export const getMonthlyScheduleTruckSummary = (month: string) =>
+  api.get(`/dashboard/monthly-schedule-truck-summary`, { params: { month } })

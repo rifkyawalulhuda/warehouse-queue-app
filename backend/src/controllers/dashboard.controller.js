@@ -63,6 +63,15 @@ async function overSla(req, res, next) {
   }
 }
 
+async function monthlyScheduleTruckSummary(req, res, next) {
+  try {
+    const result = await dashboardService.getMonthlyScheduleTruckSummary(req.query.month);
+    return res.json(result);
+  } catch (err) {
+    return next(err);
+  }
+}
+
 module.exports = {
   summary,
   scheduleSummary,
@@ -71,4 +80,5 @@ module.exports = {
   status,
   topCustomers,
   overSla,
+  monthlyScheduleTruckSummary,
 };

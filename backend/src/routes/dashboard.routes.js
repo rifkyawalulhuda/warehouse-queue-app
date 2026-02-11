@@ -14,5 +14,9 @@ router.get("/dashboard/hourly", dashboardController.hourly);
 router.get("/dashboard/status", dashboardController.status);
 router.get("/dashboard/top-customers", dashboardController.topCustomers);
 router.get("/dashboard/over-sla", dashboardController.overSla);
+router.get(
+  "/dashboard/monthly-schedule-truck-summary",
+  dashboardController.monthlyScheduleTruckSummary
+);
 
 module.exports = router;

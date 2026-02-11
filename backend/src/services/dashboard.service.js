@@ -3,6 +3,15 @@ const { PrismaClient } = require("@prisma/client");
 const prisma = new PrismaClient();
 
 const STATUS_ORDER = ["MENUNGGU", "IN_WH", "PROSES", "SELESAI", "BATAL"];
+const MONTHLY_TRUCK_COLUMNS = [
+  { key: "CDE", label: "CDE" },
+  { key: "CDD", label: "CDD" },
+  { key: "FUSO", label: "FUSO" },
+  { key: "WB", label: "W/B" },
+  { key: "FT20", label: "20 ft" },
+  { key: "FT40", label: "40 ft" },
+  { key: "OTHER", label: "Other" },
+];
 
 function createHttpError(status, message, details) {
   const err = new Error(message);
@@ -56,6 +65,38 @@ function parseDateOnlyUtc(dateStr) {
     return null;
   }
   return date;
+}
+
+function formatMonthOnly(date) {
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const year = date.getFullYear();
+  return `${year}-${month}`;
+}
+
+function resolveMonthRange(monthQuery) {
+  if (!monthQuery) {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = now.getMonth();
+    const from = new Date(Date.UTC(year, month, 1));
+    const to = new Date(Date.UTC(year, month + 1, 1));
+    return { month: formatMonthOnly(now), from, to };
+  }
+
+  const match = /^(\d{4})-(\d{2})$/.exec(monthQuery);
+  if (!match) {
+    throw createHttpError(400, "Format month tidak valid. Gunakan YYYY-MM");
+  }
+
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  if (!Number.isInteger(year) || !Number.isInteger(month) || month < 1 || month > 12) {
+    throw createHttpError(400, "Format month tidak valid. Gunakan YYYY-MM");
+  }
+
+  const from = new Date(Date.UTC(year, month - 1, 1));
+  const to = new Date(Date.UTC(year, month, 1));
+  return { month: `${year}-${String(month).padStart(2, "0")}`, from, to };
 }
 
 function resolveDateRange(dateQuery) {
@@ -420,6 +461,61 @@ async function getOverSla(dateQuery) {
   return { date: range.date, items: items.slice(0, 5) };
 }
 
+async function getMonthlyScheduleTruckSummary(monthQuery) {
+  const range = resolveMonthRange(monthQuery);
+
+  const rows = await prisma.shipmentScheduleItem.findMany({
+    where: {
+      schedule: {
+        scheduleDate: {
+          gte: range.from,
+          lt: range.to,
+        },
+      },
+    },
+    select: {
+      truckType: true,
+      qty: true,
+      schedule: {
+        select: {
+          storeType: true,
+        },
+      },
+    },
+  });
+
+  const bucketMap = MONTHLY_TRUCK_COLUMNS.reduce((acc, column) => {
+    acc[column.key] = {
+      key: column.key,
+      label: column.label,
+      storeInQty: 0,
+      storeOutQty: 0,
+      totalQty: 0,
+    };
+    return acc;
+  }, {});
+
+  rows.forEach((row) => {
+    const key = bucketMap[row.truckType] ? row.truckType : "OTHER";
+    const qty = Number(row.qty) || 0;
+    if (row.schedule?.storeType === "STORE_OUT") {
+      bucketMap[key].storeOutQty += qty;
+    } else {
+      bucketMap[key].storeInQty += qty;
+    }
+    bucketMap[key].totalQty += qty;
+  });
+
+  const items = MONTHLY_TRUCK_COLUMNS.map((column) => bucketMap[column.key]);
+  const totalQty = items.reduce((sum, item) => sum + item.totalQty, 0);
+
+  return {
+    month: range.month,
+    totalQty,
+    items,
+  };
+}
+
 module.exports = {
   getSummary,
   getScheduleSummary,
@@ -428,4 +524,5 @@ module.exports = {
   getStatus,
   getTopCustomers,
   getOverSla,
+  getMonthlyScheduleTruckSummary,
 };
