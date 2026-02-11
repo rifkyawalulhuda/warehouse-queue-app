@@ -175,20 +175,33 @@ async function getScheduleSummary(dateQuery) {
     throw createHttpError(400, "Format date tidak valid. Gunakan YYYY-MM-DD");
   }
 
-  const [storeIn, storeOut] = await Promise.all([
-    prisma.shipmentSchedule.count({
+  const [storeInAggregate, storeOutAggregate] = await Promise.all([
+    prisma.shipmentScheduleItem.aggregate({
       where: {
-        scheduleDate,
-        storeType: "STORE_IN",
+        schedule: {
+          scheduleDate,
+          storeType: "STORE_IN",
+        },
+      },
+      _sum: {
+        qty: true,
       },
     }),
-    prisma.shipmentSchedule.count({
+    prisma.shipmentScheduleItem.aggregate({
       where: {
-        scheduleDate,
-        storeType: "STORE_OUT",
+        schedule: {
+          scheduleDate,
+          storeType: "STORE_OUT",
+        },
+      },
+      _sum: {
+        qty: true,
       },
     }),
   ]);
+
+  const storeIn = storeInAggregate?._sum?.qty || 0;
+  const storeOut = storeOutAggregate?._sum?.qty || 0;
 
   return {
     date: range.date,
