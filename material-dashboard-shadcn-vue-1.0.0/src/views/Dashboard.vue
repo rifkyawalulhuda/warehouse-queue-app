@@ -407,7 +407,7 @@ const buildMonthlyReportHtml = (report: MonthlyReportPayload) => {
       </div>
 
       <div class="section">
-        <h3>Top Customer & Over SLA</h3>
+        <h3>Data Customer & Over SLA</h3>
         <div class="section-body two-col">
           <table>
             <thead><tr><th>No</th><th>Customer</th><th>Total Transaksi</th><th>Avg Durasi</th></tr></thead>

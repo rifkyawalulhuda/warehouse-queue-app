@@ -781,12 +781,9 @@ async function getMonthlyReport(monthQuery) {
         : 0,
       totalTransactions: data.totalTransactions,
     }))
-    .sort((a, b) => b.avgDurationMinutes - a.avgDurationMinutes)
-    .slice(0, 10);
+    .sort((a, b) => b.avgDurationMinutes - a.avgDurationMinutes);
 
-  const overSlaItems = overSlaItemsRaw
-    .sort((a, b) => b.overMinutes - a.overMinutes)
-    .slice(0, 10);
+  const overSlaItems = overSlaItemsRaw.sort((a, b) => b.overMinutes - a.overMinutes);
 
   const scheduleTopCustomers = Array.from(scheduleQtyByCustomer.values())
     .sort((a, b) => b.totalQty - a.totalQty)
