@@ -324,7 +324,7 @@ onUnmounted(() => {
         @click="openSchedulePage(null)"
       >
         <CardHeader class="flex flex-row items-center justify-between pb-2">
-          <CardTitle class="text-sm font-medium">Total Pengiriman</CardTitle>
+          <CardTitle class="text-sm font-medium">Total Store In/Out hari ini</CardTitle>
           <span class="text-xs text-muted-foreground">View</span>
         </CardHeader>
         <CardContent>
