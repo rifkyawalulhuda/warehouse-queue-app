@@ -12,15 +12,54 @@ type QueueItem = {
 }
 
 const FEMALE_HINTS = ['female', 'woman', 'perempuan', 'wanita', 'putri', 'siti']
+const MALE_HINTS = ['male', 'man', 'pria', 'laki', 'ardi']
+const INDONESIAN_HINTS = ['indonesia', 'indonesian', 'bahasa indonesia', 'id-id']
+
+const normalizeLang = (value: string) => value.trim().toLowerCase()
+
+const getBaseLang = (value: string) => {
+  const normalized = normalizeLang(value)
+  return normalized.split('-')[0] || normalized
+}
+
+const isLanguageMatch = (voiceLang: string, preferredLang: string, baseLang: string) => {
+  if (!voiceLang) return false
+  const normalizedVoiceLang = normalizeLang(voiceLang)
+  if (normalizedVoiceLang === preferredLang) return true
+  if (normalizedVoiceLang === baseLang) return true
+  return normalizedVoiceLang.startsWith(`${baseLang}-`)
+}
+
+const scoreVoice = (voice: SpeechSynthesisVoice, preferredLang: string, baseLang: string) => {
+  const voiceName = voice.name?.toLowerCase() || ''
+  const voiceLang = voice.lang?.toLowerCase() || ''
+  let score = 0
+
+  if (voiceLang === preferredLang) score += 200
+  else if (voiceLang.startsWith(`${baseLang}-`) || voiceLang === baseLang) score += 120
+
+  if (INDONESIAN_HINTS.some((hint) => voiceName.includes(hint))) score += 80
+  if (FEMALE_HINTS.some((hint) => voiceName.includes(hint))) score += 30
+  if (MALE_HINTS.some((hint) => voiceName.includes(hint))) score -= 20
+  if (voice.default) score += 5
+
+  return score
+}
 
 const pickBestVoice = (voices: SpeechSynthesisVoice[], lang: string) => {
   if (!voices.length) return null
-  const byLang = voices.filter((voice) => voice.lang?.toLowerCase().startsWith(lang.toLowerCase()))
-  const pool = byLang.length ? byLang : voices
-  const preferred = pool.find((voice) =>
-    FEMALE_HINTS.some((hint) => voice.name?.toLowerCase().includes(hint))
+  const preferredLang = normalizeLang(lang)
+  const baseLang = getBaseLang(preferredLang)
+  const byLang = voices.filter((voice) =>
+    isLanguageMatch(voice.lang || '', preferredLang, baseLang)
   )
-  return preferred || pool[0]
+  const pool = byLang.length ? byLang : voices
+
+  const ranked = [...pool].sort(
+    (a, b) => scoreVoice(b, preferredLang, baseLang) - scoreVoice(a, preferredLang, baseLang)
+  )
+
+  return ranked[0] || null
 }
 
 export const useTtsQueue = ({ enabled, lang = 'id-ID', gapMs = 0 }: TtsQueueOptions) => {
