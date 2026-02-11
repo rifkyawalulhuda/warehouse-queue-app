@@ -15,7 +15,7 @@ const TRUCK_TYPE_LABELS = {
   FT40: "40 ft",
   OTHER: "Other",
 };
-const PRINT_TRUCK_COLUMNS = ["CDD", "CDE", "FUSO", "WB", "FT20", "FT40", "OTHER"];
+const PRINT_TRUCK_COLUMNS = ["CDE", "CDD", "FUSO", "WB", "FT20", "FT40", "OTHER"];
 
 function createHttpError(status, message, details) {
   const err = new Error(message);
