@@ -47,78 +47,106 @@ const handleSubmit = async () => {
 
 <template>
   <div
-    class="relative min-h-screen bg-background px-4 py-8 sm:px-6 lg:px-8"
+    class="min-h-screen bg-background px-4 py-8 sm:px-6 lg:px-8"
     style="
       background-image:
-        radial-gradient(circle at 8% 10%, rgba(34, 197, 94, 0.12), transparent 32%),
-        radial-gradient(circle at 92% 92%, rgba(37, 99, 235, 0.08), transparent 35%);
+        linear-gradient(180deg, rgba(15, 23, 42, 0.03) 0%, rgba(15, 23, 42, 0) 35%),
+        radial-gradient(circle at 88% 14%, rgba(34, 197, 94, 0.07), transparent 28%);
     "
   >
-    <div class="mx-auto grid min-h-[calc(100vh-4rem)] w-full max-w-6xl items-center gap-8 lg:grid-cols-[1.15fr_0.85fr]">
-      <section class="order-2 lg:order-1">
-        <div class="mx-auto w-full max-w-xl rounded-2xl border border-border/70 bg-card/60 p-6 backdrop-blur-sm sm:p-8">
-          <div class="flex items-center gap-4">
-            <div class="shrink-0 rounded-xl bg-white p-2 shadow-sm ring-1 ring-border">
-              <img :src="sankyuLogo" alt="PT. Sankyu Indonesia International" class="h-12 w-12 object-contain" />
+    <div class="mx-auto flex min-h-[calc(100vh-4rem)] w-full max-w-6xl items-center">
+      <div class="w-full overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
+        <div class="h-1 bg-primary"></div>
+        <div class="grid lg:grid-cols-[1.1fr_0.9fr]">
+          <section class="order-2 border-t border-border/80 p-6 sm:p-8 lg:order-1 lg:border-r lg:border-t-0 lg:p-10">
+            <p
+              class="inline-flex items-center rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-primary"
+            >
+              Operational Portal
+            </p>
+
+            <div class="mt-5 flex items-start gap-4">
+              <div class="shrink-0 rounded-lg bg-white p-2 ring-1 ring-border">
+                <img
+                  :src="sankyuLogo"
+                  alt="PT. Sankyu Indonesia International"
+                  class="h-12 w-12 object-contain sm:h-14 sm:w-14"
+                />
+              </div>
+              <div>
+                <h1 class="text-xl font-bold tracking-tight text-foreground sm:text-3xl">
+                  PT. Sankyu Indonesia International
+                </h1>
+                <p class="mt-2 max-w-xl text-sm leading-relaxed text-muted-foreground sm:text-base">
+                  Sistem Aplikasi Distribusi Antrian &amp; Schedule Operational
+                </p>
+              </div>
             </div>
-            <div>
-              <h1 class="text-xl font-extrabold tracking-tight text-foreground sm:text-2xl">
-                PT. Sankyu Indonesia International
-              </h1>
-              <p class="mt-1 text-sm text-muted-foreground sm:text-base">
-                Sistem Aplikasi Distribusi Antrian &amp; Schedule Operational
+
+            <div class="mt-8 space-y-3 text-sm text-muted-foreground">
+              <p class="flex items-center gap-2">
+                <span class="h-1.5 w-1.5 rounded-full bg-primary"></span>
+                Monitoring antrian truk harian secara real-time
+              </p>
+              <p class="flex items-center gap-2">
+                <span class="h-1.5 w-1.5 rounded-full bg-primary"></span>
+                Pengelolaan schedule store in/out terintegrasi
+              </p>
+              <p class="flex items-center gap-2">
+                <span class="h-1.5 w-1.5 rounded-full bg-primary"></span>
+                Ringkasan dashboard operasional dan laporan bulanan
               </p>
             </div>
-          </div>
+          </section>
+
+          <section class="order-1 bg-muted/20 p-6 sm:p-8 lg:order-2 lg:p-10">
+            <Card class="mx-auto w-full max-w-md border-border bg-card shadow-none">
+              <CardHeader>
+                <div>
+                  <h2 class="text-2xl font-semibold tracking-tight">Login</h2>
+                  <p class="mt-1 text-sm text-muted-foreground">Masuk ke akun operasional Anda</p>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <form class="space-y-4" @submit.prevent="handleSubmit">
+                  <div
+                    v-if="error"
+                    class="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700"
+                  >
+                    {{ error }}
+                  </div>
+
+                  <div>
+                    <label class="text-sm font-medium text-muted-foreground">Username</label>
+                    <input
+                      v-model="form.username"
+                      type="text"
+                      class="mt-1 w-full rounded-md border border-border bg-background px-3 py-2.5 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
+                      autocomplete="username"
+                      placeholder="Masukkan username"
+                    />
+                  </div>
+
+                  <div>
+                    <label class="text-sm font-medium text-muted-foreground">Password</label>
+                    <input
+                      v-model="form.password"
+                      type="password"
+                      class="mt-1 w-full rounded-md border border-border bg-background px-3 py-2.5 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
+                      autocomplete="current-password"
+                      placeholder="Masukkan password"
+                    />
+                  </div>
+
+                  <Button type="submit" class="w-full py-2.5 text-sm font-semibold" :disabled="loading">
+                    {{ loading ? 'Masuk...' : 'Login' }}
+                  </Button>
+                </form>
+              </CardContent>
+            </Card>
+          </section>
         </div>
-      </section>
-
-      <section class="order-1 lg:order-2">
-        <Card class="mx-auto w-full max-w-md border-border/80 shadow-lg shadow-black/[0.04]">
-          <CardHeader>
-            <div>
-              <h2 class="text-2xl font-bold tracking-tight">Login</h2>
-              <p class="mt-1 text-sm text-muted-foreground">Masuk ke sistem operasional</p>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <form class="space-y-4" @submit.prevent="handleSubmit">
-              <div
-                v-if="error"
-                class="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700"
-              >
-                {{ error }}
-              </div>
-
-              <div>
-                <label class="text-sm font-medium text-muted-foreground">Username</label>
-                <input
-                  v-model="form.username"
-                  type="text"
-                  class="mt-1 w-full rounded-md border bg-background px-3 py-2.5 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
-                  autocomplete="username"
-                  placeholder="Masukkan username"
-                />
-              </div>
-
-              <div>
-                <label class="text-sm font-medium text-muted-foreground">Password</label>
-                <input
-                  v-model="form.password"
-                  type="password"
-                  class="mt-1 w-full rounded-md border bg-background px-3 py-2.5 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
-                  autocomplete="current-password"
-                  placeholder="Masukkan password"
-                />
-              </div>
-
-              <Button type="submit" class="w-full py-2.5 text-sm font-semibold" :disabled="loading">
-                {{ loading ? 'Masuk...' : 'Login' }}
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
-      </section>
+      </div>
     </div>
   </div>
 </template>
