@@ -188,7 +188,7 @@ watch(
       </div>
       <div class="p-4 border-t flex items-center justify-end gap-2">
         <Button variant="ghost" :disabled="loggingOut" @click="closeLogoutConfirm">Batal</Button>
-        <Button variant="outline" :disabled="loggingOut" @click="handleLogout">
+        <Button variant="outline" class="border-red-200 bg-red-600 text-white hover:bg-red-700 hover:text-white" :disabled="loggingOut" @click="handleLogout">
           {{ loggingOut ? 'Memproses...' : 'Ya, Logout' }}
         </Button>
       </div>
