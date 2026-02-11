@@ -622,6 +622,12 @@ async function getMonthlyReport(monthQuery) {
     SELESAI: 0,
     BATAL: 0,
   };
+  const hourlyQueueBuckets = Array.from({ length: 24 }, (_, hour) => ({
+    hour: `${String(hour).padStart(2, "0")}:00`,
+    total: 0,
+    delivery: 0,
+    receiving: 0,
+  }));
 
   const queueDurationByCustomer = new Map();
   let finishedCount = 0;
@@ -661,6 +667,14 @@ async function getMonthlyReport(monthQuery) {
 
     if (queueStatusCounts[entry.status] !== undefined) {
       queueStatusCounts[entry.status] += 1;
+    }
+
+    const hour = new Date(entry.registerTime).getHours();
+    const bucket = hourlyQueueBuckets[hour];
+    if (bucket) {
+      bucket.total += 1;
+      if (entry.category === "DELIVERY") bucket.delivery += 1;
+      if (entry.category === "RECEIVING") bucket.receiving += 1;
     }
 
     const queueDateKey = formatDateOnly(new Date(entry.registerTime));
@@ -800,6 +814,7 @@ async function getMonthlyReport(monthQuery) {
       name: status,
       value: queueStatusCounts[status] || 0,
     })),
+    hourlyQueue: hourlyQueueBuckets,
     dailyQueue: queueDaily,
     dailySchedule: scheduleDaily,
     truckCategoryItems: monthlyTruckSummary.items,

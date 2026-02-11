@@ -64,6 +64,12 @@ type MonthlyReportDailyScheduleItem = {
   storeOutQty: number
   totalQty: number
 }
+type MonthlyReportHourlyQueueItem = {
+  hour: string
+  total: number
+  delivery: number
+  receiving: number
+}
 type MonthlyReportTopCustomerItem = {
   customerName: string
   avgDurationMinutes: number
@@ -92,6 +98,7 @@ type MonthlyReportPayload = {
   queueSummary: Summary
   scheduleSummary: { storeInQty: number; storeOutQty: number; totalQty: number }
   queueStatusItems: MonthlyReportQueueStatusItem[]
+  hourlyQueue: MonthlyReportHourlyQueueItem[]
   dailyQueue: MonthlyReportDailyQueueItem[]
   dailySchedule: MonthlyReportDailyScheduleItem[]
   truckCategoryItems: MonthlyTruckCategoryItem[]
@@ -323,6 +330,34 @@ const buildMonthlyReportHtml = (report: MonthlyReportPayload) => {
           .join('')
       : '<tr><td colspan="4" class="empty">Tidak ada data</td></tr>'
 
+  const hourlyQueueItems = Array.isArray(report.hourlyQueue) ? report.hourlyQueue : []
+  const hourlyQueueMax = hourlyQueueItems.reduce(
+    (max, item) => Math.max(max, Number(item.total) || 0),
+    0
+  )
+  const hourlyQueueRows =
+    hourlyQueueItems.length > 0
+      ? hourlyQueueItems
+          .map((item) => {
+            const total = Number(item.total) || 0
+            const delivery = Number(item.delivery) || 0
+            const receiving = Number(item.receiving) || 0
+            const widthPct = hourlyQueueMax > 0 ? Math.round((total / hourlyQueueMax) * 100) : 0
+            return `<tr>
+              <td>${escapeHtml(item.hour || '-')}</td>
+              <td class="num strong">${formatNumber(total)}</td>
+              <td class="num">${formatNumber(delivery)}</td>
+              <td class="num">${formatNumber(receiving)}</td>
+              <td>
+                <div class="hourly-bar-wrap">
+                  <div class="hourly-bar-fill" style="width:${widthPct}%"></div>
+                </div>
+              </td>
+            </tr>`
+          })
+          .join('')
+      : '<tr><td colspan="5" class="empty">Tidak ada data</td></tr>'
+
   return `<!doctype html>
 <html>
   <head>
@@ -351,6 +386,8 @@ const buildMonthlyReportHtml = (report: MonthlyReportPayload) => {
       td.strong { font-weight: 700; }
       .empty { text-align: center; color: #6b7280; padding: 10px 0; }
       .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+      .hourly-bar-wrap { width: 100%; height: 10px; background: #e5e7eb; border-radius: 999px; overflow: hidden; }
+      .hourly-bar-fill { height: 100%; background: #2563eb; min-width: 0; }
       .page-break { page-break-before: always; }
       @media print {
         .section, .card { break-inside: avoid; }
@@ -404,6 +441,16 @@ const buildMonthlyReportHtml = (report: MonthlyReportPayload) => {
           <table>
             <thead><tr><th>Status</th><th>Jumlah</th></tr></thead>
             <tbody>${queueStatusRows}</tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="section">
+        <h3>Distribusi Jam Transaksi Antrian (Bulanan)</h3>
+        <div class="section-body">
+          <table>
+            <thead><tr><th>Jam</th><th>Total</th><th>Delivery</th><th>Receiving</th><th>Visual</th></tr></thead>
+            <tbody>${hourlyQueueRows}</tbody>
           </table>
         </div>
       </div>
