@@ -207,6 +207,18 @@ const formatMonthLabel = (value: string) => {
 
 const formatNumber = (value: number) => new Intl.NumberFormat('id-ID').format(value || 0)
 
+const formatDurationHuman = (value: number) => {
+  const totalMinutes = Number.isFinite(value) ? Math.max(0, Math.floor(value)) : 0
+  const days = Math.floor(totalMinutes / 1440)
+  const hours = Math.floor((totalMinutes % 1440) / 60)
+  const minutes = totalMinutes % 60
+  const parts: string[] = []
+  if (days > 0) parts.push(`${formatNumber(days)}h`)
+  if (hours > 0) parts.push(`${formatNumber(hours)}j`)
+  if (minutes > 0 || parts.length === 0) parts.push(`${formatNumber(minutes)}m`)
+  return parts.join(' ')
+}
+
 const escapeHtml = (value: string) =>
   value
     .replace(/&/g, '&amp;')
@@ -266,7 +278,7 @@ const buildMonthlyReportHtml = (report: MonthlyReportPayload) => {
       ? report.topCustomers
           .map(
             (item, idx) =>
-              `<tr><td class="num">${idx + 1}</td><td>${escapeHtml(item.customerName)}</td><td class="num">${formatNumber(item.totalTransactions)}</td><td class="num">${formatNumber(item.avgDurationMinutes)} menit</td></tr>`
+              `<tr><td class="num">${idx + 1}</td><td>${escapeHtml(item.customerName)}</td><td class="num">${formatNumber(item.totalTransactions)}</td><td class="num">${formatDurationHuman(item.avgDurationMinutes)}</td></tr>`
           )
           .join('')
       : '<tr><td colspan="4" class="empty">Tidak ada data</td></tr>'
@@ -286,7 +298,7 @@ const buildMonthlyReportHtml = (report: MonthlyReportPayload) => {
       ? report.overSlaItems
           .map(
             (item, idx) =>
-              `<tr><td class="num">${idx + 1}</td><td>${formatDateToDisplay(item.date)}</td><td>${escapeHtml(item.customerName)}</td><td>${escapeHtml(item.driverName)}</td><td>${escapeHtml(item.truckNumber)}</td><td>${escapeHtml(item.status)}</td><td class="num">${formatNumber(item.overMinutes)} menit</td></tr>`
+              `<tr><td class="num">${idx + 1}</td><td>${formatDateToDisplay(item.date)}</td><td>${escapeHtml(item.customerName)}</td><td>${escapeHtml(item.driverName)}</td><td>${escapeHtml(item.truckNumber)}</td><td>${escapeHtml(item.status)}</td><td class="num">${formatDurationHuman(item.overMinutes)}</td></tr>`
           )
           .join('')
       : '<tr><td colspan="7" class="empty">Tidak ada data</td></tr>'
@@ -349,7 +361,7 @@ const buildMonthlyReportHtml = (report: MonthlyReportPayload) => {
     <div class="report">
       <div class="header">
         <h1 class="title">PT. SANKYU INDONESIA - Laporan Bulanan Dashboard</h1>
-        <p class="subtitle">Ringkasan seluruh data operasional Queue & Schedule Store In-Out</p>
+        <p class="subtitle">Ringkasan seluruh data operasional Antrian & Schedule Store In-Out</p>
         <div class="meta">
           <span>Periode: ${escapeHtml(monthLabel)}</span>
           <span>Generated: ${escapeHtml(generatedAt)}</span>
@@ -357,7 +369,7 @@ const buildMonthlyReportHtml = (report: MonthlyReportPayload) => {
       </div>
 
       <div class="section">
-        <h3>Ringkasan Queue (Bulanan)</h3>
+        <h3>Ringkasan Antrian (Bulanan)</h3>
         <div class="section-body">
           <div class="cards">
             <div class="card"><div class="label">Total Transaksi</div><div class="value">${formatNumber(report.queueSummary?.total || 0)}</div></div>
@@ -387,7 +399,7 @@ const buildMonthlyReportHtml = (report: MonthlyReportPayload) => {
       </div>
 
       <div class="section">
-        <h3>Distribusi Status Queue</h3>
+        <h3>Distribusi Status Antrian</h3>
         <div class="section-body">
           <table>
             <thead><tr><th>Status</th><th>Jumlah</th></tr></thead>
@@ -421,7 +433,7 @@ const buildMonthlyReportHtml = (report: MonthlyReportPayload) => {
       </div>
 
       <div class="section">
-        <h3>Top Customer Schedule (Berdasarkan Qty)</h3>
+        <h3>Customer Schedule (Berdasarkan Qty)</h3>
         <div class="section-body">
           <table>
             <thead><tr><th>No</th><th>Customer</th><th>Store In Qty</th><th>Store Out Qty</th><th>Total Qty</th></tr></thead>
@@ -431,7 +443,7 @@ const buildMonthlyReportHtml = (report: MonthlyReportPayload) => {
       </div>
 
       <div class="section page-break">
-        <h3>Rekap Harian Queue</h3>
+        <h3>Rekap Harian Antrian</h3>
         <div class="section-body">
           <table>
             <thead><tr><th>Tanggal</th><th>Total</th><th>Delivery</th><th>Receiving</th><th>Selesai</th></tr></thead>

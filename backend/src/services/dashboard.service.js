@@ -786,8 +786,7 @@ async function getMonthlyReport(monthQuery) {
   const overSlaItems = overSlaItemsRaw.sort((a, b) => b.overMinutes - a.overMinutes);
 
   const scheduleTopCustomers = Array.from(scheduleQtyByCustomer.values())
-    .sort((a, b) => b.totalQty - a.totalQty)
-    .slice(0, 10);
+    .sort((a, b) => b.totalQty - a.totalQty);
 
   const queueDaily = Array.from(dailyQueueMap.values()).sort((a, b) => a.date.localeCompare(b.date));
   const scheduleDaily = Array.from(dailyScheduleMap.values()).sort((a, b) => a.date.localeCompare(b.date));
