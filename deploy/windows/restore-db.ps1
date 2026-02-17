@@ -52,6 +52,44 @@ function Test-CommandAvailable {
   return [bool](Get-Command $Name -ErrorAction SilentlyContinue)
 }
 
+function Resolve-PostgresExecutable {
+  param([string]$CommandName)
+
+  $command = Get-Command $CommandName -ErrorAction SilentlyContinue
+  if ($command) {
+    return $command.Source
+  }
+
+  $exeName = "$CommandName.exe"
+  $candidates = @()
+  $programFiles = @($env:ProgramFiles, ${env:ProgramFiles(x86)}) | Where-Object { $_ }
+
+  foreach ($base in $programFiles) {
+    $postgresRoot = Join-Path $base "PostgreSQL"
+    if (!(Test-Path $postgresRoot)) { continue }
+
+    $binMatches = Get-ChildItem -Path $postgresRoot -Recurse -Filter $exeName -ErrorAction SilentlyContinue |
+      Where-Object { $_.FullName -match "\\bin\\$([regex]::Escape($exeName))$" }
+
+    if ($binMatches) {
+      $candidates += $binMatches
+      continue
+    }
+
+    # Fallback untuk distribusi yang menyertakan executable di lokasi non-bin.
+    $runtimeMatches = Get-ChildItem -Path $postgresRoot -Recurse -Filter $exeName -ErrorAction SilentlyContinue
+    if ($runtimeMatches) {
+      $candidates += $runtimeMatches
+    }
+  }
+
+  if ($candidates.Count -eq 0) {
+    return $null
+  }
+
+  return ($candidates | Sort-Object FullName -Descending | Select-Object -First 1).FullName
+}
+
 function Test-DockerContainerRunning {
   param([string]$ContainerName)
   if (-not (Test-CommandAvailable "docker")) { return $false }
@@ -116,7 +154,8 @@ if ($answer -ne "YES") {
   exit 0
 }
 
-$hostModeAvailable = Test-CommandAvailable "pg_restore"
+$pgRestoreExe = Resolve-PostgresExecutable -CommandName "pg_restore"
+$hostModeAvailable = [bool]$pgRestoreExe
 $dockerModeAvailable = Test-DockerContainerRunning -ContainerName $DockerContainer
 
 $effectiveMode = $Mode
@@ -134,14 +173,15 @@ Write-Host "[INFO ] Mode     : $effectiveMode"
 
 if ($effectiveMode -eq "host") {
   if (-not $hostModeAvailable) {
-    throw "Mode host dipilih tapi pg_restore tidak ditemukan di PATH."
+    throw "Mode host dipilih tapi pg_restore tidak ditemukan (PATH atau default folder PostgreSQL)."
   }
+  Write-Host "[INFO ] pg_restore : $pgRestoreExe"
 
   $previousPassword = $env:PGPASSWORD
   try {
     if ($cfg.Password) { $env:PGPASSWORD = $cfg.Password }
 
-    & pg_restore `
+    & $pgRestoreExe `
       -h $cfg.Host `
       -p $cfg.Port `
       -U $cfg.User `

@@ -5,7 +5,7 @@ $repoRoot = Resolve-Path (Join-Path $scriptDir "..\..")
 
 $backendDir = Join-Path $repoRoot "backend"
 $frontendDistDir = Join-Path $repoRoot "material-dashboard-shadcn-vue-1.0.0\dist"
-$nginxDir = "C:\Users\rifky\Downloads\nginx-1.28.2"
+$nginxDir = "C:\nginx-1.28.2"
 $backendPort = 3000
 
 Write-Host ""
@@ -26,6 +26,28 @@ if (!(Test-Path (Join-Path $nginxDir "nginx.exe"))) {
   Write-Host "[ERROR] nginx.exe tidak ditemukan di: $nginxDir"
   Write-Host "        Edit variabel `\$nginxDir pada start-local-server.ps1"
   exit 1
+}
+
+$nginxTempDirs = @(
+  (Join-Path $nginxDir "temp"),
+  (Join-Path $nginxDir "temp\client_body_temp"),
+  (Join-Path $nginxDir "temp\proxy_temp"),
+  (Join-Path $nginxDir "temp\fastcgi_temp"),
+  (Join-Path $nginxDir "temp\scgi_temp"),
+  (Join-Path $nginxDir "temp\uwsgi_temp")
+)
+
+foreach ($tempDir in $nginxTempDirs) {
+  if (!(Test-Path $tempDir)) {
+    try {
+      New-Item -Path $tempDir -ItemType Directory -Force -ErrorAction Stop | Out-Null
+      Write-Host "[INFO ] Membuat folder temp Nginx: $tempDir"
+    } catch {
+      Write-Host "[ERROR] Gagal membuat folder temp Nginx: $tempDir"
+      Write-Host "        $($_.Exception.Message)"
+      exit 1
+    }
+  }
 }
 
 if (!(Test-Path (Join-Path $frontendDistDir "index.html"))) {
