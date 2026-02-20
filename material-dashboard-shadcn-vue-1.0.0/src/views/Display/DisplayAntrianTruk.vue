@@ -58,6 +58,10 @@ const { enqueue, blocked: soundBlocked, resume: resumeSound, supported: ttsSuppo
   enabled: soundEnabled,
   lang: 'id-ID',
   gapMs: 4000,
+  preferredGender: 'female',
+  preferGoogle: true,
+  rate: 0.94,
+  pitch: 1.12,
 })
 
 const getErrorMessage = (err: any, fallback: string) => {
@@ -155,9 +159,9 @@ const formatGateSpeech = (gate?: DisplayEntry['gate'] | null) => {
 }
 
 const resolveAreaType = (category?: DisplayEntry['category']) => {
-  if (category === 'DELIVERY') return 'Loading'
-  if (category === 'RECEIVING') return 'Unloading'
-  return 'Loading'
+  if (category === 'DELIVERY') return 'muat'
+  if (category === 'RECEIVING') return 'bongkar'
+  return 'operasional'
 }
 
 const formatTruckSpeech = (value?: string | null) => {
@@ -176,7 +180,7 @@ const buildAnnouncement = (entry: DisplayEntry) => {
   const truckNumber = formatTruckSpeech(entry.truckNumber)
   const gateNo = formatGateSpeech(entry.gate)
   const areaType = resolveAreaType(entry.category)
-  return `Perhatian. Driver ${driverName}, truk ${truckNumber}. Silakan menuju ${gateNo}. Anda sudah diperbolehkan masuk area ${areaType}.`
+  return `Perhatian, driver ${driverName} dengan truk ${truckNumber}. Silakan menuju ${gateNo}. Anda dipersilakan masuk ke area ${areaType}. Terima kasih.`
 }
 
 const canAnnounce = (entry: DisplayEntry) => {

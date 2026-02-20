@@ -46,7 +46,14 @@ const emit = defineEmits<{
 const { user } = useAuth()
 const isAdmin = computed(() => user.value?.role === 'ADMIN')
 const soundEnabled = ref(true)
-const { enqueue, supported: ttsSupported } = useTtsQueue({ enabled: soundEnabled, lang: 'id-ID' })
+const { enqueue, supported: ttsSupported } = useTtsQueue({
+  enabled: soundEnabled,
+  lang: 'id-ID',
+  preferredGender: 'female',
+  preferGoogle: true,
+  rate: 0.94,
+  pitch: 1.12,
+})
 
 const parseDate = (value?: string | null) => {
   if (!value) return null
@@ -101,7 +108,7 @@ const categoryLabel = (category?: string) => {
 const resolveAreaType = (category?: QueueEntry['category']) => {
   if (category === 'DELIVERY') return 'Loading'
   if (category === 'RECEIVING') return 'Unloading'
-  return 'Loading'
+  return 'operasional'
 }
 
 const formatTruckSpeech = (value?: string | null) => {
@@ -134,7 +141,7 @@ const buildAnnouncement = (entry: QueueEntry) => {
   const truckNumber = formatTruckSpeech(entry.truckNumber)
   const gateNo = formatGateSpeech(entry.gate)
   const areaType = resolveAreaType(entry.category)
-  return `Perhatian. Driver ${driverName}, truk ${truckNumber}. Silakan menuju ${gateNo}. Anda sudah diperbolehkan masuk area ${areaType}.`
+  return `Perhatian, driver ${driverName} dengan truk ${truckNumber}. Silakan menuju ${gateNo}. Anda dipersilakan masuk ke area ${areaType}. Terima kasih.`
 }
 
 const handleAnnounce = () => {
