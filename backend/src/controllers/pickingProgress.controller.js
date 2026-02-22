@@ -18,6 +18,17 @@ function formatDateTime(value) {
   return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
 }
 
+function formatDateOnly(value) {
+  if (!value) return "-";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "-";
+  const pad = (num) => String(num).padStart(2, "0");
+  const year = date.getFullYear();
+  const month = pad(date.getMonth() + 1);
+  const day = pad(date.getDate());
+  return `${year}-${month}-${day}`;
+}
+
 function formatTimeRemaining(seconds, status) {
   if (status !== "ON_PROCESS" || seconds === null || seconds === undefined) return "-";
   const abs = Math.abs(seconds);
@@ -150,6 +161,7 @@ async function exportPickingProgress(req, res, next) {
     const worksheet = workbook.addWorksheet("Picking Progress");
     worksheet.columns = [
       { header: "No", key: "no", width: 6 },
+      { header: "Tanggal", key: "date", width: 14 },
       { header: "Nama Customer", key: "customerName", width: 24 },
       { header: "DO Number", key: "doNumber", width: 18 },
       { header: "Destination", key: "destination", width: 18 },
@@ -171,6 +183,7 @@ async function exportPickingProgress(req, res, next) {
     entries.forEach((entry, index) => {
       worksheet.addRow({
         no: index + 1,
+        date: formatDateOnly(entry.date),
         customerName: entry.customer?.name || "-",
         doNumber: entry.doNumber || entry.noContainer || "-",
         destination: entry.destination || entry.noDock || "-",

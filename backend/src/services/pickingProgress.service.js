@@ -93,16 +93,39 @@ function resolveDateRange(rawDate) {
   return { from: getStartOfDay(dateObj), to: getEndOfDay(dateObj) };
 }
 
+function toUtcMidnightByLocalDateParts(date) {
+  return new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate(), 0, 0, 0, 0));
+}
+
+function parseDateOnlyToUtcMidnight(dateStr) {
+  if (!dateStr || typeof dateStr !== "string") return null;
+  const parts = dateStr.split("-");
+  if (parts.length !== 3) return null;
+  const year = Number(parts[0]);
+  const month = Number(parts[1]);
+  const day = Number(parts[2]);
+  if (!Number.isInteger(year) || !Number.isInteger(month) || !Number.isInteger(day)) return null;
+  const parsed = new Date(Date.UTC(year, month - 1, day, 0, 0, 0, 0));
+  if (
+    parsed.getUTCFullYear() !== year ||
+    parsed.getUTCMonth() !== month - 1 ||
+    parsed.getUTCDate() !== day
+  ) {
+    return null;
+  }
+  return parsed;
+}
+
 function resolveTransactionDate(rawDate) {
-  if (!rawDate) return getStartOfDay(new Date());
-  const parsedDateOnly = parseDateOnly(rawDate);
-  if (parsedDateOnly) return getStartOfDay(parsedDateOnly);
+  if (!rawDate) return toUtcMidnightByLocalDateParts(new Date());
+  const parsedDateOnlyUtc = parseDateOnlyToUtcMidnight(rawDate);
+  if (parsedDateOnlyUtc) return parsedDateOnlyUtc;
 
   const dateTime = new Date(rawDate);
   if (Number.isNaN(dateTime.getTime())) {
     throw createHttpError(400, "Format date tidak valid");
   }
-  return getStartOfDay(dateTime);
+  return toUtcMidnightByLocalDateParts(dateTime);
 }
 
 function buildExportDateRange(query) {
