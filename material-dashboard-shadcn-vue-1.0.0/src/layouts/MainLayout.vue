@@ -8,6 +8,7 @@ import {
   LayoutDashboard,
   Database,
   Truck,
+  Package,
   CalendarDays,
   ChevronDown,
   ChevronLeft,
@@ -40,10 +41,12 @@ const navigation: NavItem[] = [
     children: [
       { name: 'Master Customer', path: '/master-customer', roles: ['ADMIN'] },
       { name: 'Master Gate', path: '/master-gate', roles: ['ADMIN', 'WAREHOUSE', 'CS'] },
-      { name: 'Master Admin', path: '/master-admin', roles: ['ADMIN'] }
+      { name: 'Master Admin', path: '/master-admin', roles: ['ADMIN'] },
+      { name: 'Master Karyawan', path: '/master-karyawan', roles: ['ADMIN'] }
     ]
   },
   { name: 'Antrian Truk', path: '/antrian-truk', icon: Truck, roles: ['ADMIN', 'WAREHOUSE', 'CS'] },
+  { name: 'Picking Progress', path: '/picking-progress', icon: Package, roles: ['ADMIN', 'WAREHOUSE', 'CS'] },
   { name: 'Schedule Pengiriman', path: '/schedule-pengiriman', icon: CalendarDays, roles: ['ADMIN', 'WAREHOUSE', 'CS'] }
 ]
 

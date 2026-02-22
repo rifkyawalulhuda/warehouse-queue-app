@@ -23,7 +23,7 @@ const handleSearch = (e: Event) => {
   const query = searchQuery.value.trim()
   const currentPath = route.path
   const targetPath =
-    currentPath === '/antrian-truk' || currentPath === '/schedule-pengiriman'
+    currentPath === '/antrian-truk' || currentPath === '/schedule-pengiriman' || currentPath === '/picking-progress'
       ? currentPath
       : '/antrian-truk'
 

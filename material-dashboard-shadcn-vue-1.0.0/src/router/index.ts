@@ -50,9 +50,21 @@ const router = createRouter({
           meta: { roles: ['ADMIN'] }
         },
         {
+          path: 'master-karyawan',
+          name: 'Master Karyawan',
+          component: () => import('@/views/MasterEmployee/EmployeeList.vue'),
+          meta: { roles: ['ADMIN'] }
+        },
+        {
           path: 'antrian-truk',
           name: 'Antrian Truk',
           component: () => import('@/views/Queue/QueueList.vue'),
+          meta: { roles: ['ADMIN', 'WAREHOUSE', 'CS'] }
+        },
+        {
+          path: 'picking-progress',
+          name: 'Picking Progress',
+          component: () => import('@/views/PickingProgress/PickingProgressList.vue'),
           meta: { roles: ['ADMIN', 'WAREHOUSE', 'CS'] }
         },
         {

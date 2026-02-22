@@ -1,0 +1,6 @@
+-- AlterTable
+ALTER TABLE "PickingProgress"
+  ADD COLUMN IF NOT EXISTS "doNumber" TEXT,
+  ADD COLUMN IF NOT EXISTS "destination" TEXT,
+  ADD COLUMN IF NOT EXISTS "volumeCbm" DECIMAL,
+  ADD COLUMN IF NOT EXISTS "plTimeRelease" TIMESTAMP(3);

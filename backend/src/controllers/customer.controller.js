@@ -75,6 +75,40 @@ function downloadTemplate(req, res, next) {
   }
 }
 
+async function exportCustomers(req, res, next) {
+  try {
+    const customers = await customerService.listCustomersForExport();
+    const rows = [
+      ["Nama Customer", "Created At"],
+      ...customers.map((customer) => [
+        customer.name,
+        customer.createdAt ? new Date(customer.createdAt).toISOString() : "",
+      ]),
+    ];
+
+    const sheet = xlsx.utils.aoa_to_sheet(rows);
+    sheet["!cols"] = [{ wch: 28 }, { wch: 24 }];
+    const workbook = xlsx.utils.book_new();
+    xlsx.utils.book_append_sheet(workbook, sheet, "Master Customer");
+    const buffer = xlsx.write(workbook, { type: "buffer", bookType: "xlsx" });
+
+    const today = new Date();
+    const yyyy = today.getFullYear();
+    const mm = String(today.getMonth() + 1).padStart(2, "0");
+    const dd = String(today.getDate()).padStart(2, "0");
+    const fileName = `master-customer_${yyyy}-${mm}-${dd}.xlsx`;
+
+    res.setHeader(
+      "Content-Type",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    );
+    res.setHeader("Content-Disposition", `attachment; filename=\"${fileName}\"`);
+    return res.send(buffer);
+  } catch (err) {
+    return next(err);
+  }
+}
+
 module.exports = {
   listCustomers,
   createCustomer,
@@ -82,4 +116,5 @@ module.exports = {
   updateCustomer,
   importCustomers,
   downloadTemplate,
+  exportCustomers,
 };

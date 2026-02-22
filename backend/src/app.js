@@ -3,10 +3,12 @@ const cors = require("cors");
 const queueRoutes = require("./routes/queue.routes");
 const customerRoutes = require("./routes/customer.routes");
 const gateRoutes = require("./routes/gate.routes");
+const employeeRoutes = require("./routes/employee.routes");
 const adminUserRoutes = require("./routes/adminUser.routes");
 const authRoutes = require("./routes/auth.routes");
 const dashboardRoutes = require("./routes/dashboard.routes");
 const scheduleRoutes = require("./routes/schedule.routes");
+const pickingProgressRoutes = require("./routes/pickingProgress.routes");
 const errorMiddleware = require("./middlewares/error.middleware");
 
 const app = express();
@@ -19,10 +21,12 @@ app.get("/health", (req, res) => res.json({ ok: true }));
 app.use("/api", queueRoutes);
 app.use("/api", customerRoutes);
 app.use("/api", gateRoutes);
+app.use("/api", employeeRoutes);
 app.use("/api", adminUserRoutes);
 app.use("/api", authRoutes);
 app.use("/api", dashboardRoutes);
 app.use("/api", scheduleRoutes);
+app.use("/api", pickingProgressRoutes);
 
 app.use(errorMiddleware);
 

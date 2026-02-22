@@ -106,8 +106,8 @@ const categoryLabel = (category?: string) => {
 }
 
 const resolveAreaType = (category?: QueueEntry['category']) => {
-  if (category === 'DELIVERY') return 'Loading'
-  if (category === 'RECEIVING') return 'Unloading'
+  if (category === 'DELIVERY') return 'Muat'
+  if (category === 'RECEIVING') return 'Bongkar'
   return 'operasional'
 }
 

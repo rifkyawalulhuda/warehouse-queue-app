@@ -22,6 +22,7 @@ router.post(
   upload.single("file"),
   customerController.importCustomers
 );
+router.get("/customers/export", authMiddleware, requireRole("ADMIN"), customerController.exportCustomers);
 router.patch("/customers/:id", authMiddleware, requireRole("ADMIN"), customerController.updateCustomer);
 router.put("/customers/:id", authMiddleware, requireRole("ADMIN"), customerController.updateCustomer);
 router.delete("/customers/:id", authMiddleware, requireRole("ADMIN"), customerController.deleteCustomer);

@@ -15,6 +15,12 @@ async function listCustomers() {
   });
 }
 
+async function listCustomersForExport() {
+  return prisma.customer.findMany({
+    orderBy: [{ createdAt: "desc" }],
+  });
+}
+
 async function createCustomer(data) {
   if (!data.name || typeof data.name !== "string" || !data.name.trim()) {
     throw createHttpError(400, "Nama Customer wajib diisi");
@@ -86,6 +92,7 @@ async function importCustomersFromExcel(rows) {
 
 module.exports = {
   listCustomers,
+  listCustomersForExport,
   createCustomer,
   deleteCustomer,
   updateCustomer,
