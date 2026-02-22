@@ -460,7 +460,7 @@ onMounted(() => {
                   <div class="flex items-center gap-2">
                     <template v-if="isAdmin">
                       <Button size="sm" variant="outline" @click="openEdit(gate)">Edit</Button>
-                      <Button size="sm" variant="outline" @click="openConfirm(gate)">Hapus</Button>
+                      <Button size="sm" variant="outline" class="border-red-200 bg-red-600 text-white hover:bg-red-700 hover:text-white" @click="openConfirm(gate)">Hapus</Button>
                     </template>
                     <span v-else class="text-xs text-muted-foreground">-</span>
                   </div>
