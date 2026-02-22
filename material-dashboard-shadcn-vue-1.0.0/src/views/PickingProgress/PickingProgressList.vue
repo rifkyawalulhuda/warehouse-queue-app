@@ -514,7 +514,7 @@ onUnmounted(() => {
             <input
               v-model="filters.search"
               type="text"
-              placeholder="Search customer/container/dock"
+              placeholder="Search semua kolom..."
               class="flex-1 bg-transparent border-none outline-none text-sm"
             />
           </div>

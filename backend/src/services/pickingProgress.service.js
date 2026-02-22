@@ -89,6 +89,70 @@ function normalizeText(value) {
   return typeof value === "string" ? value.trim() : "";
 }
 
+function pad2(value) {
+  return String(value).padStart(2, "0");
+}
+
+function formatDateForSearch(value) {
+  if (!value) return [];
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return [];
+  const dd = pad2(date.getDate());
+  const mm = pad2(date.getMonth() + 1);
+  const yyyy = date.getFullYear();
+  const hh = pad2(date.getHours());
+  const mi = pad2(date.getMinutes());
+  const ss = pad2(date.getSeconds());
+  return [
+    date.toISOString(),
+    `${dd}/${mm}/${yyyy}`,
+    `${yyyy}-${mm}-${dd}`,
+    `${dd}/${mm}/${yyyy} ${hh}:${mi}:${ss}`,
+    `${dd}/${mm}/${yyyy}, ${hh}:${mi}:${ss}`,
+  ];
+}
+
+function formatTimeRemainingForSearch(seconds) {
+  if (seconds === null || seconds === undefined) return ["-"];
+  const abs = Math.abs(seconds);
+  const mins = Math.floor(abs / 60);
+  const secs = abs % 60;
+  const base = `${mins}m ${pad2(secs)}s`;
+  if (seconds < 0) {
+    return [`over sla ${base}`, `-${base}`, String(seconds)];
+  }
+  return [base, String(seconds)];
+}
+
+function buildSearchTokens(entry) {
+  const progress =
+    entry.pickingProgressPercent !== undefined && entry.pickingProgressPercent !== null
+      ? Number(entry.pickingProgressPercent)
+      : 0;
+  const remain = entry.remainQty !== undefined && entry.remainQty !== null ? entry.remainQty : 0;
+
+  return [
+    entry.customer?.name,
+    entry.doNumber,
+    entry.destination,
+    entry.noContainer,
+    entry.noDock,
+    entry.pickerEmployee?.name,
+    entry.pickerEmployee?.nik,
+    entry.status,
+    entry.volumeCbm !== null && entry.volumeCbm !== undefined ? String(entry.volumeCbm) : "",
+    String(entry.pickingQty ?? ""),
+    String(entry.pickedQty ?? ""),
+    String(remain),
+    progress.toFixed(2),
+    `${progress.toFixed(2)}%`,
+    ...formatDateForSearch(entry.plTimeRelease || entry.startTime),
+    ...formatTimeRemainingForSearch(entry.timeRemainingSeconds),
+  ]
+    .map((value) => String(value || "").trim())
+    .filter((value) => value.length > 0);
+}
+
 function computeSlaFields(entry, nowMs = Date.now()) {
   const doNumber = normalizeText(entry.doNumber) || normalizeText(entry.noContainer);
   const destination = normalizeText(entry.destination) || normalizeText(entry.noDock);
@@ -214,13 +278,37 @@ async function listPickingProgress(query) {
   };
   if (status) where.status = status;
   if (search) {
-    where.OR = [
-      { customer: { name: { contains: search, mode: "insensitive" } } },
-      { doNumber: { contains: search, mode: "insensitive" } },
-      { destination: { contains: search, mode: "insensitive" } },
-      { noContainer: { contains: search, mode: "insensitive" } },
-      { noDock: { contains: search, mode: "insensitive" } },
-    ];
+    const itemsRaw = await prisma.pickingProgress.findMany({
+      where,
+      orderBy: [{ [sort]: sortDir }, { createdAt: "desc" }],
+      include: {
+        customer: true,
+        pickerEmployee: true,
+      },
+    });
+    const nowMs = Date.now();
+    const loweredSearch = search.toLowerCase();
+    const filteredItems = itemsRaw
+      .map((item) => computeSlaFields(item, nowMs))
+      .filter((entry) =>
+        buildSearchTokens(entry).some((token) => token.toLowerCase().includes(loweredSearch))
+      );
+
+    const total = filteredItems.length;
+    const totalPages = Math.max(1, Math.ceil(total / limit));
+    const currentPage = page > totalPages ? totalPages : page;
+    const skip = (currentPage - 1) * limit;
+    const items = filteredItems.slice(skip, skip + limit);
+
+    return {
+      items,
+      meta: {
+        total,
+        page: currentPage,
+        limit,
+        totalPages,
+      },
+    };
   }
 
   const total = await prisma.pickingProgress.count({ where });
