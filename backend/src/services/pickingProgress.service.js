@@ -3,7 +3,21 @@ const { PrismaClient } = require("@prisma/client");
 const prisma = new PrismaClient();
 
 const ALLOWED_LIMITS = new Set([15, 30, 50, 100]);
-const ALLOWED_SORT_FIELDS = new Set(["createdAt", "startTime", "finishTime"]);
+const ALLOWED_SORT_FIELDS = new Set([
+  "createdAt",
+  "date",
+  "startTime",
+  "finishTime",
+  "customerName",
+  "doNumber",
+  "destination",
+  "volumeCbm",
+  "plTimeRelease",
+  "pickingQty",
+  "pickedQty",
+  "status",
+  "pickerEmployeeName",
+]);
 const ALLOWED_PICKING_STATUSES = new Set(["MENUNGGU", "ON_PROCESS", "SELESAI", "BATAL"]);
 const DEFAULT_SLA_PER_BARCODE_MINUTES = 2.5;
 const NEAR_SLA_SECONDS = 15 * 60;
@@ -210,6 +224,29 @@ function normalizeSort(query) {
   const sort = ALLOWED_SORT_FIELDS.has(rawSort) ? rawSort : "createdAt";
   const sortDir = rawSortDir === "asc" ? "asc" : "desc";
   return { sort, sortDir };
+}
+
+function buildOrderBy(sort, sortDir) {
+  switch (sort) {
+    case "customerName":
+      return [{ customer: { name: sortDir } }, { createdAt: "desc" }];
+    case "pickerEmployeeName":
+      return [{ pickerEmployee: { name: sortDir } }, { createdAt: "desc" }];
+    case "date":
+    case "startTime":
+    case "finishTime":
+    case "doNumber":
+    case "destination":
+    case "volumeCbm":
+    case "plTimeRelease":
+    case "pickingQty":
+    case "pickedQty":
+    case "status":
+      return [{ [sort]: sortDir }, { createdAt: "desc" }];
+    case "createdAt":
+    default:
+      return [{ createdAt: sortDir }];
+  }
 }
 
 function normalizePagination(query) {
@@ -534,6 +571,7 @@ async function listPickingProgress(query) {
   const { from, to } = resolveDateRange(query || {});
   const { sort, sortDir } = normalizeSort(query);
   const { page, limit } = normalizePagination(query);
+  const orderBy = buildOrderBy(sort, sortDir);
 
   const where = {
     date: {
@@ -545,7 +583,7 @@ async function listPickingProgress(query) {
   if (search) {
     const itemsRaw = await prisma.pickingProgress.findMany({
       where,
-      orderBy: [{ [sort]: sortDir }, { createdAt: "desc" }],
+      orderBy,
       include: {
         customer: true,
         pickerEmployee: true,
@@ -583,7 +621,7 @@ async function listPickingProgress(query) {
 
   const itemsRaw = await prisma.pickingProgress.findMany({
     where,
-    orderBy: [{ [sort]: sortDir }, { createdAt: "desc" }],
+    orderBy,
     skip,
     take: limit,
     include: {
@@ -696,6 +734,7 @@ async function listPickingProgressForPrint(query) {
   const search = typeof query?.search === "string" ? query.search.trim() : "";
   const { from, to } = resolveDateRange(query || {});
   const { sort, sortDir } = normalizeSort(query || {});
+  const orderBy = buildOrderBy(sort, sortDir);
 
   const where = {
     date: {
@@ -707,7 +746,7 @@ async function listPickingProgressForPrint(query) {
 
   const itemsRaw = await prisma.pickingProgress.findMany({
     where,
-    orderBy: [{ [sort]: sortDir }, { createdAt: "desc" }],
+    orderBy,
     include: {
       customer: true,
       pickerEmployee: true,

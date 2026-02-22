@@ -1,6 +1,20 @@
 import api from '@/services/api'
 
 export type PickingStatus = 'MENUNGGU' | 'ON_PROCESS' | 'SELESAI' | 'BATAL'
+export type PickingSortField =
+  | 'createdAt'
+  | 'date'
+  | 'customerName'
+  | 'doNumber'
+  | 'destination'
+  | 'volumeCbm'
+  | 'plTimeRelease'
+  | 'pickingQty'
+  | 'pickedQty'
+  | 'startTime'
+  | 'finishTime'
+  | 'status'
+  | 'pickerEmployeeName'
 
 export type PickingLog = {
   id: string
@@ -95,7 +109,7 @@ export const listPickingProgress = (params: {
   search?: string
   page?: number
   limit?: number
-  sort?: 'createdAt' | 'startTime' | 'finishTime'
+  sort?: PickingSortField
   sortDir?: 'asc' | 'desc'
 }) => {
   return api.get('/picking-progress', { params })
@@ -147,7 +161,7 @@ export const printPickingProgressSummary = (params?: {
   dateTo?: string
   status?: 'ALL' | PickingStatus
   search?: string
-  sort?: 'createdAt' | 'startTime' | 'finishTime'
+  sort?: PickingSortField
   sortDir?: 'asc' | 'desc'
 }) => {
   return api.get('/picking-progress/print-summary', { params })

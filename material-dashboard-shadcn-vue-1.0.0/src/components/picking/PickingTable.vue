@@ -1,18 +1,21 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, ref } from 'vue'
 import Button from '@/components/ui/Button.vue'
-import type { PickingProgressEntry } from '@/services/pickingProgressApi'
+import type { PickingProgressEntry, PickingSortField } from '@/services/pickingProgressApi'
 
 defineProps<{
   entries: PickingProgressEntry[]
   loading: boolean
   page: number
   limit: number
+  sortBy: PickingSortField
+  sortDir: 'asc' | 'desc'
   canCancel: boolean
   canEdit: boolean
 }>()
 
 const emit = defineEmits<{
+  (e: 'toggle-sort', column: PickingSortField): void
   (e: 'edit', entry: PickingProgressEntry): void
   (e: 'start', entry: PickingProgressEntry): void
   (e: 'input-picked', entry: PickingProgressEntry): void
@@ -106,6 +109,11 @@ const displayProgressPercent = (entry: PickingProgressEntry) => {
   const percent = (entry.pickedQty / entry.pickingQty) * 100
   return toPercentLabel(percent)
 }
+
+const sortIcon = (column: PickingSortField, sortBy: PickingSortField, sortDir: 'asc' | 'desc') => {
+  if (column !== sortBy) return '↕'
+  return sortDir === 'asc' ? '↑' : '↓'
+}
 </script>
 
 <template>
@@ -113,19 +121,69 @@ const displayProgressPercent = (entry: PickingProgressEntry) => {
     <table class="min-w-full text-sm">
       <thead class="bg-muted/60 text-muted-foreground">
         <tr>
-          <th class="px-3 py-2 text-left font-medium">No</th>
-          <th class="px-3 py-2 text-left font-medium">Nama Customer</th>
-          <th class="px-3 py-2 text-left font-medium">DO Number</th>
-          <th class="px-3 py-2 text-left font-medium">Destination</th>
-          <th class="px-3 py-2 text-right font-medium">Volume (CBM)</th>
-          <th class="px-3 py-2 text-left font-medium">PL Time Release</th>
-          <th class="px-3 py-2 text-right font-medium">Picking Qty (Barcode)</th>
-          <th class="px-3 py-2 text-right font-medium">Picked Qty</th>
+          <th class="px-3 py-2 text-left font-medium">
+            <button type="button" class="inline-flex items-center gap-1 hover:text-foreground" @click="emit('toggle-sort', 'createdAt')">
+              No
+              <span class="text-xs">{{ sortIcon('createdAt', sortBy, sortDir) }}</span>
+            </button>
+          </th>
+          <th class="px-3 py-2 text-left font-medium">
+            <button type="button" class="inline-flex items-center gap-1 hover:text-foreground" @click="emit('toggle-sort', 'customerName')">
+              Nama Customer
+              <span class="text-xs">{{ sortIcon('customerName', sortBy, sortDir) }}</span>
+            </button>
+          </th>
+          <th class="px-3 py-2 text-left font-medium">
+            <button type="button" class="inline-flex items-center gap-1 hover:text-foreground" @click="emit('toggle-sort', 'doNumber')">
+              DO Number
+              <span class="text-xs">{{ sortIcon('doNumber', sortBy, sortDir) }}</span>
+            </button>
+          </th>
+          <th class="px-3 py-2 text-left font-medium">
+            <button type="button" class="inline-flex items-center gap-1 hover:text-foreground" @click="emit('toggle-sort', 'destination')">
+              Destination
+              <span class="text-xs">{{ sortIcon('destination', sortBy, sortDir) }}</span>
+            </button>
+          </th>
+          <th class="px-3 py-2 text-right font-medium">
+            <button type="button" class="inline-flex items-center gap-1 hover:text-foreground" @click="emit('toggle-sort', 'volumeCbm')">
+              Volume (CBM)
+              <span class="text-xs">{{ sortIcon('volumeCbm', sortBy, sortDir) }}</span>
+            </button>
+          </th>
+          <th class="px-3 py-2 text-left font-medium">
+            <button type="button" class="inline-flex items-center gap-1 hover:text-foreground" @click="emit('toggle-sort', 'plTimeRelease')">
+              PL Time Release
+              <span class="text-xs">{{ sortIcon('plTimeRelease', sortBy, sortDir) }}</span>
+            </button>
+          </th>
+          <th class="px-3 py-2 text-right font-medium">
+            <button type="button" class="inline-flex items-center gap-1 hover:text-foreground" @click="emit('toggle-sort', 'pickingQty')">
+              Picking Qty (Barcode)
+              <span class="text-xs">{{ sortIcon('pickingQty', sortBy, sortDir) }}</span>
+            </button>
+          </th>
+          <th class="px-3 py-2 text-right font-medium">
+            <button type="button" class="inline-flex items-center gap-1 hover:text-foreground" @click="emit('toggle-sort', 'pickedQty')">
+              Picked Qty
+              <span class="text-xs">{{ sortIcon('pickedQty', sortBy, sortDir) }}</span>
+            </button>
+          </th>
           <th class="px-3 py-2 text-right font-medium">Remain</th>
           <th class="px-3 py-2 text-right font-medium">Picking Progress</th>
-          <th class="px-3 py-2 text-left font-medium">Nama Karyawan</th>
+          <th class="px-3 py-2 text-left font-medium">
+            <button type="button" class="inline-flex items-center gap-1 hover:text-foreground" @click="emit('toggle-sort', 'pickerEmployeeName')">
+              Nama Karyawan
+              <span class="text-xs">{{ sortIcon('pickerEmployeeName', sortBy, sortDir) }}</span>
+            </button>
+          </th>
           <th class="px-3 py-2 text-left font-medium">Time Remaining</th>
-          <th class="px-3 py-2 text-left font-medium">Status</th>
+          <th class="px-3 py-2 text-left font-medium">
+            <button type="button" class="inline-flex items-center gap-1 hover:text-foreground" @click="emit('toggle-sort', 'status')">
+              Status
+              <span class="text-xs">{{ sortIcon('status', sortBy, sortDir) }}</span>
+            </button>
+          </th>
           <th class="px-3 py-2 text-left font-medium">Aksi</th>
         </tr>
       </thead>

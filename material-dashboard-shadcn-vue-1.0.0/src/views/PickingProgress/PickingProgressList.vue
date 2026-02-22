@@ -27,6 +27,7 @@ import {
   updatePickingProgress,
   updatePickingPickedQty,
   type PickingPrintSummary,
+  type PickingSortField,
   type PickingProgressEntry,
 } from '@/services/pickingProgressApi'
 
@@ -117,6 +118,25 @@ const filters = reactive({
   status: 'ALL',
   search: parseSearchQuery(route.query.search),
 })
+
+const SORTABLE_COLUMNS: PickingSortField[] = [
+  'createdAt',
+  'date',
+  'customerName',
+  'doNumber',
+  'destination',
+  'volumeCbm',
+  'plTimeRelease',
+  'pickingQty',
+  'pickedQty',
+  'startTime',
+  'finishTime',
+  'status',
+  'pickerEmployeeName',
+]
+
+const sortBy = ref<PickingSortField>('createdAt')
+const sortDir = ref<'asc' | 'desc'>('desc')
 
 const exportForm = reactive({
   dateFrom: '',
@@ -356,6 +376,17 @@ const parsePositiveInt = (value: unknown, fallback: number) => {
   return Math.floor(asNumber)
 }
 
+const isPickingSortField = (value: unknown): value is PickingSortField => {
+  return typeof value === 'string' && SORTABLE_COLUMNS.includes(value as PickingSortField)
+}
+
+const normalizeSortDir = (value: unknown): 'asc' | 'desc' | null => {
+  if (typeof value !== 'string') return null
+  const lowered = value.toLowerCase()
+  if (lowered === 'asc' || lowered === 'desc') return lowered
+  return null
+}
+
 const applyInitialRouteQuery = () => {
   if (typeof route.query.dateFrom === 'string' && route.query.dateFrom) {
     filters.dateFrom = route.query.dateFrom
@@ -375,6 +406,13 @@ const applyInitialRouteQuery = () => {
   page.value = parsePositiveInt(route.query.page, 1)
   const nextLimit = parsePositiveInt(route.query.limit, 15)
   limit.value = [15, 30, 50, 100].includes(nextLimit) ? nextLimit : 15
+  if (isPickingSortField(route.query.sort)) {
+    sortBy.value = route.query.sort
+  }
+  const parsedSortDir = normalizeSortDir(route.query.sortDir)
+  if (parsedSortDir) {
+    sortDir.value = parsedSortDir
+  }
 }
 
 const syncQueryToRoute = () => {
@@ -385,6 +423,8 @@ const syncQueryToRoute = () => {
   if (filters.search) nextQuery.search = filters.search
   nextQuery.page = String(page.value)
   nextQuery.limit = String(limit.value)
+  nextQuery.sort = sortBy.value
+  nextQuery.sortDir = sortDir.value
   router.replace({ path: '/picking-progress', query: nextQuery })
 }
 
@@ -403,8 +443,8 @@ const fetchList = async () => {
       search: filters.search || undefined,
       page: page.value,
       limit: limit.value,
-      sort: 'createdAt',
-      sortDir: 'desc',
+      sort: sortBy.value,
+      sortDir: sortDir.value,
     })
     entries.value = response.data?.items || []
     totalItems.value = response.data?.meta?.total || 0
@@ -781,6 +821,18 @@ const handleStartEmployeeBlur = () => {
   }, 120)
 }
 
+const toggleSort = (column: PickingSortField) => {
+  if (!isPickingSortField(column)) return
+  if (sortBy.value !== column) {
+    sortBy.value = column
+    sortDir.value = 'asc'
+  } else {
+    sortDir.value = sortDir.value === 'asc' ? 'desc' : 'asc'
+  }
+  page.value = 1
+  fetchList()
+}
+
 const goToPage = (target: number) => {
   if (target < 1 || target > totalPages.value || target === page.value) return
   page.value = target
@@ -873,8 +925,8 @@ const handlePrintPickingProgress = async () => {
       dateTo: filters.dateTo || undefined,
       status: filters.status as any,
       search: filters.search.trim() || undefined,
-      sort: 'createdAt',
-      sortDir: 'desc',
+      sort: sortBy.value,
+      sortDir: sortDir.value,
     })
     const payload = response.data?.data || {}
     const html = buildPickingPrintHtml({
@@ -1184,6 +1236,8 @@ onUnmounted(() => {
           :loading="loading"
           :page="page"
           :limit="limit"
+          :sort-by="sortBy"
+          :sort-dir="sortDir"
           :can-cancel="!isWarehouse"
           :can-edit="!isWarehouse"
           @edit="openEdit"
@@ -1192,6 +1246,7 @@ onUnmounted(() => {
           @finish="requestFinish"
           @cancel="requestCancel"
           @detail="openDetailById($event.id)"
+          @toggle-sort="toggleSort"
         />
 
         <div class="mt-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
