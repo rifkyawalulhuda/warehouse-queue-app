@@ -70,13 +70,9 @@ function buildDateRange(query) {
     return { from: getStartOfDay(fromDate), to: getEndOfDay(toDate) };
   }
 
-  // Default: centered 7 days (today -3 .. today +3).
+  // Default: today only.
   const today = new Date();
-  const fromSeed = new Date(today);
-  fromSeed.setDate(fromSeed.getDate() - 3);
-  const toSeed = new Date(today);
-  toSeed.setDate(toSeed.getDate() + 3);
-  return { from: getStartOfDay(fromSeed), to: getEndOfDay(toSeed) };
+  return { from: getStartOfDay(today), to: getEndOfDay(today) };
 }
 
 function buildExportDateRange(query) {

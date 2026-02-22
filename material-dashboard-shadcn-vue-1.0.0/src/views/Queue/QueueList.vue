@@ -110,17 +110,6 @@ const todayString = () => {
   return `${now.getFullYear()}-${month}-${day}`
 }
 
-const shiftDateString = (baseYmd: string, offsetDays: number) => {
-  if (!baseYmd) return ''
-  const parsed = new Date(`${baseYmd}T00:00:00`)
-  if (Number.isNaN(parsed.getTime())) return ''
-  parsed.setDate(parsed.getDate() + offsetDays)
-  const year = parsed.getFullYear()
-  const month = String(parsed.getMonth() + 1).padStart(2, '0')
-  const day = String(parsed.getDate()).padStart(2, '0')
-  return `${year}-${month}-${day}`
-}
-
 const parseSearchQuery = (value: unknown) => {
   if (typeof value === 'string') return value
   if (Array.isArray(value) && typeof value[0] === 'string') return value[0]
@@ -149,8 +138,8 @@ type QueueSortColumn =
   | 'status'
 
 const filters = reactive({
-  dateFrom: shiftDateString(todayString(), -3),
-  dateTo: shiftDateString(todayString(), 3),
+  dateFrom: todayString(),
+  dateTo: todayString(),
   status: '',
   category: '',
   search: parseSearchQuery(route.query.search),
