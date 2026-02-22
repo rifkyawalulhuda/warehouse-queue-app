@@ -120,6 +120,10 @@ const statusClass = (status?: PickingProgressEntry['status']) => {
             <p class="font-medium">{{ entry?.pickingProgressPercent?.toFixed(2) ?? '0.00' }}%</p>
           </div>
           <div>
+            <p class="text-muted-foreground">Nama Karyawan</p>
+            <p class="font-medium">{{ entry?.pickerEmployee?.name || '-' }}</p>
+          </div>
+          <div>
             <p class="text-muted-foreground">Start Time</p>
             <p class="font-medium">{{ formatDateTime(entry?.startTime) }}</p>
           </div>

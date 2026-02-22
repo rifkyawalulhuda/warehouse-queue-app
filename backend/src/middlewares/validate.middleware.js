@@ -187,6 +187,14 @@ function validatePickingQtyUpdate(req, res, next) {
   return next();
 }
 
+function validatePickingStart(req, res, next) {
+  const { pickerEmployeeId } = req.body || {};
+  if (!isNonEmptyString(pickerEmployeeId)) {
+    return sendError(res, 400, "Validasi gagal", ["pickerEmployeeId wajib diisi"]);
+  }
+  return next();
+}
+
 module.exports = {
   validateQueueCreate,
   validateQueueUpdate,
@@ -195,5 +203,6 @@ module.exports = {
   validateScheduleCreate: validateSchedulePayload,
   validateScheduleUpdate: validateSchedulePayload,
   validatePickingCreate,
+  validatePickingStart,
   validatePickingQtyUpdate,
 };

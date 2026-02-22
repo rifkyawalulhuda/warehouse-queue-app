@@ -118,6 +118,7 @@ const displayProgressPercent = (entry: PickingProgressEntry) => {
           <th class="px-3 py-2 text-right font-medium">Picked Qty</th>
           <th class="px-3 py-2 text-right font-medium">Remain</th>
           <th class="px-3 py-2 text-right font-medium">Picking Progress</th>
+          <th class="px-3 py-2 text-left font-medium">Nama Karyawan</th>
           <th class="px-3 py-2 text-left font-medium">Time Remaining</th>
           <th class="px-3 py-2 text-left font-medium">Status</th>
           <th class="px-3 py-2 text-left font-medium">Aksi</th>
@@ -125,10 +126,10 @@ const displayProgressPercent = (entry: PickingProgressEntry) => {
       </thead>
       <tbody>
         <tr v-if="loading">
-          <td colspan="13" class="px-3 py-6 text-center text-muted-foreground">Loading...</td>
+          <td colspan="14" class="px-3 py-6 text-center text-muted-foreground">Loading...</td>
         </tr>
         <tr v-else-if="entries.length === 0">
-          <td colspan="13" class="px-3 py-6 text-center text-muted-foreground">Data kosong.</td>
+          <td colspan="14" class="px-3 py-6 text-center text-muted-foreground">Data kosong.</td>
         </tr>
         <tr
           v-for="(entry, index) in entries"
@@ -147,6 +148,7 @@ const displayProgressPercent = (entry: PickingProgressEntry) => {
           </td>
           <td class="px-3 py-2 text-right">{{ displayRemainQty(entry) }}</td>
           <td class="px-3 py-2 text-right">{{ displayProgressPercent(entry) }}</td>
+          <td class="px-3 py-2">{{ entry.pickerEmployee?.name || '-' }}</td>
           <td class="px-3 py-2">
             <span v-if="entry.status === 'ON_PROCESS'"
               :class="isOverSlaNow(entry) ? 'text-red-700 font-semibold' : isNearSlaNow(entry) ? 'text-yellow-800 font-semibold' : 'text-muted-foreground'"

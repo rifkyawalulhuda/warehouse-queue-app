@@ -2,6 +2,7 @@ const express = require("express");
 const pickingProgressController = require("../controllers/pickingProgress.controller");
 const {
   validatePickingCreate,
+  validatePickingStart,
   validatePickingQtyUpdate,
 } = require("../middlewares/validate.middleware");
 const authMiddleware = require("../middlewares/auth.middleware");
@@ -22,7 +23,11 @@ router.post(
 );
 router.get("/picking-progress", pickingProgressController.listPickingProgress);
 router.get("/picking-progress/:id", pickingProgressController.getPickingProgressById);
-router.patch("/picking-progress/:id/start", pickingProgressController.startPickingProgress);
+router.patch(
+  "/picking-progress/:id/start",
+  validatePickingStart,
+  pickingProgressController.startPickingProgress
+);
 router.patch(
   "/picking-progress/:id/picked-qty",
   validatePickingQtyUpdate,

@@ -10,6 +10,7 @@ import PickingDetailDrawer from '@/components/picking/PickingDetailDrawer.vue'
 import PickingTable from '@/components/picking/PickingTable.vue'
 import { RefreshCw, Search } from 'lucide-vue-next'
 import api from '@/services/api'
+import { listEmployees, type Employee } from '@/services/employeeApi'
 import {
   cancelPickingProgress,
   createPickingProgress,
@@ -31,6 +32,7 @@ const router = useRouter()
 
 const entries = ref<PickingProgressEntry[]>([])
 const customers = ref<Customer[]>([])
+const employees = ref<Employee[]>([])
 const loading = ref(false)
 const error = ref<string | null>(null)
 const success = ref<string | null>(null)
@@ -50,6 +52,9 @@ const finishConfirmOpen = ref(false)
 const cancelConfirmOpen = ref(false)
 const pendingFinishEntry = ref<PickingProgressEntry | null>(null)
 const pendingCancelEntry = ref<PickingProgressEntry | null>(null)
+const startConfirmOpen = ref(false)
+const pendingStartEntry = ref<PickingProgressEntry | null>(null)
+const selectedPickerEmployeeId = ref('')
 
 const todayString = () => {
   const now = new Date()
@@ -152,6 +157,15 @@ const fetchCustomers = async () => {
   }
 }
 
+const fetchEmployees = async () => {
+  try {
+    const response = await listEmployees()
+    employees.value = response.data?.data || []
+  } catch (err: any) {
+    error.value = getErrorMessage(err, 'Gagal mengambil data karyawan')
+  }
+}
+
 const openDetailById = async (id: string) => {
   drawerOpen.value = true
   try {
@@ -199,10 +213,24 @@ const refreshDetailIfOpen = async (id: string) => {
   await openDetailById(id)
 }
 
-const handleStart = async (entry: PickingProgressEntry) => {
+const requestStart = (entry: PickingProgressEntry) => {
+  pendingStartEntry.value = entry
+  selectedPickerEmployeeId.value = ''
+  startConfirmOpen.value = true
+}
+
+const executeStart = async () => {
+  const entry = pendingStartEntry.value
+  if (!entry) return
+  if (!selectedPickerEmployeeId.value) {
+    error.value = 'Nama karyawan wajib dipilih sebelum start'
+    return
+  }
+
   await withActionLoading(entry.id, async () => {
     try {
-      await startPickingProgress(entry.id)
+      await startPickingProgress(entry.id, selectedPickerEmployeeId.value)
+      closeStartConfirm()
       await fetchList()
       await refreshDetailIfOpen(entry.id)
       showSuccess('Picking berhasil dimulai')
@@ -210,6 +238,12 @@ const handleStart = async (entry: PickingProgressEntry) => {
       error.value = getErrorMessage(err, 'Gagal start picking')
     }
   })
+}
+
+const closeStartConfirm = () => {
+  startConfirmOpen.value = false
+  pendingStartEntry.value = null
+  selectedPickerEmployeeId.value = ''
 }
 
 const handleAdjustPicked = async (entry: PickingProgressEntry, delta: number) => {
@@ -337,6 +371,7 @@ let refreshTimer: number | undefined
 onMounted(() => {
   applyInitialRouteQuery()
   fetchCustomers()
+  fetchEmployees()
   fetchList()
   refreshTimer = window.setInterval(() => {
     fetchList()
@@ -408,7 +443,7 @@ onUnmounted(() => {
           :loading="loading"
           :page="page"
           :limit="limit"
-          @start="handleStart"
+          @start="requestStart"
           @adjust-picked="handleAdjustPicked"
           @finish="requestFinish"
           @cancel="requestCancel"
@@ -458,6 +493,34 @@ onUnmounted(() => {
     />
 
     <PickingDetailDrawer :open="drawerOpen" :entry="selectedEntry" @close="closeDrawer" />
+
+    <div v-if="startConfirmOpen" class="fixed inset-0 z-50">
+      <div class="absolute inset-0 bg-black/40" @click="closeStartConfirm"></div>
+      <div class="absolute left-1/2 top-1/2 w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-lg bg-card shadow-xl border">
+        <div class="p-4 border-b">
+          <h3 class="text-lg font-semibold">Start Picking</h3>
+        </div>
+        <div class="p-4 space-y-3 text-sm">
+          <p>
+            Pilih nama karyawan untuk transaksi
+            <span class="font-semibold">{{ pendingStartEntry?.doNumber || pendingStartEntry?.noContainer }}</span>.
+          </p>
+          <div>
+            <label class="text-sm text-muted-foreground">Nama Karyawan</label>
+            <select v-model="selectedPickerEmployeeId" class="mt-1 w-full bg-transparent border rounded-md px-2 py-2 text-sm">
+              <option value="">Pilih karyawan...</option>
+              <option v-for="employee in employees" :key="employee.id" :value="employee.id">
+                {{ employee.name }} ({{ employee.nik }})
+              </option>
+            </select>
+          </div>
+        </div>
+        <div class="p-4 border-t flex items-center justify-end gap-2">
+          <Button variant="ghost" @click="closeStartConfirm">Batal</Button>
+          <Button :disabled="!selectedPickerEmployeeId" @click="executeStart">Start</Button>
+        </div>
+      </div>
+    </div>
 
     <div v-if="finishConfirmOpen" class="fixed inset-0 z-50">
       <div class="absolute inset-0 bg-black/40" @click="finishConfirmOpen = false"></div>

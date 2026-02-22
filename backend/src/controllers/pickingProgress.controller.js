@@ -40,7 +40,11 @@ async function getPickingProgressById(req, res, next) {
 async function startPickingProgress(req, res, next) {
   try {
     const actorUserId = await resolveActorUserId(req);
-    const entry = await pickingProgressService.startPickingProgress(req.params.id, actorUserId);
+    const entry = await pickingProgressService.startPickingProgress(
+      req.params.id,
+      actorUserId,
+      req.body?.pickerEmployeeId
+    );
     return sendSuccess(res, entry);
   } catch (err) {
     return next(err);

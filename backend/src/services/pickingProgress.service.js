@@ -145,6 +145,17 @@ async function ensureCustomerExists(customerId) {
   }
 }
 
+async function ensureEmployeeExists(employeeId) {
+  if (!employeeId) {
+    throw createHttpError(400, "Karyawan picker wajib dipilih");
+  }
+  const employee = await prisma.employee.findUnique({ where: { id: employeeId } });
+  if (!employee) {
+    throw createHttpError(400, "Karyawan picker tidak ditemukan");
+  }
+  return employee;
+}
+
 async function createPickingProgress(data, actorUserId) {
   await ensureCustomerExists(data.customerId);
   const transactionDate = resolveTransactionDate(data.date);
@@ -179,6 +190,7 @@ async function createPickingProgress(data, actorUserId) {
     },
     include: {
       customer: true,
+      pickerEmployee: true,
       createdBy: { select: { id: true, name: true, username: true, role: true } },
       updatedBy: { select: { id: true, name: true, username: true, role: true } },
     },
@@ -223,6 +235,7 @@ async function listPickingProgress(query) {
     take: limit,
     include: {
       customer: true,
+      pickerEmployee: true,
     },
   });
 
@@ -247,6 +260,7 @@ async function getPickingProgressById(id) {
       customer: true,
       createdBy: { select: { id: true, name: true, username: true, role: true } },
       updatedBy: { select: { id: true, name: true, username: true, role: true } },
+      pickerEmployee: true,
       logs: {
         orderBy: { createdAt: "asc" },
         include: {
@@ -262,7 +276,8 @@ async function getPickingProgressById(id) {
   return computeSlaFields(entry);
 }
 
-async function startPickingProgress(id, actorUserId) {
+async function startPickingProgress(id, actorUserId, pickerEmployeeId) {
+  const pickerEmployee = await ensureEmployeeExists(pickerEmployeeId);
   const now = new Date();
   const result = await prisma.$transaction(async (tx) => {
     const entry = await tx.pickingProgress.findUnique({ where: { id } });
@@ -279,10 +294,12 @@ async function startPickingProgress(id, actorUserId) {
         status: "ON_PROCESS",
         startTime: now,
         plTimeRelease: entry.plTimeRelease || now,
+        pickerEmployeeId: pickerEmployee.id,
         updatedById: actorUserId || null,
         logs: {
           create: {
             action: "START",
+            note: `picker=${pickerEmployee.name} (${pickerEmployee.nik})`,
             fromStatus: "MENUNGGU",
             toStatus: "ON_PROCESS",
             userId: actorUserId || null,
@@ -291,6 +308,7 @@ async function startPickingProgress(id, actorUserId) {
       },
       include: {
         customer: true,
+        pickerEmployee: true,
       },
     });
   });
@@ -355,6 +373,7 @@ async function updatePickedQty(id, delta, actorUserId) {
       },
       include: {
         customer: true,
+        pickerEmployee: true,
       },
     });
   });
@@ -390,6 +409,7 @@ async function finishPickingProgress(id, actorUserId) {
       },
       include: {
         customer: true,
+        pickerEmployee: true,
       },
     });
   });
@@ -425,6 +445,7 @@ async function cancelPickingProgress(id, actorUserId) {
       },
       include: {
         customer: true,
+        pickerEmployee: true,
       },
     });
   });

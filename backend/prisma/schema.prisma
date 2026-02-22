@@ -122,6 +122,7 @@ model Employee {
   position  EmployeePosition
   createdAt DateTime         @default(now())
   updatedAt DateTime         @updatedAt
+  pickings  PickingProgress[]
 
   @@index([name])
   @@index([position])
@@ -211,6 +212,8 @@ model PickingProgress {
   createdBy            AdminUser?           @relation("PickingCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
   updatedById          String?
   updatedBy            AdminUser?           @relation("PickingUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+  pickerEmployeeId     String?
+  pickerEmployee       Employee?            @relation(fields: [pickerEmployeeId], references: [id], onDelete: SetNull)
   logs                 PickingProgressLog[]
   createdAt            DateTime             @default(now())
   updatedAt            DateTime             @updatedAt
@@ -218,6 +221,7 @@ model PickingProgress {
   @@index([date])
   @@index([status])
   @@index([customerId])
+  @@index([pickerEmployeeId])
 }
 
 model PickingProgressLog {

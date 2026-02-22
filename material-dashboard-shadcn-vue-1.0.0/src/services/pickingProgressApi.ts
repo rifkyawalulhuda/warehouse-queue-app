@@ -41,6 +41,8 @@ export type PickingProgressEntry = {
   createdBy?: { id: string; name: string; username: string; role: string } | null
   updatedById?: string | null
   updatedBy?: { id: string; name: string; username: string; role: string } | null
+  pickerEmployeeId?: string | null
+  pickerEmployee?: { id: string; nik: string; name: string; position: string } | null
   logs?: PickingLog[]
   createdAt: string
   updatedAt: string
@@ -74,8 +76,8 @@ export const getPickingProgressById = (id: string) => {
   return api.get(`/picking-progress/${id}`)
 }
 
-export const startPickingProgress = (id: string) => {
-  return api.patch(`/picking-progress/${id}/start`)
+export const startPickingProgress = (id: string, pickerEmployeeId: string) => {
+  return api.patch(`/picking-progress/${id}/start`, { pickerEmployeeId })
 }
 
 export const updatePickingPickedQty = (id: string, delta: number) => {

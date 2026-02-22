@@ -7,7 +7,12 @@ const { requireRole } = require("../middlewares/role.middleware");
 const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage() });
 
-router.get("/employees", authMiddleware, requireRole("ADMIN"), employeeController.listEmployees);
+router.get(
+  "/employees",
+  authMiddleware,
+  requireRole("ADMIN", "WAREHOUSE", "CS"),
+  employeeController.listEmployees
+);
 router.post("/employees", authMiddleware, requireRole("ADMIN"), employeeController.createEmployee);
 router.get(
   "/employees/template",
