@@ -426,6 +426,13 @@ const handlePickedQtySaveClick = (event: Event) => {
   submitPickedQty()
 }
 
+const fillPickedQtyMax = () => {
+  const entry = pendingPickedQtyEntry.value
+  if (!entry) return
+  pickedQtyInput.value = String(Math.max(0, Number(entry.pickingQty || 0)))
+  pickedQtySubmitError.value = ''
+}
+
 const executeFinish = async (entry: PickingProgressEntry) => {
   await withActionLoading(entry.id, async () => {
     try {
@@ -994,23 +1001,33 @@ onUnmounted(() => {
             </p>
           </div>
         </div>
-        <div class="p-4 border-t flex items-center justify-end gap-2">
+        <div class="p-4 border-t flex items-center justify-between gap-2">
           <button
             type="button"
-            class="inline-flex h-9 items-center justify-center rounded-md px-3 text-sm font-medium hover:bg-accent hover:text-accent-foreground"
-            @click="closePickedQtyModal"
+            class="inline-flex h-9 items-center justify-center rounded-md border px-3 text-sm font-medium hover:bg-accent hover:text-accent-foreground disabled:pointer-events-none disabled:opacity-50"
+            :disabled="!pendingPickedQtyEntry || pickedQtySubmitting"
+            @click="fillPickedQtyMax"
           >
-            Batal
+            Isi Maksimal
           </button>
-          <button
-            type="button"
-            class="inline-flex h-9 items-center justify-center rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:pointer-events-none disabled:opacity-50"
-            :disabled="Boolean(pickedQtyValidationError) || !pendingPickedQtyEntry || pickedQtySubmitting"
-            @click="handlePickedQtySaveClick"
-            @mousedown.stop
-          >
-            {{ pickedQtySubmitting ? 'Menyimpan...' : 'Simpan' }}
-          </button>
+          <div class="flex items-center gap-2">
+            <button
+              type="button"
+              class="inline-flex h-9 items-center justify-center rounded-md px-3 text-sm font-medium hover:bg-accent hover:text-accent-foreground"
+              @click="closePickedQtyModal"
+            >
+              Batal
+            </button>
+            <button
+              type="button"
+              class="inline-flex h-9 items-center justify-center rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:pointer-events-none disabled:opacity-50"
+              :disabled="Boolean(pickedQtyValidationError) || !pendingPickedQtyEntry || pickedQtySubmitting"
+              @click="handlePickedQtySaveClick"
+              @mousedown.stop
+            >
+              {{ pickedQtySubmitting ? 'Menyimpan...' : 'Simpan' }}
+            </button>
+          </div>
         </div>
       </form>
     </div>
