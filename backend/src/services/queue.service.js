@@ -33,19 +33,50 @@ function parseDateOnly(dateStr) {
   return new Date(year, month - 1, day);
 }
 
-function buildDateRange(query) {
-  const { date, dateFrom, dateTo } = query;
+function getStartOfDay(date) {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate(), 0, 0, 0, 0);
+}
 
-  if (dateFrom || dateTo) {
-    const from = dateFrom ? new Date(dateFrom) : null;
-    const to = dateTo ? new Date(dateTo) : null;
-    return { from, to };
+function getEndOfDay(date) {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate(), 23, 59, 59, 999);
+}
+
+function buildDateRange(query) {
+  const rawDate = typeof query?.date === "string" ? query.date : "";
+  const rawDateFrom = typeof query?.dateFrom === "string" ? query.dateFrom : "";
+  const rawDateTo = typeof query?.dateTo === "string" ? query.dateTo : "";
+
+  // Backward compatibility: old single-date filter.
+  if (rawDate) {
+    const dateObj = parseDateOnly(rawDate);
+    if (!dateObj) {
+      throw createHttpError(400, "Format date tidak valid");
+    }
+    return { from: getStartOfDay(dateObj), to: getEndOfDay(dateObj) };
   }
 
-  const dateObj = parseDateOnly(date) || new Date();
-  const from = new Date(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate(), 0, 0, 0, 0);
-  const to = new Date(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate(), 23, 59, 59, 999);
-  return { from, to };
+  // Range mode (if one side empty, use the other side).
+  if (rawDateFrom || rawDateTo) {
+    const effectiveFrom = rawDateFrom || rawDateTo;
+    const effectiveTo = rawDateTo || rawDateFrom;
+    const fromDate = parseDateOnly(effectiveFrom);
+    const toDate = parseDateOnly(effectiveTo);
+    if (!fromDate || !toDate) {
+      throw createHttpError(400, "Format rentang tanggal tidak valid");
+    }
+    if (fromDate.getTime() > toDate.getTime()) {
+      throw createHttpError(400, "Tanggal mulai tidak boleh lebih besar dari tanggal akhir");
+    }
+    return { from: getStartOfDay(fromDate), to: getEndOfDay(toDate) };
+  }
+
+  // Default: centered 7 days (today -3 .. today +3).
+  const today = new Date();
+  const fromSeed = new Date(today);
+  fromSeed.setDate(fromSeed.getDate() - 3);
+  const toSeed = new Date(today);
+  toSeed.setDate(toSeed.getDate() + 3);
+  return { from: getStartOfDay(fromSeed), to: getEndOfDay(toSeed) };
 }
 
 function buildExportDateRange(query) {

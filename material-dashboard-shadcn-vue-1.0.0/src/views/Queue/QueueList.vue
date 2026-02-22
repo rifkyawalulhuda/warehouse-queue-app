@@ -107,10 +107,32 @@ const todayString = () => {
   return `${now.getFullYear()}-${month}-${day}`
 }
 
+const shiftDateString = (baseYmd: string, offsetDays: number) => {
+  if (!baseYmd) return ''
+  const parsed = new Date(`${baseYmd}T00:00:00`)
+  if (Number.isNaN(parsed.getTime())) return ''
+  parsed.setDate(parsed.getDate() + offsetDays)
+  const year = parsed.getFullYear()
+  const month = String(parsed.getMonth() + 1).padStart(2, '0')
+  const day = String(parsed.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
 const parseSearchQuery = (value: unknown) => {
   if (typeof value === 'string') return value
   if (Array.isArray(value) && typeof value[0] === 'string') return value[0]
   return ''
+}
+
+const parsePositiveInt = (value: unknown, fallback: number) => {
+  const asNumber =
+    typeof value === 'string'
+      ? Number(value)
+      : Array.isArray(value) && value.length > 0
+        ? Number(value[0])
+        : Number(value)
+  if (!Number.isFinite(asNumber) || asNumber < 1) return fallback
+  return Math.floor(asNumber)
 }
 
 type QueueSortColumn =
@@ -124,10 +146,11 @@ type QueueSortColumn =
   | 'status'
 
 const filters = reactive({
-  date: todayString(),
+  dateFrom: shiftDateString(todayString(), -3),
+  dateTo: shiftDateString(todayString(), 3),
   status: '',
   category: '',
-  search: parseSearchQuery(route.query.search)
+  search: parseSearchQuery(route.query.search),
 })
 
 const sortBy = ref<QueueSortColumn>('registerTime')
@@ -151,9 +174,51 @@ const categoryOptions = [
 const canCreateTransaction = computed(() => user.value?.role === 'ADMIN' || user.value?.role === 'CS')
 const canOpenDisplay = computed(() => user.value?.role === 'ADMIN')
 
+const applyInitialRouteQuery = () => {
+  if (typeof route.query.dateFrom === 'string' && route.query.dateFrom) {
+    filters.dateFrom = route.query.dateFrom
+  }
+  if (typeof route.query.dateTo === 'string' && route.query.dateTo) {
+    filters.dateTo = route.query.dateTo
+  }
+  if (typeof route.query.date === 'string' && route.query.date) {
+    // Backward compatibility from old single-date query.
+    filters.dateFrom = route.query.date
+    filters.dateTo = route.query.date
+  }
+  if (typeof route.query.status === 'string') {
+    filters.status = route.query.status
+  }
+  if (typeof route.query.category === 'string') {
+    filters.category = route.query.category
+  }
+  filters.search = parseSearchQuery(route.query.search)
+  page.value = parsePositiveInt(route.query.page, 1)
+  const nextLimit = parsePositiveInt(route.query.limit, 15)
+  limit.value = [15, 30, 50, 100].includes(nextLimit) ? nextLimit : 15
+}
+
+const syncQueryToRoute = () => {
+  const nextQuery: Record<string, string> = {}
+  if (filters.dateFrom) nextQuery.dateFrom = filters.dateFrom
+  if (filters.dateTo) nextQuery.dateTo = filters.dateTo
+  if (filters.status) nextQuery.status = filters.status
+  if (filters.category) nextQuery.category = filters.category
+  if (filters.search) nextQuery.search = filters.search
+  nextQuery.page = String(page.value)
+  nextQuery.limit = String(limit.value)
+  nextQuery.sortBy = sortBy.value
+  nextQuery.sortDir = sortDir.value
+  if (typeof route.query.detailId === 'string' && route.query.detailId) {
+    nextQuery.detailId = route.query.detailId
+  }
+  router.replace({ path: route.path, query: nextQuery })
+}
+
 const queryString = computed(() => {
   const params = new URLSearchParams()
-  params.set('date', filters.date)
+  if (filters.dateFrom) params.set('dateFrom', filters.dateFrom)
+  if (filters.dateTo) params.set('dateTo', filters.dateTo)
   if (filters.status) params.set('status', filters.status)
   if (filters.category) params.set('category', filters.category)
   if (filters.search) params.set('search', filters.search)
@@ -165,6 +230,11 @@ const queryString = computed(() => {
 })
 
 const fetchList = async () => {
+  if (filters.dateFrom && filters.dateTo && filters.dateFrom > filters.dateTo) {
+    error.value = 'Tanggal mulai tidak boleh lebih besar dari tanggal akhir'
+    return
+  }
+
   loading.value = true
   error.value = null
   try {
@@ -175,6 +245,7 @@ const fetchList = async () => {
     totalItems.value = response.data?.meta?.totalItems || 0
     page.value = response.data?.meta?.page || page.value
     limit.value = response.data?.meta?.limit || limit.value
+    syncQueryToRoute()
   } catch (err: any) {
     error.value = getErrorMessage(err, 'Terjadi kesalahan')
   } finally {
@@ -489,7 +560,7 @@ const closeExport = () => {
 let searchTimer: number | undefined
 
 watch(
-  () => [filters.date, filters.status, filters.category],
+  () => [filters.dateFrom, filters.dateTo, filters.status, filters.category],
   () => {
     page.value = 1
     fetchList()
@@ -516,6 +587,7 @@ watch(
 )
 
 onMounted(() => {
+  applyInitialRouteQuery()
   fetchList()
   fetchCustomers()
   const detailId = route.query.detailId
@@ -593,7 +665,7 @@ watch(
 
     <Card>
       <CardHeader>
-        <div class="grid gap-3 md:grid-cols-4">
+        <div class="grid gap-3 md:grid-cols-5">
           <div class="flex items-center gap-2">
             <Search class="h-4 w-4 text-muted-foreground" />
             <input
@@ -618,7 +690,18 @@ watch(
             </select>
           </div>
           <div>
-            <input v-model="filters.date" type="date" class="w-full bg-transparent border rounded-md px-2 py-2 text-sm" />
+            <input
+              v-model="filters.dateFrom"
+              type="date"
+              class="w-full bg-transparent border rounded-md px-2 py-2 text-sm"
+            />
+          </div>
+          <div>
+            <input
+              v-model="filters.dateTo"
+              type="date"
+              class="w-full bg-transparent border rounded-md px-2 py-2 text-sm"
+            />
           </div>
         </div>
       </CardHeader>
