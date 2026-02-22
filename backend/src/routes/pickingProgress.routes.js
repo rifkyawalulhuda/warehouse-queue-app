@@ -3,6 +3,7 @@ const pickingProgressController = require("../controllers/pickingProgress.contro
 const {
   validatePickingCreate,
   validatePickingStart,
+  validatePickingCancel,
   validatePickingQtyUpdate,
 } = require("../middlewares/validate.middleware");
 const authMiddleware = require("../middlewares/auth.middleware");
@@ -34,6 +35,10 @@ router.patch(
   pickingProgressController.updatePickedQty
 );
 router.patch("/picking-progress/:id/finish", pickingProgressController.finishPickingProgress);
-router.patch("/picking-progress/:id/cancel", pickingProgressController.cancelPickingProgress);
+router.patch(
+  "/picking-progress/:id/cancel",
+  validatePickingCancel,
+  pickingProgressController.cancelPickingProgress
+);
 
 module.exports = router;

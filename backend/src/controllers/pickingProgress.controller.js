@@ -78,7 +78,11 @@ async function finishPickingProgress(req, res, next) {
 async function cancelPickingProgress(req, res, next) {
   try {
     const actorUserId = await resolveActorUserId(req);
-    const entry = await pickingProgressService.cancelPickingProgress(req.params.id, actorUserId);
+    const entry = await pickingProgressService.cancelPickingProgress(
+      req.params.id,
+      actorUserId,
+      req.body?.reason
+    );
     return sendSuccess(res, entry);
   } catch (err) {
     return next(err);

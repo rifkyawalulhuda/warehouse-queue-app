@@ -195,6 +195,14 @@ function validatePickingStart(req, res, next) {
   return next();
 }
 
+function validatePickingCancel(req, res, next) {
+  const reason = typeof req.body?.reason === "string" ? req.body.reason.trim() : "";
+  if (!reason) {
+    return sendError(res, 400, "Validasi gagal", ["reason wajib diisi"]);
+  }
+  return next();
+}
+
 module.exports = {
   validateQueueCreate,
   validateQueueUpdate,
@@ -204,5 +212,6 @@ module.exports = {
   validateScheduleUpdate: validateSchedulePayload,
   validatePickingCreate,
   validatePickingStart,
+  validatePickingCancel,
   validatePickingQtyUpdate,
 };

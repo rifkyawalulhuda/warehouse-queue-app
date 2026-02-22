@@ -88,6 +88,6 @@ export const finishPickingProgress = (id: string) => {
   return api.patch(`/picking-progress/${id}/finish`)
 }
 
-export const cancelPickingProgress = (id: string) => {
-  return api.patch(`/picking-progress/${id}/cancel`)
+export const cancelPickingProgress = (id: string, reason: string) => {
+  return api.patch(`/picking-progress/${id}/cancel`, { reason })
 }

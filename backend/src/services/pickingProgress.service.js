@@ -395,7 +395,12 @@ async function finishPickingProgress(id, actorUserId) {
   return computeSlaFields(result);
 }
 
-async function cancelPickingProgress(id, actorUserId) {
+async function cancelPickingProgress(id, actorUserId, cancelReason) {
+  const reason = typeof cancelReason === "string" ? cancelReason.trim() : "";
+  if (!reason) {
+    throw createHttpError(400, "Alasan cancel wajib diisi");
+  }
+
   const now = new Date();
   const result = await prisma.$transaction(async (tx) => {
     const entry = await tx.pickingProgress.findUnique({ where: { id } });
@@ -415,6 +420,7 @@ async function cancelPickingProgress(id, actorUserId) {
         logs: {
           create: {
             action: "CANCEL",
+            note: reason,
             fromStatus: entry.status,
             toStatus: "BATAL",
             userId: actorUserId || null,

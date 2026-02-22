@@ -56,6 +56,8 @@ const finishConfirmOpen = ref(false)
 const cancelConfirmOpen = ref(false)
 const pendingFinishEntry = ref<PickingProgressEntry | null>(null)
 const pendingCancelEntry = ref<PickingProgressEntry | null>(null)
+const cancelReason = ref('')
+const cancelReasonError = ref('')
 const startConfirmOpen = ref(false)
 const pendingStartEntry = ref<PickingProgressEntry | null>(null)
 const selectedPickerEmployeeId = ref('')
@@ -365,23 +367,43 @@ const closeFinishConfirm = () => {
   pendingFinishEntry.value = null
 }
 
+const getCancelReasonText = () => {
+  return String(cancelReason.value || '').trim()
+}
+
+const closeCancelConfirm = () => {
+  cancelConfirmOpen.value = false
+  pendingCancelEntry.value = null
+  cancelReason.value = ''
+  cancelReasonError.value = ''
+}
+
 const executeCancel = async (entry: PickingProgressEntry) => {
+  const reason = getCancelReasonText()
+  if (!reason) {
+    cancelReasonError.value = 'Alasan cancel wajib diisi'
+    return
+  }
+
   await withActionLoading(entry.id, async () => {
     try {
-      await cancelPickingProgress(entry.id)
-      cancelConfirmOpen.value = false
-      pendingCancelEntry.value = null
+      await cancelPickingProgress(entry.id, reason)
+      closeCancelConfirm()
       await fetchList()
       await refreshDetailIfOpen(entry.id)
       showSuccess('Transaksi picking dibatalkan')
     } catch (err: any) {
-      error.value = getErrorMessage(err, 'Gagal cancel picking')
+      const message = getErrorMessage(err, 'Gagal cancel picking')
+      error.value = message
+      cancelReasonError.value = message
     }
   })
 }
 
 const requestCancel = (entry: PickingProgressEntry) => {
   pendingCancelEntry.value = entry
+  cancelReason.value = ''
+  cancelReasonError.value = ''
   cancelConfirmOpen.value = true
 }
 
@@ -690,24 +712,36 @@ onUnmounted(() => {
     </div>
 
     <div v-if="cancelConfirmOpen" class="fixed inset-0 z-50">
-      <div class="absolute inset-0 bg-black/40" @click="cancelConfirmOpen = false"></div>
+      <div class="absolute inset-0 bg-black/40" @click="closeCancelConfirm"></div>
       <div class="absolute left-1/2 top-1/2 w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-lg bg-card shadow-xl border">
         <div class="p-4 border-b">
           <h3 class="text-lg font-semibold">Konfirmasi Cancel</h3>
         </div>
-        <div class="p-4 text-sm">
+        <div class="p-4 space-y-3 text-sm">
           Batalkan transaksi picking untuk container
           <span class="font-semibold">{{ pendingCancelEntry?.doNumber || pendingCancelEntry?.noContainer }}</span>
           ?
+          <div>
+            <label class="text-sm text-muted-foreground">Alasan Cancel</label>
+            <textarea
+              v-model="cancelReason"
+              rows="3"
+              class="mt-1 w-full resize-none bg-transparent border rounded-md px-2 py-2 text-sm"
+              placeholder="Tulis alasan pembatalan..."
+              @input="cancelReasonError = ''"
+            ></textarea>
+            <p v-if="cancelReasonError" class="mt-1 text-xs text-red-600">{{ cancelReasonError }}</p>
+          </div>
         </div>
         <div class="p-4 border-t flex items-center justify-end gap-2">
-          <Button variant="ghost" @click="cancelConfirmOpen = false">Batal</Button>
+          <Button variant="ghost" @click="closeCancelConfirm">Batal</Button>
           <Button
             variant="outline"
             class="border-red-200 bg-red-600 text-white hover:bg-red-700 hover:text-white"
+            :disabled="!getCancelReasonText() || actionLoading[pendingCancelEntry?.id || '']"
             @click="pendingCancelEntry && executeCancel(pendingCancelEntry)"
           >
-            Ya, Cancel
+            {{ pendingCancelEntry && actionLoading[pendingCancelEntry.id] ? 'Memproses...' : 'Ya, Cancel' }}
           </Button>
         </div>
       </div>
