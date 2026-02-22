@@ -1,5 +1,6 @@
 const gateService = require("../services/gate.service");
 const xlsx = require("xlsx");
+const ExcelJS = require("exceljs");
 const { sendSuccess } = require("../utils/response");
 
 function normalizeHeader(value) {
@@ -71,24 +72,50 @@ module.exports = {
   updateGate,
   deleteGate,
   listMasterGates: listGates,
-  downloadTemplate: function downloadTemplate(req, res, next) {
+  downloadTemplate: async function downloadTemplate(req, res, next) {
     try {
-      const workbook = xlsx.utils.book_new();
-      const sheet = xlsx.utils.aoa_to_sheet([
-        ["Gate No", "Area", "Warehouse"],
-        ["G1", "Area A", "WH1"],
-        ["G2", "Area B", "DG"],
-      ]);
-      sheet["!cols"] = [{ wch: 12 }, { wch: 20 }, { wch: 12 }];
-      xlsx.utils.book_append_sheet(workbook, sheet, "Master Gate");
-      const buffer = xlsx.write(workbook, { type: "buffer", bookType: "xlsx" });
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet("Master Gate");
+      const referenceSheet = workbook.addWorksheet("Referensi Warehouse");
+      const warehouseOptions = ["WH1", "WH2", "DG"];
+
+      worksheet.columns = [
+        { header: "Gate No", key: "gateNo", width: 12 },
+        { header: "Area", key: "area", width: 20 },
+        { header: "Warehouse", key: "warehouse", width: 12 },
+      ];
+      worksheet.getRow(1).font = { bold: true };
+      worksheet.addRow({ gateNo: "G1", area: "Area A", warehouse: "WH1" });
+      worksheet.addRow({ gateNo: "G2", area: "Area B", warehouse: "DG" });
+
+      referenceSheet.columns = [{ header: "Warehouse", key: "warehouse", width: 12 }];
+      referenceSheet.getRow(1).font = { bold: true };
+      warehouseOptions.forEach((warehouse) => {
+        referenceSheet.addRow({ warehouse });
+      });
+      referenceSheet.state = "hidden";
+
+      const listStart = 2;
+      const listEnd = warehouseOptions.length + 1;
+      for (let row = 2; row <= 1000; row += 1) {
+        worksheet.getCell(`C${row}`).dataValidation = {
+          type: "list",
+          allowBlank: true,
+          formulae: [`'Referensi Warehouse'!$A$${listStart}:$A$${listEnd}`],
+          showErrorMessage: true,
+          errorTitle: "Warehouse tidak valid",
+          error: "Pilih Warehouse dari dropdown (WH1, WH2, DG)",
+        };
+      }
 
       res.setHeader(
         "Content-Type",
         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
       );
       res.setHeader("Content-Disposition", "attachment; filename=\"master-gate-template.xlsx\"");
-      return res.send(buffer);
+      await workbook.xlsx.write(res);
+      res.end();
+      return;
     } catch (err) {
       return next(err);
     }

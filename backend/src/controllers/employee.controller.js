@@ -1,4 +1,5 @@
 const xlsx = require("xlsx");
+const ExcelJS = require("exceljs");
 const employeeService = require("../services/employee.service");
 const { sendSuccess } = require("../utils/response");
 
@@ -101,25 +102,52 @@ async function importEmployees(req, res, next) {
   }
 }
 
-function downloadTemplate(req, res, next) {
+async function downloadTemplate(req, res, next) {
   try {
-    const workbook = xlsx.utils.book_new();
-    const sheet = xlsx.utils.aoa_to_sheet([
-      ["NIK", "Nama", "Jabatan"],
-      ["1234567890", "Budi Santoso", "Foreman"],
-      ["1234567891", "Andi Pratama", "Tallyman"],
-      ["1234567892", "Rina Putri", "Opr Forklift"],
-    ]);
-    sheet["!cols"] = [{ wch: 14 }, { wch: 24 }, { wch: 18 }];
-    xlsx.utils.book_append_sheet(workbook, sheet, "Master Karyawan");
-    const buffer = xlsx.write(workbook, { type: "buffer", bookType: "xlsx" });
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet("Master Karyawan");
+    const referenceSheet = workbook.addWorksheet("Referensi Jabatan");
+
+    const positionOptions = ["Foreman", "Tallyman", "Opr Forklift"];
+
+    worksheet.columns = [
+      { header: "NIK", key: "nik", width: 14 },
+      { header: "Nama", key: "name", width: 24 },
+      { header: "Jabatan", key: "position", width: 18 },
+    ];
+    worksheet.getRow(1).font = { bold: true };
+    worksheet.addRow({ nik: "1234567890", name: "Budi Santoso", position: "Foreman" });
+    worksheet.addRow({ nik: "1234567891", name: "Andi Pratama", position: "Tallyman" });
+    worksheet.addRow({ nik: "1234567892", name: "Rina Putri", position: "Opr Forklift" });
+
+    referenceSheet.columns = [{ header: "Jabatan", key: "position", width: 18 }];
+    referenceSheet.getRow(1).font = { bold: true };
+    positionOptions.forEach((position) => {
+      referenceSheet.addRow({ position });
+    });
+    referenceSheet.state = "hidden";
+
+    const listStart = 2;
+    const listEnd = positionOptions.length + 1;
+    for (let row = 2; row <= 1000; row += 1) {
+      worksheet.getCell(`C${row}`).dataValidation = {
+        type: "list",
+        allowBlank: true,
+        formulae: [`'Referensi Jabatan'!$A$${listStart}:$A$${listEnd}`],
+        showErrorMessage: true,
+        errorTitle: "Jabatan tidak valid",
+        error: "Pilih Jabatan dari dropdown (Foreman, Tallyman, atau Opr Forklift)",
+      };
+    }
 
     res.setHeader(
       "Content-Type",
       "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     );
     res.setHeader("Content-Disposition", "attachment; filename=\"master-karyawan-template.xlsx\"");
-    return res.send(buffer);
+    await workbook.xlsx.write(res);
+    res.end();
+    return;
   } catch (err) {
     return next(err);
   }
