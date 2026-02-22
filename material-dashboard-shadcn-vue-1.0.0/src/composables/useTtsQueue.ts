@@ -277,7 +277,6 @@ export const useTtsQueue = ({
     if (onVoicesChanged) {
       window.speechSynthesis.removeEventListener('voiceschanged', onVoicesChanged)
     }
-    stop()
   })
 
   return {
