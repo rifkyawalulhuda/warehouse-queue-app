@@ -15,6 +15,7 @@ import { listEmployees, type Employee } from '@/services/employeeApi'
 import {
   cancelPickingProgress,
   createPickingProgress,
+  exportPickingProgress,
   finishPickingProgress,
   getPickingProgressById,
   listPickingProgress,
@@ -46,6 +47,9 @@ const createSubmitting = ref(false)
 const drawerOpen = ref(false)
 const selectedEntry = ref<PickingProgressEntry | null>(null)
 const actionLoading = ref<Record<string, boolean>>({})
+const exportOpen = ref(false)
+const exporting = ref(false)
+const exportError = ref<string | null>(null)
 
 const page = ref(1)
 const limit = ref(15)
@@ -84,6 +88,11 @@ const filters = reactive({
   date: todayString(),
   status: 'ALL',
   search: parseSearchQuery(route.query.search),
+})
+
+const exportForm = reactive({
+  dateFrom: '',
+  dateTo: ''
 })
 
 const getErrorMessage = (err: any, fallback: string) => {
@@ -434,6 +443,51 @@ const goToPage = (target: number) => {
   fetchList()
 }
 
+const buildExportFileName = () => {
+  if (exportForm.dateFrom && exportForm.dateTo) {
+    return `picking_progress_${exportForm.dateFrom}_sampai_${exportForm.dateTo}.xlsx`
+  }
+  return 'picking_progress.xlsx'
+}
+
+const closeExport = () => {
+  exportOpen.value = false
+  exportError.value = null
+}
+
+const handleExportDownload = async () => {
+  exportError.value = null
+  const hasFrom = Boolean(exportForm.dateFrom)
+  const hasTo = Boolean(exportForm.dateTo)
+  if (hasFrom !== hasTo) {
+    exportError.value = 'Tanggal Dari & Sampai harus diisi bersama'
+    return
+  }
+
+  exporting.value = true
+  try {
+    const response = await exportPickingProgress(
+      hasFrom && hasTo ? { dateFrom: exportForm.dateFrom, dateTo: exportForm.dateTo } : undefined
+    )
+    const downloadUrl = URL.createObjectURL(response.data)
+    const link = document.createElement('a')
+    link.href = downloadUrl
+    link.download = buildExportFileName()
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+    window.setTimeout(() => URL.revokeObjectURL(downloadUrl), 0)
+
+    exportOpen.value = false
+    exportForm.dateFrom = ''
+    exportForm.dateTo = ''
+  } catch (err: any) {
+    exportError.value = getErrorMessage(err, 'Gagal export excel')
+  } finally {
+    exporting.value = false
+  }
+}
+
 let searchTimer: number | undefined
 watch(
   () => [filters.date, filters.status],
@@ -498,6 +552,7 @@ onUnmounted(() => {
         <p class="text-muted-foreground">Monitoring progress picking</p>
       </div>
       <div class="flex items-center gap-2">
+        <Button size="sm" variant="outline" @click="exportOpen = true">Export Excel</Button>
         <Button v-if="!isWarehouse" size="sm" @click="createOpen = true">Tambah Transaksi</Button>
         <Button size="sm" variant="outline" @click="fetchList">
           <RefreshCw class="mr-2 h-4 w-4" />
@@ -599,6 +654,33 @@ onUnmounted(() => {
     />
 
     <PickingDetailDrawer :open="drawerOpen" :entry="selectedEntry" @close="closeDrawer" />
+
+    <div v-if="exportOpen" class="fixed inset-0 z-50">
+      <div class="absolute inset-0 bg-black/40" @click="closeExport"></div>
+      <div class="absolute left-1/2 top-1/2 w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-lg bg-card shadow-xl border">
+        <div class="p-4 border-b">
+          <h3 class="text-lg font-semibold">Export Excel</h3>
+        </div>
+        <div class="p-4 space-y-3 text-sm">
+          <div>
+            <label class="text-sm text-muted-foreground">Tanggal Dari</label>
+            <input v-model="exportForm.dateFrom" type="date" class="mt-1 w-full bg-transparent border rounded-md px-2 py-2 text-sm" />
+          </div>
+          <div>
+            <label class="text-sm text-muted-foreground">Tanggal Sampai</label>
+            <input v-model="exportForm.dateTo" type="date" class="mt-1 w-full bg-transparent border rounded-md px-2 py-2 text-sm" />
+          </div>
+          <p class="text-xs text-muted-foreground">Kosongkan tanggal untuk export semua data.</p>
+          <p v-if="exportError" class="text-xs text-red-600">{{ exportError }}</p>
+        </div>
+        <div class="p-4 border-t flex items-center justify-end gap-2">
+          <Button variant="ghost" @click="closeExport">Batal</Button>
+          <Button :disabled="exporting" @click="handleExportDownload">
+            {{ exporting ? 'Downloading...' : 'Download' }}
+          </Button>
+        </div>
+      </div>
+    </div>
 
     <div v-if="pickedQtyModalOpen" class="fixed inset-0 z-[70] pointer-events-none">
       <div class="absolute inset-0 z-0 bg-black/40 pointer-events-auto" @click="closePickedQtyModal"></div>

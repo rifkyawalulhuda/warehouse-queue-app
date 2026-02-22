@@ -91,3 +91,10 @@ export const finishPickingProgress = (id: string) => {
 export const cancelPickingProgress = (id: string, reason: string) => {
   return api.patch(`/picking-progress/${id}/cancel`, { reason })
 }
+
+export const exportPickingProgress = (params?: { dateFrom?: string; dateTo?: string }) => {
+  return api.get('/picking-progress/export', {
+    params,
+    responseType: 'blob'
+  })
+}

@@ -51,6 +51,33 @@ function resolveTransactionDate(rawDate) {
   return getStartOfDay(dateTime);
 }
 
+function buildExportDateRange(query) {
+  const { dateFrom, dateTo } = query || {};
+  if (!dateFrom || !dateTo) return null;
+  const fromDate = parseDateOnly(dateFrom);
+  const toDate = parseDateOnly(dateTo);
+  if (!fromDate || !toDate) return null;
+  const from = new Date(
+    fromDate.getFullYear(),
+    fromDate.getMonth(),
+    fromDate.getDate(),
+    0,
+    0,
+    0,
+    0
+  );
+  const to = new Date(
+    toDate.getFullYear(),
+    toDate.getMonth(),
+    toDate.getDate(),
+    23,
+    59,
+    59,
+    999
+  );
+  return { from, to };
+}
+
 function toNumber(value) {
   if (value === null || value === undefined) return null;
   const num = Number(value);
@@ -364,6 +391,38 @@ async function getPickingProgressById(id) {
   return computeSlaFields(entry);
 }
 
+async function listPickingProgressForExport(query) {
+  const range = buildExportDateRange(query || {});
+  const where = {};
+  if (range) {
+    where.date = {
+      gte: range.from,
+      lte: range.to,
+    };
+  }
+
+  const itemsRaw = await prisma.pickingProgress.findMany({
+    where,
+    orderBy: [{ date: "desc" }, { createdAt: "desc" }],
+    include: {
+      customer: true,
+      pickerEmployee: true,
+      logs: {
+        where: { action: "CANCEL" },
+        orderBy: { createdAt: "desc" },
+        take: 1,
+        select: {
+          note: true,
+          createdAt: true,
+        },
+      },
+    },
+  });
+
+  const nowMs = Date.now();
+  return itemsRaw.map((item) => computeSlaFields(item, nowMs));
+}
+
 async function startPickingProgress(id, actorUserId, pickerEmployeeId) {
   const pickerEmployee = await ensureEmployeeExists(pickerEmployeeId);
   const now = new Date();
@@ -528,6 +587,7 @@ async function cancelPickingProgress(id, actorUserId, cancelReason) {
 module.exports = {
   createPickingProgress,
   listPickingProgress,
+  listPickingProgressForExport,
   getPickingProgressById,
   startPickingProgress,
   updatePickedQty,

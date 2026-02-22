@@ -23,6 +23,7 @@ router.post(
   pickingProgressController.createPickingProgress
 );
 router.get("/picking-progress", pickingProgressController.listPickingProgress);
+router.get("/picking-progress/export", pickingProgressController.exportPickingProgress);
 router.get("/picking-progress/:id", pickingProgressController.getPickingProgressById);
 router.patch(
   "/picking-progress/:id/start",
