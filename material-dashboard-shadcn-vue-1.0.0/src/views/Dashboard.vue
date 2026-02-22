@@ -65,6 +65,21 @@ type MonthlyReportDailyScheduleItem = {
   storeOutQty: number
   totalQty: number
 }
+type MonthlyReportDailyPickingItem = {
+  date: string
+  targetPickingQty: number
+  pickedQty: number
+  remainingQty: number
+  progressPct: number
+  totalRows: number
+}
+type MonthlyReportPickingSummary = {
+  totalRows: number
+  targetPickingQty: number
+  pickedQty: number
+  remainingQty: number
+  progressPct: number
+}
 type MonthlyReportHourlyQueueItem = {
   hour: string
   total: number
@@ -98,10 +113,12 @@ type MonthlyReportPayload = {
   generatedAt: string
   queueSummary: Summary
   scheduleSummary: { storeInQty: number; storeOutQty: number; totalQty: number }
+  pickingSummary: MonthlyReportPickingSummary
   queueStatusItems: MonthlyReportQueueStatusItem[]
   hourlyQueue: MonthlyReportHourlyQueueItem[]
   dailyQueue: MonthlyReportDailyQueueItem[]
   dailySchedule: MonthlyReportDailyScheduleItem[]
+  dailyPicking: MonthlyReportDailyPickingItem[]
   truckCategoryItems: MonthlyTruckCategoryItem[]
   topCustomers: MonthlyReportTopCustomerItem[]
   overSlaItems: MonthlyReportOverSlaItem[]
@@ -370,6 +387,16 @@ const buildMonthlyReportHtml = (report: MonthlyReportPayload) => {
           .join('')
       : '<tr><td colspan="4" class="empty">Tidak ada data</td></tr>'
 
+  const dailyPickingRows =
+    report.dailyPicking?.length > 0
+      ? report.dailyPicking
+          .map(
+            (item) =>
+              `<tr><td>${formatDateToDisplay(item.date)}</td><td class="num">${formatNumber(item.totalRows)}</td><td class="num">${formatNumber(item.targetPickingQty)}</td><td class="num">${formatNumber(item.pickedQty)}</td><td class="num">${formatNumber(item.remainingQty)}</td><td class="num strong">${formatNumber(item.progressPct)}%</td></tr>`
+          )
+          .join('')
+      : '<tr><td colspan="6" class="empty">Tidak ada data</td></tr>'
+
   const hourlyQueueItems = Array.isArray(report.hourlyQueue) ? report.hourlyQueue : []
   const hourlyQueueMax = hourlyQueueItems.reduce(
     (max, item) => Math.max(max, Number(item.total) || 0),
@@ -476,6 +503,21 @@ const buildMonthlyReportHtml = (report: MonthlyReportPayload) => {
       </div>
 
       <div class="section">
+        <h3>Ringkasan Picking Progress (Bulanan)</h3>
+        <div class="section-body">
+          <div class="cards">
+            <div class="card"><div class="label">Total DO Picking</div><div class="value">${formatNumber(report.pickingSummary?.totalRows || 0)}</div></div>
+            <div class="card"><div class="label">Target Picking Qty</div><div class="value">${formatNumber(report.pickingSummary?.targetPickingQty || 0)}</div></div>
+            <div class="card"><div class="label">Picked Qty</div><div class="value">${formatNumber(report.pickingSummary?.pickedQty || 0)}</div></div>
+            <div class="card"><div class="label">Sisa Qty</div><div class="value">${formatNumber(report.pickingSummary?.remainingQty || 0)}</div></div>
+          </div>
+          <div class="cards" style="margin-top:8px;">
+            <div class="card"><div class="label">Progress Picking</div><div class="value">${formatNumber(report.pickingSummary?.progressPct || 0)}%</div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="section">
         <h3>Distribusi Status Antrian</h3>
         <div class="section-body">
           <table>
@@ -545,6 +587,16 @@ const buildMonthlyReportHtml = (report: MonthlyReportPayload) => {
           <table>
             <thead><tr><th>Tanggal</th><th>Store In Qty</th><th>Store Out Qty</th><th>Total Qty</th></tr></thead>
             <tbody>${dailyScheduleRows}</tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="section">
+        <h3>Rekap Harian Picking Progress</h3>
+        <div class="section-body">
+          <table>
+            <thead><tr><th>Tanggal</th><th>Total DO</th><th>Target Picking Qty</th><th>Picked Qty</th><th>Sisa Qty</th><th>Progress</th></tr></thead>
+            <tbody>${dailyPickingRows}</tbody>
           </table>
         </div>
       </div>

@@ -591,7 +591,7 @@ async function getMonthlyScheduleTruckSummary(monthQuery) {
 async function getMonthlyReport(monthQuery) {
   const range = resolveMonthRange(monthQuery);
 
-  const [queueEntries, scheduleItems, monthlyTruckSummary] = await Promise.all([
+  const [queueEntries, scheduleItems, monthlyTruckSummary, pickingProgressRows] = await Promise.all([
     prisma.queueEntry.findMany({
       where: {
         registerTime: {
@@ -641,6 +641,19 @@ async function getMonthlyReport(monthQuery) {
       },
     }),
     getMonthlyScheduleTruckSummary(range.month),
+    prisma.pickingProgress.findMany({
+      where: {
+        date: {
+          gte: range.from,
+          lt: range.to,
+        },
+      },
+      select: {
+        date: true,
+        pickingQty: true,
+        pickedQty: true,
+      },
+    }),
   ]);
 
   const now = new Date();
@@ -659,6 +672,7 @@ async function getMonthlyReport(monthQuery) {
 
   const dailyQueueMap = new Map();
   const dailyScheduleMap = new Map();
+  const dailyPickingMap = new Map();
   const queueStatusCounts = {
     MENUNGGU: 0,
     IN_WH: 0,
@@ -694,6 +708,14 @@ async function getMonthlyReport(monthQuery) {
       storeInQty: 0,
       storeOutQty: 0,
       totalQty: 0,
+    });
+    dailyPickingMap.set(dateKey, {
+      date: dateKey,
+      targetPickingQty: 0,
+      pickedQty: 0,
+      remainingQty: 0,
+      progressPct: 0,
+      totalRows: 0,
     });
     monthCursor.setUTCDate(monthCursor.getUTCDate() + 1);
   }
@@ -787,6 +809,13 @@ async function getMonthlyReport(monthQuery) {
     storeOutQty: 0,
     totalQty: 0,
   };
+  const pickingSummary = {
+    totalRows: 0,
+    targetPickingQty: 0,
+    pickedQty: 0,
+    remainingQty: 0,
+    progressPct: 0,
+  };
 
   const scheduleQtyByCustomer = new Map();
 
@@ -831,6 +860,38 @@ async function getMonthlyReport(monthQuery) {
     scheduleQtyByCustomer.set(customerName, current);
   });
 
+  pickingProgressRows.forEach((row) => {
+    const qtyTarget = Number(row.pickingQty) || 0;
+    const qtyPicked = Number(row.pickedQty) || 0;
+    const dateKey = formatDateOnlyUtc(new Date(row.date));
+
+    if (!dailyPickingMap.has(dateKey)) {
+      dailyPickingMap.set(dateKey, {
+        date: dateKey,
+        targetPickingQty: 0,
+        pickedQty: 0,
+        remainingQty: 0,
+        progressPct: 0,
+        totalRows: 0,
+      });
+    }
+
+    const day = dailyPickingMap.get(dateKey);
+    day.targetPickingQty += qtyTarget;
+    day.pickedQty += qtyPicked;
+    day.totalRows += 1;
+
+    pickingSummary.targetPickingQty += qtyTarget;
+    pickingSummary.pickedQty += qtyPicked;
+    pickingSummary.totalRows += 1;
+  });
+
+  pickingSummary.remainingQty = Math.max(0, pickingSummary.targetPickingQty - pickingSummary.pickedQty);
+  pickingSummary.progressPct =
+    pickingSummary.targetPickingQty > 0
+      ? Math.round((pickingSummary.pickedQty / pickingSummary.targetPickingQty) * 100)
+      : 0;
+
   const topCustomers = Array.from(queueDurationByCustomer.entries())
     .map(([customerName, data]) => ({
       customerName,
@@ -848,12 +909,27 @@ async function getMonthlyReport(monthQuery) {
 
   const queueDaily = Array.from(dailyQueueMap.values()).sort((a, b) => a.date.localeCompare(b.date));
   const scheduleDaily = Array.from(dailyScheduleMap.values()).sort((a, b) => a.date.localeCompare(b.date));
+  const pickingDaily = Array.from(dailyPickingMap.values())
+    .map((day) => {
+      const remainingQty = Math.max(0, day.targetPickingQty - day.pickedQty);
+      const progressPct =
+        day.targetPickingQty > 0
+          ? Math.round((day.pickedQty / day.targetPickingQty) * 100)
+          : 0;
+      return {
+        ...day,
+        remainingQty,
+        progressPct,
+      };
+    })
+    .sort((a, b) => a.date.localeCompare(b.date));
 
   return {
     month: range.month,
     generatedAt: new Date().toISOString(),
     queueSummary,
     scheduleSummary,
+    pickingSummary,
     queueStatusItems: STATUS_ORDER.map((status) => ({
       name: status,
       value: queueStatusCounts[status] || 0,
@@ -861,6 +937,7 @@ async function getMonthlyReport(monthQuery) {
     hourlyQueue: hourlyQueueBuckets,
     dailyQueue: queueDaily,
     dailySchedule: scheduleDaily,
+    dailyPicking: pickingDaily,
     truckCategoryItems: monthlyTruckSummary.items,
     topCustomers,
     overSlaItems,
