@@ -83,8 +83,8 @@ const statusClass = (status: PickingProgressEntry['status']) => {
   return 'bg-red-100 text-red-800'
 }
 
-const displayDoNumber = (entry: PickingProgressEntry) => entry.doNumber || entry.noContainer || '-'
-const displayDestination = (entry: PickingProgressEntry) => entry.destination || entry.noDock || '-'
+const displayDoNumber = (entry: PickingProgressEntry) => entry.doNumber || '-'
+const displayDestination = (entry: PickingProgressEntry) => entry.destination || '-'
 const displayVolumeCbm = (entry: PickingProgressEntry) => {
   if (entry.volumeCbm === null || entry.volumeCbm === undefined) return '-'
   return Number(entry.volumeCbm).toString()

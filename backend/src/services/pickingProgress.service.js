@@ -255,8 +255,6 @@ function buildSearchTokens(entry) {
     entry.customer?.name,
     entry.doNumber,
     entry.destination,
-    entry.noContainer,
-    entry.noDock,
     entry.pickerEmployee?.name,
     entry.pickerEmployee?.nik,
     entry.status,
@@ -275,8 +273,8 @@ function buildSearchTokens(entry) {
 }
 
 function computeSlaFields(entry, nowMs = Date.now()) {
-  const doNumber = normalizeText(entry.doNumber) || normalizeText(entry.noContainer);
-  const destination = normalizeText(entry.destination) || normalizeText(entry.noDock);
+  const doNumber = normalizeText(entry.doNumber);
+  const destination = normalizeText(entry.destination);
   const plTimeRelease = entry.plTimeRelease || entry.startTime || null;
   const slaPerBarcodeMinutes = toNumber(entry.slaPerBarcodeMinutes) ?? DEFAULT_SLA_PER_BARCODE_MINUTES;
   const slaTotalMinutes = Number(entry.pickingQty || 0) * slaPerBarcodeMinutes;
@@ -378,9 +376,6 @@ async function createPickingProgress(data, actorUserId) {
       destination,
       volumeCbm,
       plTimeRelease,
-      // Keep legacy columns populated for backward compatibility.
-      noContainer: doNumber,
-      noDock: destination,
       pickingQty: data.pickingQty,
       pickedQty: 0,
       status: "MENUNGGU",
@@ -434,8 +429,8 @@ async function updatePickingProgress(id, data, actorUserId) {
 
   const note = [
     `customerId=${existing.customerId}->${data.customerId}`,
-    `doNumber=${existing.doNumber || existing.noContainer}->${doNumber}`,
-    `destination=${existing.destination || existing.noDock}->${destination}`,
+    `doNumber=${existing.doNumber}->${doNumber}`,
+    `destination=${existing.destination}->${destination}`,
     `volumeCbm=${existing.volumeCbm ?? 0}->${volumeCbm}`,
     `pickingQty=${existing.pickingQty}->${nextPickingQty}`,
   ].join(", ");
@@ -449,8 +444,6 @@ async function updatePickingProgress(id, data, actorUserId) {
       destination,
       volumeCbm,
       plTimeRelease,
-      noContainer: doNumber,
-      noDock: destination,
       pickingQty: nextPickingQty,
       updatedById: actorUserId || null,
       logs: {
@@ -735,8 +728,6 @@ async function importPickingProgressFromExcel(rows, actorUserId) {
           destination: row.destination,
           volumeCbm: row.volumeCbm,
           plTimeRelease: uploadNow,
-          noContainer: row.doNumber,
-          noDock: row.destination,
           pickingQty: row.pickingQty,
           pickedQty: 0,
           status: "MENUNGGU",

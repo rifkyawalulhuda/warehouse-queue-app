@@ -18,12 +18,10 @@ export type PickingProgressEntry = {
   date: string
   customerId: string
   customer?: { id: string; name: string } | null
-  doNumber?: string | null
-  destination?: string | null
+  doNumber: string
+  destination: string
   volumeCbm?: number | null
   plTimeRelease?: string | null
-  noContainer: string
-  noDock: string
   pickingQty: number
   pickedQty: number
   remainQty?: number

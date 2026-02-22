@@ -870,7 +870,7 @@ onUnmounted(() => {
         <div class="p-4 space-y-3 text-sm">
           <p>
             Masukkan jumlah yang sudah terpicking untuk DO
-            <span class="font-semibold">{{ pendingPickedQtyEntry?.doNumber || pendingPickedQtyEntry?.noContainer }}</span>.
+            <span class="font-semibold">{{ pendingPickedQtyEntry?.doNumber }}</span>.
           </p>
           <p class="text-muted-foreground">
             Maksimal: <span class="font-semibold">{{ pendingPickedQtyEntry?.pickingQty ?? 0 }}</span>
@@ -926,7 +926,7 @@ onUnmounted(() => {
         <div class="p-4 space-y-3 text-sm">
           <p>
             Pilih nama karyawan untuk transaksi
-            <span class="font-semibold">{{ pendingStartEntry?.doNumber || pendingStartEntry?.noContainer }}</span>.
+            <span class="font-semibold">{{ pendingStartEntry?.doNumber }}</span>.
           </p>
           <div>
             <label class="text-sm text-muted-foreground">Nama Karyawan</label>
@@ -953,7 +953,7 @@ onUnmounted(() => {
         </div>
         <div class="p-4 text-sm">
           Selesaikan picking untuk DO
-          <span class="font-semibold">{{ pendingFinishEntry?.doNumber || pendingFinishEntry?.noContainer }}</span>
+          <span class="font-semibold">{{ pendingFinishEntry?.doNumber }}</span>
           ?
           <div class="mt-1 text-muted-foreground">
             Picked Qty: {{ pendingFinishEntry?.pickedQty || 0 }}/{{ pendingFinishEntry?.pickingQty || 0 }}
@@ -976,7 +976,7 @@ onUnmounted(() => {
         </div>
         <div class="p-4 space-y-3 text-sm">
           Batalkan transaksi picking untuk container
-          <span class="font-semibold">{{ pendingCancelEntry?.doNumber || pendingCancelEntry?.noContainer }}</span>
+          <span class="font-semibold">{{ pendingCancelEntry?.doNumber }}</span>
           ?
           <div>
             <label class="text-sm text-muted-foreground">Alasan Cancel</label>

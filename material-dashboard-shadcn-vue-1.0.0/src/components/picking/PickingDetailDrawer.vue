@@ -95,11 +95,11 @@ const formatProgressPercent = (value?: number | null) => {
           </div>
           <div>
             <p class="text-muted-foreground">DO Number</p>
-            <p class="font-medium">{{ entry?.doNumber || entry?.noContainer || '-' }}</p>
+            <p class="font-medium">{{ entry?.doNumber || '-' }}</p>
           </div>
           <div>
             <p class="text-muted-foreground">Destination</p>
-            <p class="font-medium">{{ entry?.destination || entry?.noDock || '-' }}</p>
+            <p class="font-medium">{{ entry?.destination || '-' }}</p>
           </div>
           <div>
             <p class="text-muted-foreground">Volume (CBM)</p>

@@ -196,12 +196,10 @@ model PickingProgress {
   date                 DateTime
   customerId           String
   customer             Customer             @relation(fields: [customerId], references: [id], onDelete: Restrict)
-  doNumber             String?
-  destination          String?
+  doNumber             String
+  destination          String
   volumeCbm            Decimal?
   plTimeRelease        DateTime?
-  noContainer          String
-  noDock               String
   pickingQty           Int
   pickedQty            Int                  @default(0)
   slaPerBarcodeMinutes Decimal              @default(2.5)

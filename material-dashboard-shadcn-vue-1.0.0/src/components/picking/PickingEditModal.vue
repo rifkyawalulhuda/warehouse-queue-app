@@ -75,8 +75,8 @@ const syncFormFromEntry = () => {
   if (!entry) return
   form.date = toDateInput(entry.date)
   form.customerId = entry.customerId || ''
-  form.doNumber = entry.doNumber || entry.noContainer || ''
-  form.destination = entry.destination || entry.noDock || ''
+  form.doNumber = entry.doNumber || ''
+  form.destination = entry.destination || ''
   form.volumeCbm = Number(entry.volumeCbm ?? 0)
   form.plTimeRelease = toDatetimeLocalInput(entry.plTimeRelease)
   form.pickingQty = Number(entry.pickingQty || 1)
