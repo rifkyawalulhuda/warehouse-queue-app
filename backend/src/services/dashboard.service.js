@@ -353,6 +353,9 @@ async function getPickingProgressSummary(dateQuery) {
         gte: pickingDate,
         lt: nextDay,
       },
+      status: {
+        not: "BATAL",
+      },
     },
     _sum: {
       pickingQty: true,
