@@ -732,7 +732,9 @@ async function listPickingProgressForPrint(query) {
     );
   }
 
-  const summary = items.reduce(
+  const activeItems = items.filter((item) => item.status !== "BATAL");
+
+  const summary = activeItems.reduce(
     (acc, item) => {
       acc.totalDo += 1;
       acc.targetPickingQty += Number(item.pickingQty || 0);
@@ -741,7 +743,6 @@ async function listPickingProgressForPrint(query) {
       if (item.status === "MENUNGGU") acc.statusCounts.menunggu += 1;
       if (item.status === "ON_PROCESS") acc.statusCounts.onProcess += 1;
       if (item.status === "SELESAI") acc.statusCounts.selesai += 1;
-      if (item.status === "BATAL") acc.statusCounts.batal += 1;
       return acc;
     },
     {
@@ -758,6 +759,7 @@ async function listPickingProgressForPrint(query) {
       },
     }
   );
+  summary.statusCounts.batal = items.filter((item) => item.status === "BATAL").length;
   summary.progressPercent =
     summary.targetPickingQty > 0
       ? Number(((summary.pickedQty / summary.targetPickingQty) * 100).toFixed(2))
