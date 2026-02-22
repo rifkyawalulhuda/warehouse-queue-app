@@ -244,6 +244,22 @@ function formatPercentageForSearch(value) {
   return `${num.toFixed(2).replace(/\.?0+$/, "")}%`;
 }
 
+function extractLegacyCustomerIdsFromUpdateNote(note) {
+  if (typeof note !== "string") return null;
+  const match = note.match(/customerId=([^,\s]+)->([^,\s]+)/i);
+  if (!match) return null;
+  return { oldId: match[1], newId: match[2] };
+}
+
+function replaceLegacyCustomerIdsWithNames(note, customerNameMap) {
+  if (typeof note !== "string") return note;
+  return note.replace(/customerId=([^,\s]+)->([^,\s]+)/i, (_, oldId, newId) => {
+    const oldName = customerNameMap.get(oldId) || oldId;
+    const newName = customerNameMap.get(newId) || newId;
+    return `customerName=${oldName}->${newName}`;
+  });
+}
+
 function buildSearchTokens(entry) {
   const progress =
     entry.pickingProgressPercent !== undefined && entry.pickingProgressPercent !== null
@@ -326,6 +342,7 @@ async function ensureCustomerExists(customerId) {
   if (!customer) {
     throw createHttpError(400, "Customer tidak ditemukan");
   }
+  return customer;
 }
 
 async function resolveCustomersByNameMap() {
@@ -401,7 +418,16 @@ async function createPickingProgress(data, actorUserId) {
 }
 
 async function updatePickingProgress(id, data, actorUserId) {
-  const existing = await prisma.pickingProgress.findUnique({ where: { id } });
+  const existing = await prisma.pickingProgress.findUnique({
+    where: { id },
+    include: {
+      customer: {
+        select: {
+          name: true,
+        },
+      },
+    },
+  });
   if (!existing) {
     throw createHttpError(404, "Data picking progress tidak ditemukan");
   }
@@ -409,7 +435,7 @@ async function updatePickingProgress(id, data, actorUserId) {
     throw createHttpError(400, "Edit hanya bisa dilakukan saat status MENUNGGU");
   }
 
-  await ensureCustomerExists(data.customerId);
+  const nextCustomer = await ensureCustomerExists(data.customerId);
 
   const transactionDate = resolveTransactionDate(data.date);
   const doNumber = normalizeText(data.doNumber);
@@ -428,7 +454,7 @@ async function updatePickingProgress(id, data, actorUserId) {
   }
 
   const note = [
-    `customerId=${existing.customerId}->${data.customerId}`,
+    `customerName=${existing.customer?.name || "-"}->${nextCustomer.name}`,
     `doNumber=${existing.doNumber}->${doNumber}`,
     `destination=${existing.destination}->${destination}`,
     `volumeCbm=${existing.volumeCbm ?? 0}->${volumeCbm}`,
@@ -565,7 +591,37 @@ async function getPickingProgressById(id) {
     throw createHttpError(404, "Data picking progress tidak ditemukan");
   }
 
-  return computeSlaFields(entry);
+  const legacyCustomerIds = new Set();
+  entry.logs.forEach((log) => {
+    if (log.action !== "UPDATE") return;
+    const parsed = extractLegacyCustomerIdsFromUpdateNote(log.note);
+    if (!parsed) return;
+    legacyCustomerIds.add(parsed.oldId);
+    legacyCustomerIds.add(parsed.newId);
+  });
+
+  let customerNameMap = new Map();
+  if (legacyCustomerIds.size > 0) {
+    const customers = await prisma.customer.findMany({
+      where: { id: { in: Array.from(legacyCustomerIds) } },
+      select: { id: true, name: true },
+    });
+    customerNameMap = new Map(customers.map((customer) => [customer.id, customer.name]));
+  }
+
+  const normalizedEntry = {
+    ...entry,
+    logs: entry.logs.map((log) => {
+      if (log.action !== "UPDATE") return log;
+      if (!extractLegacyCustomerIdsFromUpdateNote(log.note)) return log;
+      return {
+        ...log,
+        note: replaceLegacyCustomerIdsWithNames(log.note, customerNameMap),
+      };
+    }),
+  };
+
+  return computeSlaFields(normalizedEntry);
 }
 
 async function listPickingProgressForExport(query) {
