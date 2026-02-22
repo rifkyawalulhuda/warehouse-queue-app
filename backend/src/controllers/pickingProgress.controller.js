@@ -215,6 +215,22 @@ async function exportPickingProgress(req, res, next) {
   }
 }
 
+async function printPickingProgressSummary(req, res, next) {
+  try {
+    const result = await pickingProgressService.listPickingProgressForPrint(req.query || {});
+    return sendSuccess(res, {
+      dateFrom: req.query?.dateFrom || null,
+      dateTo: req.query?.dateTo || null,
+      status: req.query?.status || "ALL",
+      search: req.query?.search || "",
+      summary: result.summary,
+      rows: result.items,
+    });
+  } catch (err) {
+    return next(err);
+  }
+}
+
 async function downloadPickingProgressTemplate(req, res, next) {
   try {
     const customerNames = await pickingProgressService.listCustomerNamesForTemplate();
@@ -384,6 +400,7 @@ module.exports = {
   updatePickingProgress,
   listPickingProgress,
   exportPickingProgress,
+  printPickingProgressSummary,
   downloadPickingProgressTemplate,
   importPickingProgress,
   getPickingProgressById,

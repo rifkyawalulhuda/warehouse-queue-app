@@ -27,6 +27,7 @@ router.post(
 );
 router.get("/picking-progress", pickingProgressController.listPickingProgress);
 router.get("/picking-progress/template", pickingProgressController.downloadPickingProgressTemplate);
+router.get("/picking-progress/print-summary", pickingProgressController.printPickingProgressSummary);
 router.post(
   "/picking-progress/import",
   upload.single("file"),

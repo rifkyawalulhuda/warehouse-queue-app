@@ -22,9 +22,11 @@ import {
   getPickingProgressById,
   importPickingProgressExcel,
   listPickingProgress,
+  printPickingProgressSummary,
   startPickingProgress,
   updatePickingProgress,
   updatePickingPickedQty,
+  type PickingPrintSummary,
   type PickingProgressEntry,
 } from '@/services/pickingProgressApi'
 
@@ -57,6 +59,8 @@ const actionLoading = ref<Record<string, boolean>>({})
 const exportOpen = ref(false)
 const exporting = ref(false)
 const exportError = ref<string | null>(null)
+const printing = ref(false)
+const printError = ref<string | null>(null)
 const importing = ref(false)
 const importFile = ref<File | null>(null)
 const importFileInput = ref<HTMLInputElement | null>(null)
@@ -121,6 +125,215 @@ const exportForm = reactive({
 
 const getErrorMessage = (err: any, fallback: string) => {
   return err?.response?.data?.message || err?.message || fallback
+}
+
+const escapeHtml = (value: string) =>
+  value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;')
+
+const normalizeNumber = (value: unknown) => {
+  const num = Number(value)
+  return Number.isFinite(num) ? num : 0
+}
+
+const formatPercent = (value: unknown) => {
+  const num = normalizeNumber(value)
+  return `${num.toFixed(2).replace(/\.?0+$/, '')}%`
+}
+
+const formatDateForPrint = (value?: string | null) => {
+  if (!value) return '-'
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return '-'
+  const dd = String(date.getDate()).padStart(2, '0')
+  const mm = String(date.getMonth() + 1).padStart(2, '0')
+  const yyyy = String(date.getFullYear())
+  return `${dd}/${mm}/${yyyy}`
+}
+
+const formatDateTimeForPrint = (value?: string | null) => {
+  if (!value) return '-'
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return '-'
+  const dd = String(date.getDate()).padStart(2, '0')
+  const mm = String(date.getMonth() + 1).padStart(2, '0')
+  const yyyy = String(date.getFullYear())
+  const hh = String(date.getHours()).padStart(2, '0')
+  const mi = String(date.getMinutes()).padStart(2, '0')
+  const ss = String(date.getSeconds()).padStart(2, '0')
+  return `${dd}/${mm}/${yyyy} ${hh}:${mi}:${ss}`
+}
+
+const formatTimeRemainingForPrint = (seconds?: number | null, status?: string) => {
+  if (status !== 'ON_PROCESS' || seconds === null || seconds === undefined) return '-'
+  const abs = Math.abs(Number(seconds))
+  const mins = Math.floor(abs / 60)
+  const secs = abs % 60
+  const text = `${mins}m ${String(secs).padStart(2, '0')}s`
+  if (Number(seconds) < 0) return `Over SLA ${text}`
+  return text
+}
+
+const buildPrintDateRangeText = (dateFrom?: string | null, dateTo?: string | null) => {
+  const from = formatDateForPrint(dateFrom || '')
+  const to = formatDateForPrint(dateTo || '')
+  if (from === '-' && to === '-') return '-'
+  if (from !== '-' && to !== '-') return `${from} s/d ${to}`
+  if (from !== '-') return from
+  return to
+}
+
+const buildPickingPrintHtml = (payload: {
+  dateFrom?: string | null
+  dateTo?: string | null
+  status?: string | null
+  search?: string | null
+  summary?: PickingPrintSummary | null
+  rows: PickingProgressEntry[]
+}) => {
+  const rows = Array.isArray(payload.rows) ? payload.rows : []
+  const summary = payload.summary || {
+    totalDo: 0,
+    targetPickingQty: 0,
+    pickedQty: 0,
+    remainQty: 0,
+    progressPercent: 0,
+    statusCounts: { menunggu: 0, onProcess: 0, selesai: 0, batal: 0 },
+  }
+
+  const generatedAt = formatDateTimeForPrint(new Date().toISOString())
+  const dateRangeText = buildPrintDateRangeText(payload.dateFrom, payload.dateTo)
+  const statusText = payload.status && payload.status !== 'ALL' ? payload.status : 'Semua'
+  const searchText = String(payload.search || '').trim() || '-'
+
+  const bodyRows =
+    rows.length > 0
+      ? rows
+          .map((row, index) => {
+            const cancelReason =
+              row.status === 'BATAL' ? String(row.logs?.[0]?.note || row.logs?.find((log) => log.action === 'CANCEL')?.note || '-') : '-'
+            return `
+              <tr>
+                <td>${index + 1}</td>
+                <td>${escapeHtml(formatDateForPrint(row.date))}</td>
+                <td class="left">${escapeHtml(row.customer?.name || '-')}</td>
+                <td class="left">${escapeHtml(row.doNumber || '-')}</td>
+                <td class="left">${escapeHtml(row.destination || '-')}</td>
+                <td>${normalizeNumber(row.volumeCbm)}</td>
+                <td>${escapeHtml(formatDateTimeForPrint(row.plTimeRelease || row.startTime || null))}</td>
+                <td>${normalizeNumber(row.pickingQty)}</td>
+                <td>${normalizeNumber(row.pickedQty)}</td>
+                <td>${normalizeNumber(row.remainQty)}</td>
+                <td>${escapeHtml(formatPercent(row.pickingProgressPercent))}</td>
+                <td class="left">${escapeHtml(row.pickerEmployee?.name || '-')}</td>
+                <td>${escapeHtml(formatTimeRemainingForPrint(row.timeRemainingSeconds, row.status))}</td>
+                <td>${escapeHtml(formatDateTimeForPrint(row.startTime))}</td>
+                <td>${escapeHtml(formatDateTimeForPrint(row.finishTime))}</td>
+                <td>${escapeHtml(row.status || '-')}</td>
+                <td class="left">${escapeHtml(cancelReason)}</td>
+              </tr>
+            `
+          })
+          .join('')
+      : `<tr><td colspan="17" class="empty">Tidak ada data picking progress.</td></tr>`
+
+  return `<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>Print Picking Progress</title>
+    <style>
+      @page { size: A4 landscape; margin: 8mm; }
+      * { box-sizing: border-box; }
+      body { margin: 0; font-family: Arial, Helvetica, sans-serif; color: #111; }
+      .sheet { width: 100%; }
+      .header { margin-bottom: 8px; }
+      .header h1 { margin: 0; font-size: 20px; letter-spacing: 0.4px; }
+      .header .subtitle { margin-top: 2px; font-size: 12px; }
+      .meta { margin-top: 6px; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; font-size: 11px; }
+      .meta-item { border: 1px solid #d1d5db; padding: 4px 6px; border-radius: 4px; background: #fafafa; }
+      .meta-item strong { font-size: 10px; color: #444; display: block; margin-bottom: 1px; }
+      .summary { margin: 8px 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+      .summary-card { border: 1px solid #222; border-radius: 4px; overflow: hidden; }
+      .summary-card .label { background: #f2f2f2; border-bottom: 1px solid #222; font-size: 10px; padding: 4px 6px; font-weight: 700; }
+      .summary-card .value { font-size: 22px; font-weight: 700; text-align: center; padding: 8px 4px; min-height: 52px; display: flex; align-items: center; justify-content: center; }
+      table { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: 10px; }
+      th, td { border: 1px solid #222; padding: 3px 4px; text-align: center; vertical-align: middle; word-wrap: break-word; }
+      thead th { background: #f2f2f2; font-weight: 700; }
+      th.left, td.left { text-align: left; }
+      tbody tr:nth-child(even) { background: #fafafa; }
+      .empty { text-align: center; color: #666; padding: 10px; }
+      @media print {
+        thead { display: table-header-group; }
+        tr { page-break-inside: avoid; }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="sheet">
+      <div class="header">
+        <h1>PT. SANKYU INDONESIA INTERNATIONAL</h1>
+        <div class="subtitle">Picking Progress Report</div>
+        <div class="meta">
+          <div class="meta-item"><strong>Periode</strong>${escapeHtml(dateRangeText)}</div>
+          <div class="meta-item"><strong>Status</strong>${escapeHtml(statusText)}</div>
+          <div class="meta-item"><strong>Search</strong>${escapeHtml(searchText)}</div>
+          <div class="meta-item"><strong>Generated</strong>${escapeHtml(generatedAt)}</div>
+        </div>
+      </div>
+
+      <div class="summary">
+        <div class="summary-card">
+          <div class="label">TOTAL DO PICKING</div>
+          <div class="value">${summary.totalDo}</div>
+        </div>
+        <div class="summary-card">
+          <div class="label">TARGET PICKING QTY (Barcode)</div>
+          <div class="value">${summary.targetPickingQty}</div>
+        </div>
+        <div class="summary-card">
+          <div class="label">PICKED QTY (Barcode)</div>
+          <div class="value">${summary.pickedQty}</div>
+        </div>
+        <div class="summary-card">
+          <div class="label">PROGRESS</div>
+          <div class="value">${escapeHtml(formatPercent(summary.progressPercent))}</div>
+        </div>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th style="width: 34px;">No</th>
+            <th style="width: 70px;">Tanggal</th>
+            <th class="left" style="width: 116px;">Nama Customer</th>
+            <th class="left" style="width: 90px;">DO Number</th>
+            <th class="left" style="width: 110px;">Destination</th>
+            <th style="width: 60px;">Volume</th>
+            <th style="width: 110px;">PL Time Release</th>
+            <th style="width: 62px;">Pick Qty</th>
+            <th style="width: 62px;">Picked</th>
+            <th style="width: 62px;">Remain</th>
+            <th style="width: 68px;">Progress</th>
+            <th class="left" style="width: 90px;">Nama Karyawan</th>
+            <th style="width: 85px;">Time Remaining</th>
+            <th style="width: 95px;">Start Time</th>
+            <th style="width: 95px;">Finish Time</th>
+            <th style="width: 70px;">Status</th>
+            <th class="left" style="width: 140px;">Keterangan Batal</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${bodyRows}
+        </tbody>
+      </table>
+    </div>
+  </body>
+</html>`
 }
 
 let successTimer: number | undefined
@@ -619,6 +832,93 @@ const handleExportDownload = async () => {
   }
 }
 
+const handlePrintPickingProgress = async () => {
+  printError.value = null
+  if (filters.dateFrom && filters.dateTo && filters.dateFrom > filters.dateTo) {
+    printError.value = 'Tanggal mulai tidak boleh lebih besar dari tanggal akhir'
+    return
+  }
+
+  printing.value = true
+  const printWindow = window.open('', '_blank')
+  if (!printWindow) {
+    printError.value = 'Popup print diblokir browser. Izinkan popup lalu coba lagi.'
+    printing.value = false
+    return
+  }
+
+  printWindow.document.open()
+  printWindow.document.write(`
+    <!doctype html>
+    <html>
+      <head>
+        <meta charset="UTF-8" />
+        <title>Menyiapkan Print...</title>
+        <style>
+          body { font-family: Arial, Helvetica, sans-serif; margin: 24px; color: #111; }
+          .muted { color: #666; }
+        </style>
+      </head>
+      <body>
+        <h3>Menyiapkan Print...</h3>
+        <p class="muted">Mohon tunggu, data picking progress sedang diproses.</p>
+      </body>
+    </html>
+  `)
+  printWindow.document.close()
+
+  try {
+    const response = await printPickingProgressSummary({
+      dateFrom: filters.dateFrom || undefined,
+      dateTo: filters.dateTo || undefined,
+      status: filters.status as any,
+      search: filters.search.trim() || undefined,
+      sort: 'createdAt',
+      sortDir: 'desc',
+    })
+    const payload = response.data?.data || {}
+    const html = buildPickingPrintHtml({
+      dateFrom: payload.dateFrom || filters.dateFrom,
+      dateTo: payload.dateTo || filters.dateTo,
+      status: payload.status || filters.status,
+      search: payload.search || filters.search,
+      summary: payload.summary as PickingPrintSummary,
+      rows: (payload.rows || []) as PickingProgressEntry[],
+    })
+
+    printWindow.document.open()
+    printWindow.document.write(html)
+    printWindow.document.close()
+    printWindow.focus()
+    window.setTimeout(() => {
+      printWindow.print()
+    }, 300)
+  } catch (err: any) {
+    printError.value = getErrorMessage(err, 'Gagal menyiapkan print picking progress')
+    printWindow.document.open()
+    printWindow.document.write(`
+      <!doctype html>
+      <html>
+        <head>
+          <meta charset="UTF-8" />
+          <title>Gagal Print</title>
+          <style>
+            body { font-family: Arial, Helvetica, sans-serif; margin: 24px; color: #111; }
+            .error { color: #b91c1c; }
+          </style>
+        </head>
+        <body>
+          <h3 class="error">Gagal menyiapkan print</h3>
+          <p>${escapeHtml(printError.value || 'Terjadi kesalahan')}</p>
+        </body>
+      </html>
+    `)
+    printWindow.document.close()
+  } finally {
+    printing.value = false
+  }
+}
+
 const handleImportFileChange = (event: Event) => {
   const target = event.target as HTMLInputElement
   importFile.value = target.files?.[0] || null
@@ -772,6 +1072,15 @@ onUnmounted(() => {
         <p class="text-muted-foreground">Monitoring progress picking</p>
       </div>
       <div class="flex items-center gap-2">
+        <Button
+          size="sm"
+          variant="outline"
+          class="border-blue-200 bg-blue-600 text-white hover:bg-blue-700 hover:text-white"
+          :disabled="printing"
+          @click="handlePrintPickingProgress"
+        >
+          {{ printing ? 'Menyiapkan...' : 'Print Out' }}
+        </Button>
         <Button size="sm" variant="outline" @click="exportOpen = true">Export Excel</Button>
         <Button v-if="!isWarehouse" size="sm" @click="createOpen = true">Tambah Transaksi</Button>
         <Button size="sm" variant="outline" @click="fetchList">
@@ -862,6 +1171,9 @@ onUnmounted(() => {
       <CardContent>
         <div v-if="error" class="mb-3 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
           {{ error }}
+        </div>
+        <div v-if="printError" class="mb-3 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+          {{ printError }}
         </div>
         <div v-if="success" class="mb-3 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
           {{ success }}

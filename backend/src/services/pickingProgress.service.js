@@ -691,6 +691,81 @@ async function listPickingProgressForExport(query) {
   return itemsRaw.map((item) => computeSlaFields(item, nowMs));
 }
 
+async function listPickingProgressForPrint(query) {
+  const status = normalizeStatus(query?.status);
+  const search = typeof query?.search === "string" ? query.search.trim() : "";
+  const { from, to } = resolveDateRange(query || {});
+  const { sort, sortDir } = normalizeSort(query || {});
+
+  const where = {
+    date: {
+      gte: from,
+      lte: to,
+    },
+  };
+  if (status) where.status = status;
+
+  const itemsRaw = await prisma.pickingProgress.findMany({
+    where,
+    orderBy: [{ [sort]: sortDir }, { createdAt: "desc" }],
+    include: {
+      customer: true,
+      pickerEmployee: true,
+      logs: {
+        where: { action: "CANCEL" },
+        orderBy: { createdAt: "desc" },
+        take: 1,
+        select: {
+          note: true,
+          createdAt: true,
+        },
+      },
+    },
+  });
+
+  const nowMs = Date.now();
+  let items = itemsRaw.map((item) => computeSlaFields(item, nowMs));
+  if (search) {
+    const loweredSearch = search.toLowerCase();
+    items = items.filter((entry) =>
+      buildSearchTokens(entry).some((token) => token.toLowerCase().includes(loweredSearch))
+    );
+  }
+
+  const summary = items.reduce(
+    (acc, item) => {
+      acc.totalDo += 1;
+      acc.targetPickingQty += Number(item.pickingQty || 0);
+      acc.pickedQty += Number(item.pickedQty || 0);
+      acc.remainQty += Number(item.remainQty || 0);
+      if (item.status === "MENUNGGU") acc.statusCounts.menunggu += 1;
+      if (item.status === "ON_PROCESS") acc.statusCounts.onProcess += 1;
+      if (item.status === "SELESAI") acc.statusCounts.selesai += 1;
+      if (item.status === "BATAL") acc.statusCounts.batal += 1;
+      return acc;
+    },
+    {
+      totalDo: 0,
+      targetPickingQty: 0,
+      pickedQty: 0,
+      remainQty: 0,
+      progressPercent: 0,
+      statusCounts: {
+        menunggu: 0,
+        onProcess: 0,
+        selesai: 0,
+        batal: 0,
+      },
+    }
+  );
+  summary.progressPercent =
+    summary.targetPickingQty > 0
+      ? Number(((summary.pickedQty / summary.targetPickingQty) * 100).toFixed(2))
+      : 0;
+
+  return { summary, items };
+}
+
 async function importPickingProgressFromExcel(rows, actorUserId) {
   if (!Array.isArray(rows)) {
     throw createHttpError(400, "Data Excel tidak valid");
@@ -1014,6 +1089,7 @@ module.exports = {
   updatePickingProgress,
   listPickingProgress,
   listPickingProgressForExport,
+  listPickingProgressForPrint,
   listCustomerNamesForTemplate,
   importPickingProgressFromExcel,
   getPickingProgressById,

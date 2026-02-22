@@ -46,6 +46,20 @@ export type PickingProgressEntry = {
   updatedAt: string
 }
 
+export type PickingPrintSummary = {
+  totalDo: number
+  targetPickingQty: number
+  pickedQty: number
+  remainQty: number
+  progressPercent: number
+  statusCounts: {
+    menunggu: number
+    onProcess: number
+    selesai: number
+    batal: number
+  }
+}
+
 export const createPickingProgress = (payload: {
   date?: string
   customerId: string
@@ -126,4 +140,15 @@ export const importPickingProgressExcel = (file: File) => {
   return api.post('/picking-progress/import', formData, {
     headers: { 'Content-Type': 'multipart/form-data' }
   })
+}
+
+export const printPickingProgressSummary = (params?: {
+  dateFrom?: string
+  dateTo?: string
+  status?: 'ALL' | PickingStatus
+  search?: string
+  sort?: 'createdAt' | 'startTime' | 'finishTime'
+  sortDir?: 'asc' | 'desc'
+}) => {
+  return api.get('/picking-progress/print-summary', { params })
 }
