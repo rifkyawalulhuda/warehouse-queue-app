@@ -26,6 +26,60 @@ function parseDateOnly(dateStr) {
   return new Date(year, month - 1, day);
 }
 
+function parseExcelDateSerial(serial) {
+  const numericValue = Number(serial);
+  if (!Number.isFinite(numericValue)) return null;
+
+  // Excel serial date base (with Excel 1900 leap-year behavior compensation).
+  const excelBaseUtcMs = Date.UTC(1899, 11, 30);
+  const wholeDays = Math.floor(numericValue);
+  const utcDate = new Date(excelBaseUtcMs + wholeDays * 24 * 60 * 60 * 1000);
+  if (Number.isNaN(utcDate.getTime())) return null;
+
+  return new Date(
+    Date.UTC(utcDate.getUTCFullYear(), utcDate.getUTCMonth(), utcDate.getUTCDate(), 0, 0, 0, 0)
+  );
+}
+
+function parseImportDateString(value) {
+  const text = normalizeText(value);
+  if (!text) return null;
+
+  const isoMatch = text.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (isoMatch) {
+    const year = Number(isoMatch[1]);
+    const month = Number(isoMatch[2]);
+    const day = Number(isoMatch[3]);
+    const date = new Date(Date.UTC(year, month - 1, day, 0, 0, 0, 0));
+    if (
+      date.getUTCFullYear() === year &&
+      date.getUTCMonth() === month - 1 &&
+      date.getUTCDate() === day
+    ) {
+      return date;
+    }
+    return null;
+  }
+
+  const dmyMatch = text.match(/^(\d{2})[/-](\d{2})[/-](\d{4})$/);
+  if (dmyMatch) {
+    const day = Number(dmyMatch[1]);
+    const month = Number(dmyMatch[2]);
+    const year = Number(dmyMatch[3]);
+    const date = new Date(Date.UTC(year, month - 1, day, 0, 0, 0, 0));
+    if (
+      date.getUTCFullYear() === year &&
+      date.getUTCMonth() === month - 1 &&
+      date.getUTCDate() === day
+    ) {
+      return date;
+    }
+    return null;
+  }
+
+  return null;
+}
+
 function getStartOfDay(date) {
   return new Date(date.getFullYear(), date.getMonth(), date.getDate(), 0, 0, 0, 0);
 }
@@ -118,6 +172,16 @@ function normalizeText(value) {
 
 function pad2(value) {
   return String(value).padStart(2, "0");
+}
+
+function formatDateToYmd(dateValue) {
+  if (!dateValue) return "";
+  const date = new Date(dateValue);
+  if (Number.isNaN(date.getTime())) return "";
+  const year = date.getFullYear();
+  const month = pad2(date.getMonth() + 1);
+  const day = pad2(date.getDate());
+  return `${year}-${month}-${day}`;
 }
 
 function formatDateForSearch(value) {
@@ -241,6 +305,27 @@ async function ensureCustomerExists(customerId) {
   if (!customer) {
     throw createHttpError(400, "Customer tidak ditemukan");
   }
+}
+
+async function resolveCustomersByNameMap() {
+  const customers = await prisma.customer.findMany({
+    select: { id: true, name: true },
+  });
+  const map = new Map();
+  customers.forEach((customer) => {
+    const key = normalizeText(customer.name).toLowerCase();
+    if (!key) return;
+    if (!map.has(key)) map.set(key, customer);
+  });
+  return map;
+}
+
+async function listCustomerNamesForTemplate() {
+  const customers = await prisma.customer.findMany({
+    select: { name: true },
+    orderBy: { name: "asc" },
+  });
+  return customers.map((customer) => customer.name).filter((name) => Boolean(name));
 }
 
 async function ensureEmployeeExists(employeeId) {
@@ -430,6 +515,165 @@ async function listPickingProgressForExport(query) {
   return itemsRaw.map((item) => computeSlaFields(item, nowMs));
 }
 
+async function importPickingProgressFromExcel(rows, actorUserId) {
+  if (!Array.isArray(rows)) {
+    throw createHttpError(400, "Data Excel tidak valid");
+  }
+
+  const uploadNow = new Date();
+  const customerMap = await resolveCustomersByNameMap();
+
+  const errors = [];
+  const payloadRows = [];
+  let totalRows = 0;
+
+  rows.forEach((row) => {
+    const rowNumber = row?.rowNumber || 0;
+    const rawDateValue = row?.date;
+    const customerName = normalizeText(row?.customerName);
+    const doNumber = normalizeText(row?.doNumber);
+    const destination = normalizeText(row?.destination);
+    const volumeRaw = row?.volumeCbm;
+    const pickingQtyRaw = row?.pickingQty;
+
+    if (
+      (rawDateValue === null || rawDateValue === undefined || rawDateValue === "") &&
+      !customerName &&
+      !doNumber &&
+      !destination &&
+      volumeRaw === "" &&
+      pickingQtyRaw === ""
+    ) {
+      return;
+    }
+    totalRows += 1;
+
+    const rowErrors = [];
+    if (!customerName) rowErrors.push("Customer Name wajib diisi");
+    if (!doNumber) rowErrors.push("DO Number wajib diisi");
+    if (!destination) rowErrors.push("Destination wajib diisi");
+
+    const volumeCbm = Number(volumeRaw);
+    if (!Number.isFinite(volumeCbm) || volumeCbm < 0) {
+      rowErrors.push("Volume (CBM) harus angka dan minimal 0");
+    }
+
+    const pickingQty = Number(pickingQtyRaw);
+    if (!Number.isInteger(pickingQty) || pickingQty < 1) {
+      rowErrors.push("Picking Qty (Barcode) harus angka bulat minimal 1");
+    }
+
+    let date = new Date(
+      Date.UTC(uploadNow.getUTCFullYear(), uploadNow.getUTCMonth(), uploadNow.getUTCDate(), 0, 0, 0, 0)
+    );
+    if (rawDateValue !== null && rawDateValue !== undefined && rawDateValue !== "") {
+      if (rawDateValue instanceof Date && !Number.isNaN(rawDateValue.getTime())) {
+        date = new Date(
+          Date.UTC(
+            rawDateValue.getUTCFullYear(),
+            rawDateValue.getUTCMonth(),
+            rawDateValue.getUTCDate(),
+            0,
+            0,
+            0,
+            0
+          )
+        );
+      } else if (typeof rawDateValue === "number") {
+        const parsedDate = parseExcelDateSerial(rawDateValue);
+        if (!parsedDate) {
+          rowErrors.push("Tanggal tidak valid");
+        } else {
+          date = parsedDate;
+        }
+      } else {
+        const parsedStringDate = parseImportDateString(rawDateValue);
+        if (!parsedStringDate) {
+          rowErrors.push("Tanggal tidak valid (pakai format YYYY-MM-DD atau DD/MM/YYYY)");
+        } else {
+          date = parsedStringDate;
+        }
+      }
+    }
+
+    const customerKey = customerName.toLowerCase();
+    const customer = customerMap.get(customerKey);
+    if (!customer) {
+      rowErrors.push("Customer Name tidak ditemukan di Master Customer");
+    }
+
+    if (rowErrors.length > 0) {
+      errors.push({ rowNumber, message: rowErrors.join(", ") });
+      return;
+    }
+
+    payloadRows.push({
+      date,
+      customerId: customer.id,
+      doNumber,
+      destination,
+      volumeCbm,
+      pickingQty,
+    });
+  });
+
+  if (payloadRows.length === 0 && totalRows === 0) {
+    throw createHttpError(400, "Tidak ada data import yang valid");
+  }
+
+  if (payloadRows.length === 0) {
+    return {
+      totalRows,
+      successRows: 0,
+      failedRows: totalRows,
+      errors,
+      importedDates: [],
+    };
+  }
+
+  let successRows = 0;
+  const importedDateSet = new Set();
+  await prisma.$transaction(async (tx) => {
+    for (const row of payloadRows) {
+      await tx.pickingProgress.create({
+        data: {
+          date: row.date,
+          customerId: row.customerId,
+          doNumber: row.doNumber,
+          destination: row.destination,
+          volumeCbm: row.volumeCbm,
+          plTimeRelease: uploadNow,
+          noContainer: row.doNumber,
+          noDock: row.destination,
+          pickingQty: row.pickingQty,
+          pickedQty: 0,
+          status: "MENUNGGU",
+          createdById: actorUserId || null,
+          updatedById: actorUserId || null,
+          logs: {
+            create: {
+              action: "CREATE",
+              note: "CREATE via import excel",
+              toStatus: "MENUNGGU",
+              userId: actorUserId || null,
+            },
+          },
+        },
+      });
+      successRows += 1;
+      importedDateSet.add(formatDateToYmd(row.date));
+    }
+  });
+
+  return {
+    totalRows,
+    successRows,
+    failedRows: totalRows - successRows,
+    errors,
+    importedDates: Array.from(importedDateSet).filter((value) => Boolean(value)).sort(),
+  };
+}
+
 async function startPickingProgress(id, actorUserId, pickerEmployeeId) {
   const pickerEmployee = await ensureEmployeeExists(pickerEmployeeId);
   const now = new Date();
@@ -595,6 +839,8 @@ module.exports = {
   createPickingProgress,
   listPickingProgress,
   listPickingProgressForExport,
+  listCustomerNamesForTemplate,
+  importPickingProgressFromExcel,
   getPickingProgressById,
   startPickingProgress,
   updatePickedQty,

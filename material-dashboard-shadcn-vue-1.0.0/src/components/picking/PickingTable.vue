@@ -76,7 +76,7 @@ const rowClass = (entry: PickingProgressEntry) => {
 
 const statusClass = (status: PickingProgressEntry['status']) => {
   if (status === 'MENUNGGU') return 'bg-yellow-100 text-yellow-800'
-  if (status === 'ON_PROCESS') return 'bg-yellow-200 text-yellow-900'
+  if (status === 'ON_PROCESS') return 'bg-blue-100 text-blue-800'
   if (status === 'SELESAI') return 'bg-green-100 text-green-800'
   return 'bg-red-100 text-red-800'
 }

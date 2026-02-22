@@ -98,3 +98,17 @@ export const exportPickingProgress = (params?: { dateFrom?: string; dateTo?: str
     responseType: 'blob'
   })
 }
+
+export const downloadPickingProgressTemplate = () => {
+  return api.get('/picking-progress/template', {
+    responseType: 'blob'
+  })
+}
+
+export const importPickingProgressExcel = (file: File) => {
+  const formData = new FormData()
+  formData.append('file', file)
+  return api.post('/picking-progress/import', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  })
+}

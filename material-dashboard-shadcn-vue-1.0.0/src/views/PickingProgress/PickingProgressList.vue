@@ -15,9 +15,11 @@ import { listEmployees, type Employee } from '@/services/employeeApi'
 import {
   cancelPickingProgress,
   createPickingProgress,
+  downloadPickingProgressTemplate,
   exportPickingProgress,
   finishPickingProgress,
   getPickingProgressById,
+  importPickingProgressExcel,
   listPickingProgress,
   startPickingProgress,
   updatePickingPickedQty,
@@ -50,6 +52,9 @@ const actionLoading = ref<Record<string, boolean>>({})
 const exportOpen = ref(false)
 const exporting = ref(false)
 const exportError = ref<string | null>(null)
+const importing = ref(false)
+const importFile = ref<File | null>(null)
+const importFileInput = ref<HTMLInputElement | null>(null)
 
 const page = ref(1)
 const limit = ref(15)
@@ -488,6 +493,88 @@ const handleExportDownload = async () => {
   }
 }
 
+const handleImportFileChange = (event: Event) => {
+  const target = event.target as HTMLInputElement
+  importFile.value = target.files?.[0] || null
+}
+
+const resetImportFile = () => {
+  importFile.value = null
+  if (importFileInput.value) {
+    importFileInput.value.value = ''
+  }
+}
+
+const handleDownloadImportTemplate = async () => {
+  try {
+    const response = await downloadPickingProgressTemplate()
+    const blob = new Blob([response.data], { type: response.headers['content-type'] })
+    const downloadUrl = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = downloadUrl
+    link.download = 'picking-progress-import-template.xlsx'
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+    window.setTimeout(() => URL.revokeObjectURL(downloadUrl), 0)
+  } catch (err: any) {
+    error.value = getErrorMessage(err, 'Gagal download template')
+  }
+}
+
+const handleImportExcel = async () => {
+  if (!importFile.value) {
+    error.value = 'File Excel wajib dipilih'
+    return
+  }
+
+  importing.value = true
+  error.value = null
+  try {
+    const response = await importPickingProgressExcel(importFile.value)
+    const result = response.data?.data || {}
+    const totalRows = Number(result.totalRows || 0)
+    const successRows = Number(result.successRows || 0)
+    const failedRows = Number(result.failedRows || 0)
+    const importErrors = Array.isArray(result.errors) ? result.errors : []
+    const importedDates = Array.isArray(result.importedDates)
+      ? result.importedDates.map((value: unknown) => String(value || '')).filter(Boolean)
+      : []
+    let switchedToDate = ''
+
+    if (successRows > 0) {
+      if (filters.search) {
+        filters.search = ''
+      }
+      if (importedDates.length > 0 && !importedDates.includes(filters.date)) {
+        filters.date = importedDates[0]
+        switchedToDate = importedDates[0]
+      }
+    }
+
+    await fetchList()
+    resetImportFile()
+
+    showSuccess(
+      switchedToDate
+        ? `Import selesai: ${successRows}/${totalRows} baris berhasil. Filter tanggal otomatis ke ${switchedToDate}.`
+        : `Import selesai: ${successRows}/${totalRows} baris berhasil`
+    )
+    if (failedRows > 0) {
+      const firstError = importErrors[0]
+      const firstErrorMessage =
+        firstError?.rowNumber && firstError?.message
+          ? `Baris ${firstError.rowNumber}: ${firstError.message}`
+          : 'Periksa isi file template'
+      error.value = `Terdapat ${failedRows} baris gagal diimport. ${firstErrorMessage}`
+    }
+  } catch (err: any) {
+    error.value = getErrorMessage(err, 'Gagal import picking progress')
+  } finally {
+    importing.value = false
+  }
+}
+
 let searchTimer: number | undefined
 watch(
   () => [filters.date, filters.status],
@@ -560,6 +647,42 @@ onUnmounted(() => {
         </Button>
       </div>
     </div>
+
+    <Card v-if="!isWarehouse">
+      <CardHeader>
+        <div class="text-sm text-muted-foreground">Upload File Excel (.xlsx)</div>
+      </CardHeader>
+      <CardContent>
+        <div class="flex flex-col gap-3 md:flex-row md:items-end">
+          <div class="flex-1">
+            <label class="text-sm text-muted-foreground">File Excel</label>
+            <input
+              ref="importFileInput"
+              type="file"
+              accept=".xlsx"
+              class="mt-1 w-full bg-transparent border rounded-md px-2 py-2 text-sm"
+              @change="handleImportFileChange"
+            />
+            <p class="mt-1 text-xs text-muted-foreground">
+              Header kolom: Tanggal, Customer Name, DO Number, Destination, Volume (CBM), Picking Qty (Barcode).
+              PL Time Release otomatis mengikuti waktu upload file.
+            </p>
+          </div>
+          <div class="flex items-center gap-2">
+            <button
+              type="button"
+              class="text-sm text-primary underline-offset-4 hover:underline"
+              @click="handleDownloadImportTemplate"
+            >
+              Download Template
+            </button>
+            <Button size="sm" :disabled="importing" @click="handleImportExcel">
+              {{ importing ? 'Importing...' : 'Import' }}
+            </Button>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
 
     <Card>
       <CardHeader>

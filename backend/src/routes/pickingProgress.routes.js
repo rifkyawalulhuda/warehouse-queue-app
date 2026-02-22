@@ -1,4 +1,5 @@
 const express = require("express");
+const multer = require("multer");
 const pickingProgressController = require("../controllers/pickingProgress.controller");
 const {
   validatePickingCreate,
@@ -10,6 +11,7 @@ const authMiddleware = require("../middlewares/auth.middleware");
 const { requireRole } = require("../middlewares/role.middleware");
 
 const router = express.Router();
+const upload = multer({ storage: multer.memoryStorage() });
 
 router.use(
   "/picking-progress",
@@ -23,6 +25,12 @@ router.post(
   pickingProgressController.createPickingProgress
 );
 router.get("/picking-progress", pickingProgressController.listPickingProgress);
+router.get("/picking-progress/template", pickingProgressController.downloadPickingProgressTemplate);
+router.post(
+  "/picking-progress/import",
+  upload.single("file"),
+  pickingProgressController.importPickingProgress
+);
 router.get("/picking-progress/export", pickingProgressController.exportPickingProgress);
 router.get("/picking-progress/:id", pickingProgressController.getPickingProgressById);
 router.patch(
