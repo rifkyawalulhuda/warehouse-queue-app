@@ -93,6 +93,7 @@ model QueueLog {
   type         String       @map("action")
   fromStatus   QueueStatus? @map("oldStatus")
   toStatus     QueueStatus? @map("newStatus")
+  note         String?
   userName     String
   actorUserId  String?
   createdAt    DateTime     @default(now())

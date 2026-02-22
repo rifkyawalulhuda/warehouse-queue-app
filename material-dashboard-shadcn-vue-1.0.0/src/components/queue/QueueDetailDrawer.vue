@@ -10,6 +10,7 @@ type QueueLog = {
   type: 'CREATE' | 'UPDATE' | 'STATUS_CHANGE'
   fromStatus?: string | null
   toStatus?: string | null
+  note?: string | null
   userName?: string | null
   actorUser?: { id: string; name: string; username: string; role: string } | null
   createdAt: string
@@ -148,6 +149,14 @@ const handleAnnounce = () => {
   if (!props.entry) return
   enqueue(buildAnnouncement(props.entry))
 }
+
+const cancelReason = computed(() => {
+  const logs = props.entry?.logs || []
+  const latestCancelLog = [...logs]
+    .reverse()
+    .find((log) => log.toStatus === 'BATAL' && typeof log.note === 'string' && log.note.trim().length > 0)
+  return latestCancelLog?.note?.trim() || '-'
+})
 </script>
 
 <template>
@@ -242,6 +251,10 @@ const handleAnnounce = () => {
             <p class="text-muted-foreground">Notes</p>
             <p class="font-medium">{{ entry?.notes || '-' }}</p>
           </div>
+          <div class="col-span-2">
+            <p class="text-muted-foreground">Keterangan Batal</p>
+            <p class="font-medium">{{ cancelReason }}</p>
+          </div>
         </div>
 
         <div class="border-t pt-4">
@@ -260,6 +273,9 @@ const handleAnnounce = () => {
                 <span v-if="log.toStatus === 'IN_WH' && entry?.gate?.gateNo">
                   (Gate: {{ entry.gate.gateNo }})
                 </span>
+              </div>
+              <div v-if="log.note" class="text-muted-foreground">
+                catatan: {{ log.note }}
               </div>
             </div>
           </div>

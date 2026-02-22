@@ -295,6 +295,18 @@ async function listQueueEntriesForExport(query) {
     include: {
       customer: true,
       gate: true,
+      logs: {
+        where: {
+          type: "STATUS_CHANGE",
+          toStatus: "BATAL",
+        },
+        orderBy: { createdAt: "desc" },
+        take: 1,
+        select: {
+          note: true,
+          createdAt: true,
+        },
+      },
     },
   });
 }
@@ -427,7 +439,7 @@ function isPrevStatus(current, prev) {
   return prevIdx === idx - 1;
 }
 
-async function changeQueueStatus(id, newStatus, actorUser, gateId) {
+async function changeQueueStatus(id, newStatus, actorUser, gateId, cancelReason) {
   const entry = await prisma.queueEntry.findUnique({ where: { id } });
   if (!entry) throw createHttpError(404, "Data tidak ditemukan");
 
@@ -442,6 +454,10 @@ async function changeQueueStatus(id, newStatus, actorUser, gateId) {
   if (newStatus === "BATAL") {
     if (currentStatus !== "MENUNGGU" && currentStatus !== "IN_WH") {
       throw createHttpError(400, "Batal hanya bisa dilakukan sampai status IN_WH");
+    }
+    const reason = typeof cancelReason === "string" ? cancelReason.trim() : "";
+    if (!reason) {
+      throw createHttpError(400, "Alasan batal wajib diisi");
     }
   } else if (!isNextStatus(currentStatus, newStatus) && !isPrevStatus(currentStatus, newStatus)) {
     throw createHttpError(400, "Perubahan status tidak valid");
@@ -465,6 +481,8 @@ async function changeQueueStatus(id, newStatus, actorUser, gateId) {
 
   const resolvedName = actorUser?.name || "system";
   const actorUserId = actorUser?.id || null;
+  const normalizedCancelReason =
+    newStatus === "BATAL" && typeof cancelReason === "string" ? cancelReason.trim() : null;
 
   return prisma.queueEntry.update({
     where: { id },
@@ -477,6 +495,7 @@ async function changeQueueStatus(id, newStatus, actorUser, gateId) {
           type: "STATUS_CHANGE",
           fromStatus: currentStatus,
           toStatus: newStatus,
+          note: normalizedCancelReason,
           userName: resolvedName,
           actorUserId,
         },

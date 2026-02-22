@@ -1,0 +1,2 @@
+ALTER TABLE "QueueLog"
+ADD COLUMN "note" TEXT;

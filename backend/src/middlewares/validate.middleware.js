@@ -87,9 +87,15 @@ function validateQueueUpdate(req, res, next) {
 }
 
 function validateStatusChange(req, res, next) {
-  const { newStatus } = req.body;
+  const { newStatus, reason } = req.body;
   if (!ALLOWED_STATUSES.includes(newStatus)) {
     return sendError(res, 400, "Validasi gagal", ["newStatus tidak valid"]);
+  }
+  if (newStatus === "BATAL") {
+    const cancelReason = typeof reason === "string" ? reason.trim() : "";
+    if (!cancelReason) {
+      return sendError(res, 400, "Validasi gagal", ["reason wajib diisi saat status BATAL"]);
+    }
   }
   return next();
 }

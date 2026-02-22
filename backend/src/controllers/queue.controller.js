@@ -93,7 +93,8 @@ async function updateQueueStatus(req, res, next) {
       req.params.id,
       req.body.newStatus,
       actorUser,
-      req.body.gateId
+      req.body.gateId,
+      req.body.reason
     );
     return sendSuccess(res, entry);
   } catch (err) {
@@ -141,6 +142,7 @@ async function exportQueue(req, res, next) {
       { header: "Total Waktu (Register → Finish)", key: "totalDuration", width: 28 },
       { header: "Time Remaining", key: "timeRemaining", width: 18 },
       { header: "Status", key: "status", width: 14 },
+      { header: "Keterangan Batal", key: "cancelReason", width: 30 },
       { header: "Category", key: "category", width: 14 },
     ];
 
@@ -164,6 +166,7 @@ async function exportQueue(req, res, next) {
         totalDuration: formatDurationHuman(entry.registerTime, entry.finishTime),
         timeRemaining: "-",
         status: entry.status || "-",
+        cancelReason: entry.logs?.[0]?.note || "-",
         category: mapCategory(entry.category),
       });
     });

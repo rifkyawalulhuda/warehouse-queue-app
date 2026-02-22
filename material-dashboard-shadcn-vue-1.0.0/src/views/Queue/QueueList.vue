@@ -18,6 +18,7 @@ type QueueLog = {
   type: 'CREATE' | 'UPDATE' | 'STATUS_CHANGE'
   fromStatus?: string | null
   toStatus?: string | null
+  note?: string | null
   userName?: string | null
   actorUser?: { id: string; name: string; username: string; role: string } | null
   createdAt: string
@@ -62,6 +63,8 @@ const createSubmitting = ref(false)
 const confirmOpen = ref(false)
 const confirmEntry = ref<QueueEntry | null>(null)
 const confirmNextStatus = ref<QueueEntry['status'] | null>(null)
+const cancelReason = ref('')
+const cancelReasonError = ref('')
 const setInWhOpen = ref(false)
 const setInWhEntry = ref<QueueEntry | null>(null)
 const selectedGateId = ref('')
@@ -325,7 +328,23 @@ const handleChangeStatus = async (entry: QueueEntry, newStatus: QueueEntry['stat
   }
   confirmEntry.value = entry
   confirmNextStatus.value = newStatus
+  cancelReason.value = ''
+  cancelReasonError.value = ''
   confirmOpen.value = true
+}
+
+const isCancelStatusFlow = computed(() => confirmNextStatus.value === 'BATAL')
+
+const getCancelReasonText = () => {
+  return String(cancelReason.value || '').trim()
+}
+
+const closeConfirm = () => {
+  confirmOpen.value = false
+  confirmEntry.value = null
+  confirmNextStatus.value = null
+  cancelReason.value = ''
+  cancelReasonError.value = ''
 }
 
 const closeSetInWh = () => {
@@ -391,10 +410,19 @@ const handleGateOutsideClick = (event: MouseEvent) => {
 
 const executeChangeStatus = async () => {
   if (!confirmEntry.value || !confirmNextStatus.value) return
+  const reason = getCancelReasonText()
+  if (confirmNextStatus.value === 'BATAL' && !reason) {
+    cancelReasonError.value = 'Alasan batal wajib diisi'
+    return
+  }
   try {
+    const body: Record<string, any> = { newStatus: confirmNextStatus.value }
+    if (confirmNextStatus.value === 'BATAL') {
+      body.reason = reason
+    }
     await api.patch(
       `/queue/${confirmEntry.value.id}/status`,
-      { newStatus: confirmNextStatus.value },
+      body,
       {
         headers: {
           'x-user-name': 'admin'
@@ -406,11 +434,13 @@ const executeChangeStatus = async () => {
       await fetchDetail(confirmEntry.value.id)
     }
   } catch (err: any) {
-    error.value = getErrorMessage(err, 'Gagal update status')
+    const message = getErrorMessage(err, 'Gagal update status')
+    error.value = message
+    if (confirmNextStatus.value === 'BATAL') {
+      cancelReasonError.value = message
+    }
   } finally {
-    confirmOpen.value = false
-    confirmEntry.value = null
-    confirmNextStatus.value = null
+    closeConfirm()
   }
 }
 
@@ -837,14 +867,16 @@ watch(
     </div>
 
     <div v-if="confirmOpen" class="fixed inset-0 z-50">
-      <div class="absolute inset-0 bg-black/40" @click="confirmOpen = false"></div>
+      <div class="absolute inset-0 bg-black/40" @click="closeConfirm"></div>
       <div class="absolute left-1/2 top-1/2 w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-lg bg-card shadow-xl border">
         <div class="p-4 border-b">
-          <h3 class="text-lg font-semibold">Konfirmasi Ubah Status</h3>
+          <h3 class="text-lg font-semibold">
+            {{ isCancelStatusFlow ? 'Konfirmasi Batal' : 'Konfirmasi Ubah Status' }}
+          </h3>
         </div>
-        <div class="p-4 text-sm">
+        <div class="p-4 space-y-3 text-sm">
           <p>
-            Ubah status
+            {{ isCancelStatusFlow ? 'Batalkan transaksi' : 'Ubah status' }}
             <span class="font-semibold">{{ confirmEntry?.truckNumber }}</span>
             dari
             <span class="font-semibold">{{ confirmEntry?.status }}</span>
@@ -852,10 +884,25 @@ watch(
             <span class="font-semibold">{{ confirmNextStatus }}</span>
             ?
           </p>
+          <div v-if="isCancelStatusFlow">
+            <label class="text-sm text-muted-foreground">Alasan Batal</label>
+            <textarea
+              v-model="cancelReason"
+              rows="3"
+              class="mt-1 w-full bg-transparent border rounded-md px-2 py-2 text-sm"
+              placeholder="Masukkan alasan pembatalan..."
+              @input="cancelReasonError = ''"
+            ></textarea>
+            <p v-if="cancelReasonError" class="mt-1 text-xs text-red-600">
+              {{ cancelReasonError }}
+            </p>
+          </div>
         </div>
         <div class="p-4 border-t flex items-center justify-end gap-2">
-          <Button variant="ghost" @click="confirmOpen = false">Batal</Button>
-          <Button @click="executeChangeStatus">Ya, Ubah</Button>
+          <Button variant="ghost" @click="closeConfirm">Batal</Button>
+          <Button :disabled="isCancelStatusFlow && !cancelReason.trim()" @click="executeChangeStatus">
+            {{ isCancelStatusFlow ? 'Ya, Batal' : 'Ya, Ubah' }}
+          </Button>
         </div>
       </div>
     </div>
