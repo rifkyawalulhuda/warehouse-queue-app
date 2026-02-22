@@ -75,6 +75,8 @@ export const updatePickingProgress = (
 
 export const listPickingProgress = (params: {
   date?: string
+  dateFrom?: string
+  dateTo?: string
   status?: 'ALL' | PickingStatus
   search?: string
   page?: number

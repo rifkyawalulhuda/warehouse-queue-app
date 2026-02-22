@@ -88,6 +88,17 @@ const todayString = () => {
   return `${now.getFullYear()}-${month}-${day}`
 }
 
+const shiftDateString = (baseYmd: string, offsetDays: number) => {
+  if (!baseYmd) return ''
+  const parsed = new Date(`${baseYmd}T00:00:00`)
+  if (Number.isNaN(parsed.getTime())) return ''
+  parsed.setDate(parsed.getDate() + offsetDays)
+  const year = parsed.getFullYear()
+  const month = String(parsed.getMonth() + 1).padStart(2, '0')
+  const day = String(parsed.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
 const parseSearchQuery = (value: unknown) => {
   if (typeof value === 'string') return value
   if (Array.isArray(value) && typeof value[0] === 'string') return value[0]
@@ -95,7 +106,8 @@ const parseSearchQuery = (value: unknown) => {
 }
 
 const filters = reactive({
-  date: todayString(),
+  dateFrom: shiftDateString(todayString(), -3),
+  dateTo: shiftDateString(todayString(), 3),
   status: 'ALL',
   search: parseSearchQuery(route.query.search),
 })
@@ -130,8 +142,16 @@ const parsePositiveInt = (value: unknown, fallback: number) => {
 }
 
 const applyInitialRouteQuery = () => {
+  if (typeof route.query.dateFrom === 'string' && route.query.dateFrom) {
+    filters.dateFrom = route.query.dateFrom
+  }
+  if (typeof route.query.dateTo === 'string' && route.query.dateTo) {
+    filters.dateTo = route.query.dateTo
+  }
   if (typeof route.query.date === 'string' && route.query.date) {
-    filters.date = route.query.date
+    // Backward compatibility from old single-date query.
+    filters.dateFrom = route.query.date
+    filters.dateTo = route.query.date
   }
   if (typeof route.query.status === 'string' && route.query.status) {
     filters.status = route.query.status
@@ -144,7 +164,8 @@ const applyInitialRouteQuery = () => {
 
 const syncQueryToRoute = () => {
   const nextQuery: Record<string, string> = {}
-  if (filters.date) nextQuery.date = filters.date
+  if (filters.dateFrom) nextQuery.dateFrom = filters.dateFrom
+  if (filters.dateTo) nextQuery.dateTo = filters.dateTo
   if (filters.status && filters.status !== 'ALL') nextQuery.status = filters.status
   if (filters.search) nextQuery.search = filters.search
   nextQuery.page = String(page.value)
@@ -153,11 +174,16 @@ const syncQueryToRoute = () => {
 }
 
 const fetchList = async () => {
+  if (filters.dateFrom && filters.dateTo && filters.dateFrom > filters.dateTo) {
+    error.value = 'Tanggal mulai tidak boleh lebih besar dari tanggal akhir'
+    return
+  }
   loading.value = true
   error.value = null
   try {
     const response = await listPickingProgress({
-      date: filters.date,
+      dateFrom: filters.dateFrom,
+      dateTo: filters.dateTo,
       status: filters.status as any,
       search: filters.search || undefined,
       page: page.value,
@@ -587,9 +613,16 @@ const handleImportExcel = async () => {
       if (filters.search) {
         filters.search = ''
       }
-      if (importedDates.length > 0 && !importedDates.includes(filters.date)) {
-        filters.date = importedDates[0]
-        switchedToDate = importedDates[0]
+      if (importedDates.length > 0) {
+        const importedDate = importedDates[0]
+        const isInCurrentRange =
+          (!filters.dateFrom || importedDate >= filters.dateFrom) &&
+          (!filters.dateTo || importedDate <= filters.dateTo)
+        if (!isInCurrentRange) {
+          filters.dateFrom = shiftDateString(importedDate, -3)
+          filters.dateTo = shiftDateString(importedDate, 3)
+          switchedToDate = importedDate
+        }
       }
     }
 
@@ -598,7 +631,7 @@ const handleImportExcel = async () => {
 
     showSuccess(
       switchedToDate
-        ? `Import selesai: ${successRows}/${totalRows} baris berhasil. Filter tanggal otomatis ke ${switchedToDate}.`
+        ? `Import selesai: ${successRows}/${totalRows} baris berhasil. Rentang tanggal otomatis disesuaikan (hingga ${switchedToDate}).`
         : `Import selesai: ${successRows}/${totalRows} baris berhasil`
     )
     if (failedRows > 0) {
@@ -618,7 +651,7 @@ const handleImportExcel = async () => {
 
 let searchTimer: number | undefined
 watch(
-  () => [filters.date, filters.status],
+  () => [filters.dateFrom, filters.dateTo, filters.status],
   () => {
     page.value = 1
     fetchList()
@@ -747,7 +780,20 @@ onUnmounted(() => {
             </select>
           </div>
           <div>
-            <input v-model="filters.date" type="date" class="w-full bg-transparent border rounded-md px-2 py-2 text-sm" />
+            <div class="grid grid-cols-2 gap-2">
+              <input
+                v-model="filters.dateFrom"
+                type="date"
+                class="w-full bg-transparent border rounded-md px-2 py-2 text-sm"
+                title="Tanggal mulai"
+              />
+              <input
+                v-model="filters.dateTo"
+                type="date"
+                class="w-full bg-transparent border rounded-md px-2 py-2 text-sm"
+                title="Tanggal akhir"
+              />
+            </div>
           </div>
           <div class="text-xs text-muted-foreground flex items-center">
             SLA per barcode: <span class="font-semibold ml-1">2.5 menit</span>

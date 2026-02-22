@@ -88,9 +88,44 @@ function getEndOfDay(date) {
   return new Date(date.getFullYear(), date.getMonth(), date.getDate(), 23, 59, 59, 999);
 }
 
-function resolveDateRange(rawDate) {
-  const dateObj = parseDateOnly(rawDate) || new Date();
-  return { from: getStartOfDay(dateObj), to: getEndOfDay(dateObj) };
+function resolveDateRange(query) {
+  const rawDate = typeof query?.date === "string" ? query.date : "";
+  const rawDateFrom = typeof query?.dateFrom === "string" ? query.dateFrom : "";
+  const rawDateTo = typeof query?.dateTo === "string" ? query.dateTo : "";
+
+  // Backward compatibility: single date filter.
+  if (rawDate) {
+    const dateObj = parseDateOnly(rawDate);
+    if (!dateObj) {
+      throw createHttpError(400, "Format date tidak valid");
+    }
+    return { from: getStartOfDay(dateObj), to: getEndOfDay(dateObj) };
+  }
+
+  // Range mode (if one side empty, use the other side).
+  if (rawDateFrom || rawDateTo) {
+    const effectiveFrom = rawDateFrom || rawDateTo;
+    const effectiveTo = rawDateTo || rawDateFrom;
+    const fromDate = parseDateOnly(effectiveFrom);
+    const toDate = parseDateOnly(effectiveTo);
+    if (!fromDate || !toDate) {
+      throw createHttpError(400, "Format rentang tanggal tidak valid");
+    }
+    if (fromDate.getTime() > toDate.getTime()) {
+      throw createHttpError(400, "Tanggal mulai tidak boleh lebih besar dari tanggal akhir");
+    }
+    return { from: getStartOfDay(fromDate), to: getEndOfDay(toDate) };
+  }
+
+  // Default: centered 7 days (today -3 .. today +3).
+  const today = new Date();
+  const fromSeed = new Date(today);
+  fromSeed.setDate(fromSeed.getDate() - 3);
+  const toSeed = new Date(today);
+  toSeed.setDate(toSeed.getDate() + 3);
+  const fromDate = getStartOfDay(fromSeed);
+  const toDate = getEndOfDay(toSeed);
+  return { from: fromDate, to: toDate };
 }
 
 function toUtcMidnightByLocalDateParts(date) {
@@ -496,7 +531,7 @@ async function updatePickingProgress(id, data, actorUserId) {
 async function listPickingProgress(query) {
   const status = normalizeStatus(query.status);
   const search = typeof query.search === "string" ? query.search.trim() : "";
-  const { from, to } = resolveDateRange(typeof query.date === "string" ? query.date : "");
+  const { from, to } = resolveDateRange(query || {});
   const { sort, sortDir } = normalizeSort(query);
   const { page, limit } = normalizePagination(query);
 
