@@ -194,13 +194,17 @@ async function getSummary(dateQuery) {
   let overSlaCount = 0;
 
   entries.forEach((entry) => {
+    if (entry.status === "BATAL") {
+      cancelled += 1;
+      return;
+    }
+
     total += 1;
     if (entry.category === "DELIVERY") delivery += 1;
     if (entry.category === "RECEIVING") receiving += 1;
     if (entry.status === "MENUNGGU") waiting += 1;
     if (entry.status === "IN_WH" || entry.status === "PROSES") processing += 1;
     if (entry.status === "SELESAI") done += 1;
-    if (entry.status === "BATAL") cancelled += 1;
 
     if (entry.finishTime) {
       const minutes = durationMinutes(new Date(entry.registerTime), new Date(entry.finishTime));
@@ -394,6 +398,7 @@ async function getHourly(dateQuery) {
   }));
 
   entries.forEach((entry) => {
+    if (entry.status === "BATAL") return;
     const hour = new Date(entry.registerTime).getHours();
     const bucket = buckets[hour];
     if (!bucket) return;
@@ -416,6 +421,7 @@ async function getStatus(dateQuery) {
   };
 
   entries.forEach((entry) => {
+    if (entry.status === "BATAL") return;
     if (counts[entry.status] !== undefined) {
       counts[entry.status] += 1;
     }
@@ -448,6 +454,9 @@ async function getTopCustomers(dateQuery) {
       },
       finishTime: {
         not: null,
+      },
+      status: {
+        not: "BATAL",
       },
     },
     select: {
