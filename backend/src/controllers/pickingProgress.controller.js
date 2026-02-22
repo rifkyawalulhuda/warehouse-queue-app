@@ -34,6 +34,12 @@ function buildExportFilename(dateFrom, dateTo) {
   return "picking_progress.xlsx";
 }
 
+function formatPercentage(value) {
+  const num = Number(value ?? 0);
+  if (!Number.isFinite(num)) return "0%";
+  return `${num.toFixed(2).replace(/\.?0+$/, "")}%`;
+}
+
 async function resolveActorUserId(req) {
   const actorId = req.user?.sub;
   if (!actorId) return null;
@@ -98,10 +104,7 @@ async function exportPickingProgress(req, res, next) {
         pickingQty: entry.pickingQty ?? 0,
         pickedQty: entry.pickedQty ?? 0,
         remainQty: entry.remainQty ?? 0,
-        pickingProgress:
-          entry.pickingProgressPercent !== undefined && entry.pickingProgressPercent !== null
-            ? `${Number(entry.pickingProgressPercent).toFixed(2)}%`
-            : "0.00%",
+        pickingProgress: formatPercentage(entry.pickingProgressPercent),
         pickerName: entry.pickerEmployee?.name || "-",
         timeRemaining: formatTimeRemaining(entry.timeRemainingSeconds, entry.status),
         status: entry.status || "-",

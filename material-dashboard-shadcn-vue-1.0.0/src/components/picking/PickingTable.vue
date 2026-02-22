@@ -95,12 +95,14 @@ const displayRemainQty = (entry: PickingProgressEntry) => {
   return Math.max(0, entry.pickingQty - entry.pickedQty)
 }
 const displayProgressPercent = (entry: PickingProgressEntry) => {
+  const toPercentLabel = (value: number) => `${value.toFixed(2).replace(/\.?0+$/, '')}%`
+
   if (entry.pickingProgressPercent !== undefined && entry.pickingProgressPercent !== null) {
-    return `${entry.pickingProgressPercent.toFixed(2)}%`
+    return toPercentLabel(Number(entry.pickingProgressPercent))
   }
-  if (entry.pickingQty <= 0) return '0.00%'
+  if (entry.pickingQty <= 0) return '0%'
   const percent = (entry.pickedQty / entry.pickingQty) * 100
-  return `${percent.toFixed(2)}%`
+  return toPercentLabel(percent)
 }
 </script>
 

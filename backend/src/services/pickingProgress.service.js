@@ -151,6 +151,12 @@ function formatTimeRemainingForSearch(seconds) {
   return [base, String(seconds)];
 }
 
+function formatPercentageForSearch(value) {
+  const num = Number(value ?? 0);
+  if (!Number.isFinite(num)) return "0%";
+  return `${num.toFixed(2).replace(/\.?0+$/, "")}%`;
+}
+
 function buildSearchTokens(entry) {
   const progress =
     entry.pickingProgressPercent !== undefined && entry.pickingProgressPercent !== null
@@ -173,6 +179,7 @@ function buildSearchTokens(entry) {
     String(remain),
     progress.toFixed(2),
     `${progress.toFixed(2)}%`,
+    formatPercentageForSearch(progress),
     ...formatDateForSearch(entry.plTimeRelease || entry.startTime),
     ...formatTimeRemainingForSearch(entry.timeRemainingSeconds),
   ]

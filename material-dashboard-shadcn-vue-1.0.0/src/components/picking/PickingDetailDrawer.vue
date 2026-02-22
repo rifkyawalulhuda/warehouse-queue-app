@@ -63,6 +63,12 @@ const statusClass = (status?: PickingProgressEntry['status']) => {
   if (status === 'BATAL') return 'bg-red-100 text-red-800'
   return 'bg-muted text-muted-foreground'
 }
+
+const formatProgressPercent = (value?: number | null) => {
+  const num = Number(value ?? 0)
+  if (!Number.isFinite(num)) return '0%'
+  return `${num.toFixed(2).replace(/\.?0+$/, '')}%`
+}
 </script>
 
 <template>
@@ -117,7 +123,7 @@ const statusClass = (status?: PickingProgressEntry['status']) => {
           </div>
           <div>
             <p class="text-muted-foreground">Picking Progress</p>
-            <p class="font-medium">{{ entry?.pickingProgressPercent?.toFixed(2) ?? '0.00' }}%</p>
+            <p class="font-medium">{{ formatProgressPercent(entry?.pickingProgressPercent) }}</p>
           </div>
           <div>
             <p class="text-muted-foreground">Nama Karyawan</p>
