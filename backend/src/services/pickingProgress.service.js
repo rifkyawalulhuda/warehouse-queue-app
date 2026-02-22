@@ -330,45 +330,20 @@ async function updatePickedQty(id, delta, actorUserId) {
     const next = clampNumber(before + delta, 0, entry.pickingQty);
     const appliedDelta = next - before;
     const note = `delta=${delta}, applied=${appliedDelta}, pickedQty=${next}/${entry.pickingQty}`;
-    const shouldAutoFinish = next >= entry.pickingQty && entry.pickingQty > 0;
-    const now = new Date();
 
     return tx.pickingProgress.update({
       where: { id },
       data: {
         pickedQty: next,
-        ...(shouldAutoFinish
-          ? {
-              status: "SELESAI",
-              finishTime: entry.finishTime || now,
-            }
-          : {}),
         updatedById: actorUserId || null,
         logs: {
-          create: shouldAutoFinish
-            ? [
-                {
-                  action: "UPDATE_PICKED_QTY",
-                  note,
-                  fromStatus: "ON_PROCESS",
-                  toStatus: "ON_PROCESS",
-                  userId: actorUserId || null,
-                },
-                {
-                  action: "FINISH",
-                  note: "Auto finish karena pickedQty mencapai target",
-                  fromStatus: "ON_PROCESS",
-                  toStatus: "SELESAI",
-                  userId: actorUserId || null,
-                },
-              ]
-            : {
-                action: "UPDATE_PICKED_QTY",
-                note,
-                fromStatus: "ON_PROCESS",
-                toStatus: "ON_PROCESS",
-                userId: actorUserId || null,
-              },
+          create: {
+            action: "UPDATE_PICKED_QTY",
+            note,
+            fromStatus: "ON_PROCESS",
+            toStatus: "ON_PROCESS",
+            userId: actorUserId || null,
+          },
         },
       },
       include: {
@@ -390,6 +365,9 @@ async function finishPickingProgress(id, actorUserId) {
     }
     if (entry.status !== "ON_PROCESS") {
       throw createHttpError(400, "Finish hanya bisa dilakukan dari status ON_PROCESS");
+    }
+    if (entry.pickedQty !== entry.pickingQty) {
+      throw createHttpError(400, "Finish hanya bisa jika Picked Qty sudah sama dengan Picking Qty");
     }
 
     return tx.pickingProgress.update({

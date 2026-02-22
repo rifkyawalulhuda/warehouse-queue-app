@@ -55,6 +55,11 @@ const pendingCancelEntry = ref<PickingProgressEntry | null>(null)
 const startConfirmOpen = ref(false)
 const pendingStartEntry = ref<PickingProgressEntry | null>(null)
 const selectedPickerEmployeeId = ref('')
+const pickedQtyModalOpen = ref(false)
+const pendingPickedQtyEntry = ref<PickingProgressEntry | null>(null)
+const pickedQtyInput = ref<string | number>('')
+const pickedQtySubmitting = ref(false)
+const pickedQtySubmitError = ref('')
 
 const todayString = () => {
   const now = new Date()
@@ -199,6 +204,43 @@ const handleCreate = async (payload: {
   }
 }
 
+const openPickedQtyModal = (entry: PickingProgressEntry) => {
+  pendingPickedQtyEntry.value = entry
+  pickedQtyInput.value = String(entry.pickedQty)
+  pickedQtySubmitError.value = ''
+  pickedQtyModalOpen.value = true
+}
+
+const closePickedQtyModal = () => {
+  pickedQtyModalOpen.value = false
+  pendingPickedQtyEntry.value = null
+  pickedQtyInput.value = ''
+  pickedQtySubmitting.value = false
+  pickedQtySubmitError.value = ''
+}
+
+const getPickedQtyInputText = () => {
+  const value = pickedQtyInput.value
+  if (value === null || value === undefined) return ''
+  return String(value).trim()
+}
+
+const pickedQtyValidationError = computed(() => {
+  if (!pickedQtyModalOpen.value) return ''
+  const entry = pendingPickedQtyEntry.value
+  if (!entry) return 'Data picking tidak ditemukan'
+  const rawValue = getPickedQtyInputText()
+  if (!rawValue) return 'Jumlah picked qty wajib diisi'
+  if (!/^\d+$/.test(rawValue)) return 'Input hanya angka'
+
+  const value = Number(rawValue)
+  if (!Number.isInteger(value) || value < 0) return 'Input hanya angka'
+  if (value > entry.pickingQty) {
+    return 'Jumlah yang dimasukan melebihi Jumlah Barcode yang di Picking'
+  }
+  return ''
+})
+
 const withActionLoading = async (id: string, fn: () => Promise<void>) => {
   actionLoading.value[id] = true
   try {
@@ -246,24 +288,56 @@ const closeStartConfirm = () => {
   selectedPickerEmployeeId.value = ''
 }
 
-const handleAdjustPicked = async (entry: PickingProgressEntry, delta: number) => {
+const submitPickedQty = async () => {
+  const entry = pendingPickedQtyEntry.value
+  if (!entry) {
+    pickedQtySubmitError.value = 'Data picking tidak ditemukan'
+    return
+  }
+  pickedQtySubmitError.value = ''
+  if (pickedQtyValidationError.value) {
+    pickedQtySubmitError.value = pickedQtyValidationError.value
+    return
+  }
+
+  const nextPickedQty = Number(getPickedQtyInputText())
+  const latestEntry = entries.value.find((item) => item.id === entry.id) || entry
+  const delta = nextPickedQty - latestEntry.pickedQty
+  if (delta === 0) {
+    closePickedQtyModal()
+    showSuccess('Tidak ada perubahan pada Picked Qty')
+    return
+  }
+
+  pickedQtySubmitting.value = true
   await withActionLoading(entry.id, async () => {
     try {
       await updatePickingPickedQty(entry.id, delta)
+      closePickedQtyModal()
       await fetchList()
       await refreshDetailIfOpen(entry.id)
+      showSuccess('Picked Qty berhasil diperbarui')
     } catch (err: any) {
-      error.value = getErrorMessage(err, 'Gagal update picked qty')
+      const message = getErrorMessage(err, 'Gagal update picked qty')
+      error.value = message
+      pickedQtySubmitError.value = message
+    } finally {
+      pickedQtySubmitting.value = false
     }
   })
+}
+
+const handlePickedQtySaveClick = (event: Event) => {
+  event.preventDefault()
+  event.stopPropagation()
+  submitPickedQty()
 }
 
 const executeFinish = async (entry: PickingProgressEntry) => {
   await withActionLoading(entry.id, async () => {
     try {
       await finishPickingProgress(entry.id)
-      finishConfirmOpen.value = false
-      pendingFinishEntry.value = null
+      closeFinishConfirm()
       await fetchList()
       await refreshDetailIfOpen(entry.id)
       showSuccess('Picking selesai')
@@ -274,12 +348,17 @@ const executeFinish = async (entry: PickingProgressEntry) => {
 }
 
 const requestFinish = (entry: PickingProgressEntry) => {
-  if (entry.pickedQty >= entry.pickingQty) {
-    executeFinish(entry)
+  if (entry.pickedQty !== entry.pickingQty) {
+    error.value = 'Picked Qty harus sama dengan Picking Qty sebelum Finish'
     return
   }
   pendingFinishEntry.value = entry
   finishConfirmOpen.value = true
+}
+
+const closeFinishConfirm = () => {
+  finishConfirmOpen.value = false
+  pendingFinishEntry.value = null
 }
 
 const executeCancel = async (entry: PickingProgressEntry) => {
@@ -444,7 +523,7 @@ onUnmounted(() => {
           :page="page"
           :limit="limit"
           @start="requestStart"
-          @adjust-picked="handleAdjustPicked"
+          @input-picked="openPickedQtyModal"
           @finish="requestFinish"
           @cancel="requestCancel"
           @detail="openDetailById($event.id)"
@@ -494,6 +573,66 @@ onUnmounted(() => {
 
     <PickingDetailDrawer :open="drawerOpen" :entry="selectedEntry" @close="closeDrawer" />
 
+    <div v-if="pickedQtyModalOpen" class="fixed inset-0 z-[70] pointer-events-none">
+      <div class="absolute inset-0 z-0 bg-black/40 pointer-events-auto" @click="closePickedQtyModal"></div>
+      <form
+        novalidate
+        class="absolute left-1/2 top-1/2 z-10 w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-lg bg-card shadow-xl border pointer-events-auto"
+        @submit.prevent="submitPickedQty"
+      >
+        <div class="p-4 border-b">
+          <h3 class="text-lg font-semibold">Input Picked Qty</h3>
+        </div>
+        <div class="p-4 space-y-3 text-sm">
+          <p>
+            Masukkan jumlah yang sudah terpicking untuk DO
+            <span class="font-semibold">{{ pendingPickedQtyEntry?.doNumber || pendingPickedQtyEntry?.noContainer }}</span>.
+          </p>
+          <p class="text-muted-foreground">
+            Maksimal: <span class="font-semibold">{{ pendingPickedQtyEntry?.pickingQty ?? 0 }}</span>
+          </p>
+          <div>
+            <label class="text-sm text-muted-foreground">Jumlah Picked Qty</label>
+            <input
+              v-model="pickedQtyInput"
+              type="number"
+              min="0"
+              :max="pendingPickedQtyEntry?.pickingQty ?? 0"
+              step="1"
+              inputmode="numeric"
+              class="mt-1 w-full bg-transparent border rounded-md px-2 py-2 text-sm"
+              @input="pickedQtySubmitError = ''"
+              @keydown.enter.prevent="submitPickedQty"
+            />
+            <p v-if="pickedQtyValidationError" class="mt-1 text-xs text-red-600">
+              {{ pickedQtyValidationError }}
+            </p>
+            <p v-else-if="pickedQtySubmitError" class="mt-1 text-xs text-red-600">
+              {{ pickedQtySubmitError }}
+            </p>
+          </div>
+        </div>
+        <div class="p-4 border-t flex items-center justify-end gap-2">
+          <button
+            type="button"
+            class="inline-flex h-9 items-center justify-center rounded-md px-3 text-sm font-medium hover:bg-accent hover:text-accent-foreground"
+            @click="closePickedQtyModal"
+          >
+            Batal
+          </button>
+          <button
+            type="button"
+            class="inline-flex h-9 items-center justify-center rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:pointer-events-none disabled:opacity-50"
+            :disabled="Boolean(pickedQtyValidationError) || !pendingPickedQtyEntry || pickedQtySubmitting"
+            @click="handlePickedQtySaveClick"
+            @mousedown.stop
+          >
+            {{ pickedQtySubmitting ? 'Menyimpan...' : 'Simpan' }}
+          </button>
+        </div>
+      </form>
+    </div>
+
     <div v-if="startConfirmOpen" class="fixed inset-0 z-50">
       <div class="absolute inset-0 bg-black/40" @click="closeStartConfirm"></div>
       <div class="absolute left-1/2 top-1/2 w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-lg bg-card shadow-xl border">
@@ -523,18 +662,24 @@ onUnmounted(() => {
     </div>
 
     <div v-if="finishConfirmOpen" class="fixed inset-0 z-50">
-      <div class="absolute inset-0 bg-black/40" @click="finishConfirmOpen = false"></div>
+      <div class="absolute inset-0 bg-black/40" @click="closeFinishConfirm"></div>
       <div class="absolute left-1/2 top-1/2 w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-lg bg-card shadow-xl border">
         <div class="p-4 border-b">
           <h3 class="text-lg font-semibold">Konfirmasi Finish</h3>
         </div>
         <div class="p-4 text-sm">
-          Picked Qty belum memenuhi target ({{ pendingFinishEntry?.pickedQty || 0 }}/{{ pendingFinishEntry?.pickingQty || 0 }}).
-          Lanjutkan finish?
+          Selesaikan picking untuk DO
+          <span class="font-semibold">{{ pendingFinishEntry?.doNumber || pendingFinishEntry?.noContainer }}</span>
+          ?
+          <div class="mt-1 text-muted-foreground">
+            Picked Qty: {{ pendingFinishEntry?.pickedQty || 0 }}/{{ pendingFinishEntry?.pickingQty || 0 }}
+          </div>
         </div>
         <div class="p-4 border-t flex items-center justify-end gap-2">
-          <Button variant="ghost" @click="finishConfirmOpen = false">Batal</Button>
-          <Button @click="pendingFinishEntry && executeFinish(pendingFinishEntry)">Ya, Finish</Button>
+          <Button variant="ghost" @click="closeFinishConfirm">Batal</Button>
+          <Button :disabled="!pendingFinishEntry || actionLoading[pendingFinishEntry?.id || '']" @click="pendingFinishEntry && executeFinish(pendingFinishEntry)">
+            {{ pendingFinishEntry && actionLoading[pendingFinishEntry.id] ? 'Memproses...' : 'Ya, Finish' }}
+          </Button>
         </div>
       </div>
     </div>

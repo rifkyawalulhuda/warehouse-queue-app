@@ -12,7 +12,7 @@ defineProps<{
 
 const emit = defineEmits<{
   (e: 'start', entry: PickingProgressEntry): void
-  (e: 'adjust-picked', entry: PickingProgressEntry, delta: number): void
+  (e: 'input-picked', entry: PickingProgressEntry): void
   (e: 'finish', entry: PickingProgressEntry): void
   (e: 'cancel', entry: PickingProgressEntry): void
   (e: 'detail', entry: PickingProgressEntry): void
@@ -176,20 +176,12 @@ const displayProgressPercent = (entry: PickingProgressEntry) => {
                 <Button
                   size="sm"
                   variant="outline"
-                  :disabled="entry.pickedQty <= 0"
-                  @click="emit('adjust-picked', entry, -1)"
+                  @click="emit('input-picked', entry)"
                 >
-                  -
+                  Input Qty
                 </Button>
                 <Button
-                  size="sm"
-                  variant="outline"
-                  :disabled="entry.pickedQty >= entry.pickingQty"
-                  @click="emit('adjust-picked', entry, 1)"
-                >
-                  +
-                </Button>
-                <Button
+                  v-if="entry.pickedQty === entry.pickingQty"
                   size="sm"
                   variant="outline"
                   class="border-emerald-200 bg-emerald-600 text-white hover:bg-emerald-700 hover:text-white"
