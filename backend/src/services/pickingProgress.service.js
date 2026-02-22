@@ -131,14 +131,10 @@ function resolveDateRange(query) {
     return { from: getStartOfDay(fromDate), to: getEndOfDay(toDate) };
   }
 
-  // Default: centered 7 days (today -3 .. today +3).
+  // Default: today only.
   const today = new Date();
-  const fromSeed = new Date(today);
-  fromSeed.setDate(fromSeed.getDate() - 3);
-  const toSeed = new Date(today);
-  toSeed.setDate(toSeed.getDate() + 3);
-  const fromDate = getStartOfDay(fromSeed);
-  const toDate = getEndOfDay(toSeed);
+  const fromDate = getStartOfDay(today);
+  const toDate = getEndOfDay(today);
   return { from: fromDate, to: toDate };
 }
 

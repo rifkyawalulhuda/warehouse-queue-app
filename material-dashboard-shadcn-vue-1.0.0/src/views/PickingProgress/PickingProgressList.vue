@@ -113,8 +113,8 @@ const parseSearchQuery = (value: unknown) => {
 }
 
 const filters = reactive({
-  dateFrom: shiftDateString(todayString(), -3),
-  dateTo: shiftDateString(todayString(), 3),
+  dateFrom: todayString(),
+  dateTo: todayString(),
   status: 'ALL',
   search: parseSearchQuery(route.query.search),
 })
