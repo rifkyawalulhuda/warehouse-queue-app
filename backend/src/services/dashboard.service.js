@@ -337,6 +337,50 @@ async function getProgressSummary(dateQuery) {
   };
 }
 
+async function getPickingProgressSummary(dateQuery) {
+  const range = resolveDateRange(dateQuery);
+  const pickingDate = parseDateOnlyUtc(range.date);
+  if (!pickingDate) {
+    throw createHttpError(400, "Format date tidak valid. Gunakan YYYY-MM-DD");
+  }
+
+  const nextDay = new Date(pickingDate);
+  nextDay.setUTCDate(nextDay.getUTCDate() + 1);
+
+  const aggregate = await prisma.pickingProgress.aggregate({
+    where: {
+      date: {
+        gte: pickingDate,
+        lt: nextDay,
+      },
+    },
+    _sum: {
+      pickingQty: true,
+      pickedQty: true,
+    },
+    _count: {
+      _all: true,
+    },
+  });
+
+  const targetPickingQty = Number(aggregate?._sum?.pickingQty || 0);
+  const pickedQty = Number(aggregate?._sum?.pickedQty || 0);
+  const remainingQty = Math.max(0, targetPickingQty - pickedQty);
+  const pickedPct = targetPickingQty > 0 ? (pickedQty / targetPickingQty) * 100 : 0;
+  const remainingPct = targetPickingQty > 0 ? (remainingQty / targetPickingQty) * 100 : 0;
+
+  return {
+    date: range.date,
+    totalRows: Number(aggregate?._count?._all || 0),
+    targetPickingQty,
+    pickedQty,
+    remainingQty,
+    pickedPct,
+    remainingPct,
+    totalPct: pickedPct,
+  };
+}
+
 async function getHourly(dateQuery) {
   const { range, entries } = await fetchEntries(dateQuery);
   const buckets = Array.from({ length: 24 }, (_, hour) => ({
@@ -828,6 +872,7 @@ module.exports = {
   getSummary,
   getScheduleSummary,
   getProgressSummary,
+  getPickingProgressSummary,
   getHourly,
   getStatus,
   getTopCustomers,

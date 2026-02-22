@@ -36,6 +36,15 @@ async function progressSummary(req, res, next) {
   }
 }
 
+async function pickingProgressSummary(req, res, next) {
+  try {
+    const result = await dashboardService.getPickingProgressSummary(req.query.date);
+    return res.json(result);
+  } catch (err) {
+    return next(err);
+  }
+}
+
 async function status(req, res, next) {
   try {
     const result = await dashboardService.getStatus(req.query.date);
@@ -85,6 +94,7 @@ module.exports = {
   summary,
   scheduleSummary,
   progressSummary,
+  pickingProgressSummary,
   hourly,
   status,
   topCustomers,

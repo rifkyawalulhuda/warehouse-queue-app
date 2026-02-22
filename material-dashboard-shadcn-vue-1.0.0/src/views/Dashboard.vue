@@ -15,6 +15,7 @@ import OverSlaTable from '@/components/dashboard/OverSlaTable.vue'
 import {
   getDashboardHourly,
   getDashboardMonthlyReport,
+  getDashboardPickingProgressSummary,
   getMonthlyScheduleTruckSummary,
   getDashboardProgressSummary,
   getDashboardScheduleSummary,
@@ -115,6 +116,16 @@ type ProgressSummary = {
   prosesPct: number
   totalPct: number
 }
+type PickingProgressSummary = {
+  date: string
+  totalRows: number
+  targetPickingQty: number
+  pickedQty: number
+  remainingQty: number
+  pickedPct: number
+  remainingPct: number
+  totalPct: number
+}
 
 const getToday = () => {
   const now = new Date()
@@ -168,6 +179,16 @@ const progressSummary = reactive<ProgressSummary>({
   prosesPct: 0,
   totalPct: 0
 })
+const pickingProgressSummary = reactive<PickingProgressSummary>({
+  date: selectedDate.value,
+  totalRows: 0,
+  targetPickingQty: 0,
+  pickedQty: 0,
+  remainingQty: 0,
+  pickedPct: 0,
+  remainingPct: 0,
+  totalPct: 0
+})
 const monthlyTruckSummary = reactive<MonthlyTruckSummary>({
   month: selectedScheduleMonth.value,
   totalQty: 0,
@@ -175,6 +196,7 @@ const monthlyTruckSummary = reactive<MonthlyTruckSummary>({
 })
 const isLoadingMonthlyTruckSummary = ref(false)
 const isLoadingProgress = ref(false)
+const isLoadingPickingProgress = ref(false)
 const loading = ref(false)
 const error = ref<string | null>(null)
 const monthlyReportOpen = ref(false)
@@ -185,6 +207,8 @@ const monthlyReportError = ref<string | null>(null)
 const isToday = computed(() => selectedDate.value === today.value)
 const hasProgressTarget = computed(() => progressSummary.targetPengiriman > 0)
 const isOverTarget = computed(() => progressSummary.totalPct > 100)
+const hasPickingProgressTarget = computed(() => pickingProgressSummary.targetPickingQty > 0)
+const isPickingOverTarget = computed(() => pickingProgressSummary.totalPct > 100)
 
 const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max)
 const selesaiWidth = computed(() => clamp(progressSummary.selesaiPct, 0, 100))
@@ -200,6 +224,22 @@ const prosesBarLabel = computed(
 )
 const showSelesaiLabelInBar = computed(() => selesaiWidth.value >= 18)
 const showProsesLabelInBar = computed(() => prosesWidth.value >= 18)
+
+const pickedWidth = computed(() => clamp(pickingProgressSummary.pickedPct, 0, 100))
+const remainingWidth = computed(() =>
+  clamp(pickingProgressSummary.remainingPct, 0, 100 - pickedWidth.value)
+)
+const rawPickedPctText = computed(() => pickingProgressSummary.pickedPct.toFixed(0))
+const rawRemainingPctText = computed(() => pickingProgressSummary.remainingPct.toFixed(0))
+const rawPickingTotalPctText = computed(() => pickingProgressSummary.totalPct.toFixed(0))
+const pickedBarLabel = computed(
+  () => `Picked: ${pickingProgressSummary.pickedQty} (${rawPickedPctText.value}%)`
+)
+const remainingBarLabel = computed(
+  () => `Sisa: ${pickingProgressSummary.remainingQty} (${rawRemainingPctText.value}%)`
+)
+const showPickedLabelInBar = computed(() => pickedWidth.value >= 18)
+const showRemainingLabelInBar = computed(() => remainingWidth.value >= 18)
 
 const getErrorMessage = (err: any, fallback: string) => {
   return err?.response?.data?.message || err?.message || fallback
@@ -594,6 +634,34 @@ const fetchProgressSummary = async () => {
   }
 }
 
+const fetchPickingProgressSummary = async () => {
+  isLoadingPickingProgress.value = true
+  try {
+    const response = await getDashboardPickingProgressSummary(selectedDate.value)
+    const data = response.data?.data || response.data || {}
+    pickingProgressSummary.date = data.date || selectedDate.value
+    pickingProgressSummary.totalRows = data.totalRows || 0
+    pickingProgressSummary.targetPickingQty = data.targetPickingQty || 0
+    pickingProgressSummary.pickedQty = data.pickedQty || 0
+    pickingProgressSummary.remainingQty = data.remainingQty || 0
+    pickingProgressSummary.pickedPct = data.pickedPct || 0
+    pickingProgressSummary.remainingPct = data.remainingPct || 0
+    pickingProgressSummary.totalPct = data.totalPct || 0
+  } catch (err: any) {
+    pickingProgressSummary.date = selectedDate.value
+    pickingProgressSummary.totalRows = 0
+    pickingProgressSummary.targetPickingQty = 0
+    pickingProgressSummary.pickedQty = 0
+    pickingProgressSummary.remainingQty = 0
+    pickingProgressSummary.pickedPct = 0
+    pickingProgressSummary.remainingPct = 0
+    pickingProgressSummary.totalPct = 0
+    error.value = getErrorMessage(err, 'Gagal memuat dashboard')
+  } finally {
+    isLoadingPickingProgress.value = false
+  }
+}
+
 const fetchMonthlyTruckSummary = async () => {
   isLoadingMonthlyTruckSummary.value = true
   try {
@@ -716,6 +784,7 @@ const handleRefresh = async () => {
     fetchDashboard(),
     fetchScheduleSummary(),
     fetchProgressSummary(),
+    fetchPickingProgressSummary(),
     fetchMonthlyTruckSummary()
   ])
 }
@@ -837,7 +906,7 @@ onUnmounted(() => {
     <Card>
       <CardHeader class="pb-3">
         <div class="flex flex-wrap items-center justify-between gap-2">
-          <CardTitle class="text-sm font-medium">Loading Progress Chart</CardTitle>
+          <CardTitle class="text-sm font-medium">Loading & Unloading Progress Chart</CardTitle>
           <span v-if="isOverTarget" class="rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-xs text-amber-700">
             Over Target
           </span>
@@ -872,6 +941,53 @@ onUnmounted(() => {
             <p>Total Progress: {{ rawTotalPctText }}%</p>
             <p v-if="!showSelesaiLabelInBar">Selesai: {{ progressSummary.selesaiCount }} ({{ rawSelesaiPctText }}%)</p>
             <p v-if="!showProsesLabelInBar">Proses: {{ progressSummary.prosesCount }} ({{ rawProsesPctText }}%)</p>
+          </div>
+        </template>
+      </CardContent>
+    </Card>
+
+    <Card>
+      <CardHeader class="pb-3">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <CardTitle class="text-sm font-medium">Picking Progress Chart</CardTitle>
+          <span
+            v-if="isPickingOverTarget"
+            class="rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-xs text-amber-700"
+          >
+            Over Target
+          </span>
+        </div>
+      </CardHeader>
+      <CardContent class="space-y-3">
+        <div v-if="isLoadingPickingProgress" class="text-sm text-muted-foreground">Loading progress...</div>
+        <template v-else>
+          <p v-if="!hasPickingProgressTarget" class="text-sm text-muted-foreground">Belum ada target picking</p>
+          <div class="h-8 w-full overflow-hidden rounded-full bg-muted">
+            <div class="flex h-full">
+              <div
+                class="flex h-full items-center justify-center overflow-hidden bg-[#28a745] transition-all duration-300"
+                :style="{ width: `${pickedWidth}%` }"
+              >
+                <span v-if="showPickedLabelInBar" class="truncate px-2 text-[11px] font-semibold text-white">
+                  {{ pickedBarLabel }}
+                </span>
+              </div>
+              <div
+                class="flex h-full items-center justify-center overflow-hidden bg-[#0d6efd] transition-all duration-300"
+                :style="{ width: `${remainingWidth}%` }"
+              >
+                <span v-if="showRemainingLabelInBar" class="truncate px-2 text-[11px] font-semibold text-white">
+                  {{ remainingBarLabel }}
+                </span>
+              </div>
+            </div>
+          </div>
+          <div class="grid gap-1 text-xs text-muted-foreground md:grid-cols-2">
+            <p>Target Picking Qty: {{ pickingProgressSummary.targetPickingQty }}</p>
+            <p>Total Progress: {{ rawPickingTotalPctText }}%</p>
+            <p>Total DO Picking: {{ pickingProgressSummary.totalRows }}</p>
+            <p v-if="!showPickedLabelInBar">Picked: {{ pickingProgressSummary.pickedQty }} ({{ rawPickedPctText }}%)</p>
+            <p v-if="!showRemainingLabelInBar">Sisa: {{ pickingProgressSummary.remainingQty }} ({{ rawRemainingPctText }}%)</p>
           </div>
         </template>
       </CardContent>
