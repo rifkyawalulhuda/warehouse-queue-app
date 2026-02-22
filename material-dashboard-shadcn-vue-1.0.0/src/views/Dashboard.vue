@@ -749,6 +749,16 @@ const openSchedulePage = (type: 'STORE_IN' | 'STORE_OUT' | null) => {
   router.push({ path: '/schedule-pengiriman', query })
 }
 
+const openPickingProgressPage = () => {
+  router.push({
+    path: '/picking-progress',
+    query: {
+      dateFrom: selectedDate.value,
+      dateTo: selectedDate.value
+    }
+  })
+}
+
 const formatPrintDate = (value: string) => {
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value)
   if (!match) return value
@@ -997,6 +1007,60 @@ onUnmounted(() => {
         </template>
       </CardContent>
     </Card>
+
+    <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <Card
+        class="cursor-pointer transition-all hover:border-primary/40 hover:shadow-md"
+        @click="openPickingProgressPage"
+      >
+        <CardHeader class="flex flex-row items-center justify-between pb-2">
+          <CardTitle class="text-sm font-medium">Total DO Picking</CardTitle>
+          <span class="text-xs text-muted-foreground">View</span>
+        </CardHeader>
+        <CardContent>
+          <div class="text-2xl font-bold">{{ isLoadingPickingProgress ? '...' : pickingProgressSummary.totalRows }}</div>
+        </CardContent>
+      </Card>
+
+      <Card
+        class="cursor-pointer transition-all hover:border-primary/40 hover:shadow-md"
+        @click="openPickingProgressPage"
+      >
+        <CardHeader class="flex flex-row items-center justify-between pb-2">
+          <CardTitle class="text-sm font-medium">Target Picking Qty</CardTitle>
+          <span class="text-xs text-muted-foreground">View</span>
+        </CardHeader>
+        <CardContent>
+          <div class="text-2xl font-bold">{{ isLoadingPickingProgress ? '...' : pickingProgressSummary.targetPickingQty }}</div>
+        </CardContent>
+      </Card>
+
+      <Card
+        class="cursor-pointer transition-all hover:border-primary/40 hover:shadow-md"
+        @click="openPickingProgressPage"
+      >
+        <CardHeader class="flex flex-row items-center justify-between pb-2">
+          <CardTitle class="text-sm font-medium">Picked Qty</CardTitle>
+          <span class="text-xs text-muted-foreground">View</span>
+        </CardHeader>
+        <CardContent>
+          <div class="text-2xl font-bold">{{ isLoadingPickingProgress ? '...' : pickingProgressSummary.pickedQty }}</div>
+        </CardContent>
+      </Card>
+
+      <Card
+        class="cursor-pointer transition-all hover:border-primary/40 hover:shadow-md"
+        @click="openPickingProgressPage"
+      >
+        <CardHeader class="flex flex-row items-center justify-between pb-2">
+          <CardTitle class="text-sm font-medium">Sisa Picking Qty</CardTitle>
+          <span class="text-xs text-muted-foreground">View</span>
+        </CardHeader>
+        <CardContent>
+          <div class="text-2xl font-bold">{{ isLoadingPickingProgress ? '...' : pickingProgressSummary.remainingQty }}</div>
+        </CardContent>
+      </Card>
+    </div>
 
     <Card>
       <CardHeader class="pb-3">
