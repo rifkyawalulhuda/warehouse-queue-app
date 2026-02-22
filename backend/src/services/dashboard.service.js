@@ -659,6 +659,9 @@ async function getMonthlyReport(monthQuery) {
           gte: range.from,
           lt: range.to,
         },
+        status: {
+          not: "BATAL",
+        },
       },
       select: {
         date: true,
@@ -735,13 +738,17 @@ async function getMonthlyReport(monthQuery) {
   const overSlaItemsRaw = [];
 
   queueEntries.forEach((entry) => {
+    if (entry.status === "BATAL") {
+      queueSummary.cancelled += 1;
+      return;
+    }
+
     queueSummary.total += 1;
     if (entry.category === "DELIVERY") queueSummary.delivery += 1;
     if (entry.category === "RECEIVING") queueSummary.receiving += 1;
     if (entry.status === "MENUNGGU") queueSummary.waiting += 1;
     if (entry.status === "IN_WH" || entry.status === "PROSES") queueSummary.processing += 1;
     if (entry.status === "SELESAI") queueSummary.done += 1;
-    if (entry.status === "BATAL") queueSummary.cancelled += 1;
 
     if (queueStatusCounts[entry.status] !== undefined) {
       queueStatusCounts[entry.status] += 1;
@@ -788,25 +795,23 @@ async function getMonthlyReport(monthQuery) {
       }
     }
 
-    if (entry.status !== "BATAL") {
-      const slaMinutes = getSlaMinutes(entry.category);
-      if (slaMinutes) {
-        const end = entry.finishTime ? new Date(entry.finishTime) : now;
-        const minutes = durationMinutes(new Date(entry.registerTime), end);
-        if (minutes !== null && minutes >= slaMinutes) {
-          overSlaCount += 1;
-          overSlaItemsRaw.push({
-            id: entry.id,
-            date: formatDateOnly(new Date(entry.registerTime)),
-            customerName: entry.customer?.name || "-",
-            driverName: entry.driverName,
-            truckNumber: entry.truckNumber,
-            category: entry.category,
-            status: entry.status,
-            overMinutes: minutes - slaMinutes,
-            durationMinutes: minutes,
-          });
-        }
+    const slaMinutes = getSlaMinutes(entry.category);
+    if (slaMinutes) {
+      const end = entry.finishTime ? new Date(entry.finishTime) : now;
+      const minutes = durationMinutes(new Date(entry.registerTime), end);
+      if (minutes !== null && minutes >= slaMinutes) {
+        overSlaCount += 1;
+        overSlaItemsRaw.push({
+          id: entry.id,
+          date: formatDateOnly(new Date(entry.registerTime)),
+          customerName: entry.customer?.name || "-",
+          driverName: entry.driverName,
+          truckNumber: entry.truckNumber,
+          category: entry.category,
+          status: entry.status,
+          overMinutes: minutes - slaMinutes,
+          durationMinutes: minutes,
+        });
       }
     }
   });
