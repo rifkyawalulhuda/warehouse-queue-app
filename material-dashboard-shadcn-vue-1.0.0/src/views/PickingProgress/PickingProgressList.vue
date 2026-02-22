@@ -10,6 +10,7 @@ import PickingDetailDrawer from '@/components/picking/PickingDetailDrawer.vue'
 import PickingTable from '@/components/picking/PickingTable.vue'
 import { RefreshCw, Search } from 'lucide-vue-next'
 import api from '@/services/api'
+import { useAuth } from '@/composables/useAuth'
 import { listEmployees, type Employee } from '@/services/employeeApi'
 import {
   cancelPickingProgress,
@@ -29,6 +30,9 @@ type Customer = {
 
 const route = useRoute()
 const router = useRouter()
+const { user, initFromStorage } = useAuth()
+initFromStorage()
+const isWarehouse = computed(() => user.value?.role === 'WAREHOUSE')
 
 const entries = ref<PickingProgressEntry[]>([])
 const customers = ref<Customer[]>([])
@@ -472,7 +476,7 @@ onUnmounted(() => {
         <p class="text-muted-foreground">Monitoring progress picking</p>
       </div>
       <div class="flex items-center gap-2">
-        <Button size="sm" @click="createOpen = true">Tambah Transaksi</Button>
+        <Button v-if="!isWarehouse" size="sm" @click="createOpen = true">Tambah Transaksi</Button>
         <Button size="sm" variant="outline" @click="fetchList">
           <RefreshCw class="mr-2 h-4 w-4" />
           Refresh
@@ -522,6 +526,7 @@ onUnmounted(() => {
           :loading="loading"
           :page="page"
           :limit="limit"
+          :can-cancel="!isWarehouse"
           @start="requestStart"
           @input-picked="openPickedQtyModal"
           @finish="requestFinish"

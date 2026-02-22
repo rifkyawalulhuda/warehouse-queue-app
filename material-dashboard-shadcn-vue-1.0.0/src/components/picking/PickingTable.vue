@@ -8,6 +8,7 @@ defineProps<{
   loading: boolean
   page: number
   limit: number
+  canCancel: boolean
 }>()
 
 const emit = defineEmits<{
@@ -191,7 +192,7 @@ const displayProgressPercent = (entry: PickingProgressEntry) => {
                 </Button>
               </template>
               <Button
-                v-if="entry.status === 'MENUNGGU' || entry.status === 'ON_PROCESS'"
+                v-if="canCancel && (entry.status === 'MENUNGGU' || entry.status === 'ON_PROCESS')"
                 size="sm"
                 variant="outline"
                 class="border-red-200 bg-red-600 text-white hover:bg-red-700 hover:text-white"
