@@ -6,6 +6,7 @@ import CardHeader from '@/components/ui/CardHeader.vue'
 import CardContent from '@/components/ui/CardContent.vue'
 import Button from '@/components/ui/Button.vue'
 import PickingCreateModal from '@/components/picking/PickingCreateModal.vue'
+import PickingEditModal from '@/components/picking/PickingEditModal.vue'
 import PickingDetailDrawer from '@/components/picking/PickingDetailDrawer.vue'
 import PickingTable from '@/components/picking/PickingTable.vue'
 import { RefreshCw, Search } from 'lucide-vue-next'
@@ -22,6 +23,7 @@ import {
   importPickingProgressExcel,
   listPickingProgress,
   startPickingProgress,
+  updatePickingProgress,
   updatePickingPickedQty,
   type PickingProgressEntry,
 } from '@/services/pickingProgressApi'
@@ -46,6 +48,9 @@ const success = ref<string | null>(null)
 
 const createOpen = ref(false)
 const createSubmitting = ref(false)
+const editOpen = ref(false)
+const editSubmitting = ref(false)
+const editingEntry = ref<PickingProgressEntry | null>(null)
 const drawerOpen = ref(false)
 const selectedEntry = ref<PickingProgressEntry | null>(null)
 const actionLoading = ref<Record<string, boolean>>({})
@@ -221,6 +226,42 @@ const handleCreate = async (payload: {
     error.value = getErrorMessage(err, 'Gagal menambah transaksi picking')
   } finally {
     createSubmitting.value = false
+  }
+}
+
+const openEdit = (entry: PickingProgressEntry) => {
+  editingEntry.value = entry
+  editOpen.value = true
+}
+
+const closeEdit = () => {
+  editOpen.value = false
+  editingEntry.value = null
+}
+
+const handleEdit = async (payload: {
+  date: string
+  customerId: string
+  doNumber: string
+  destination: string
+  volumeCbm: number
+  plTimeRelease: string
+  pickingQty: number
+}) => {
+  if (!editingEntry.value) return
+  editSubmitting.value = true
+  error.value = null
+  try {
+    await updatePickingProgress(editingEntry.value.id, payload)
+    const updatedId = editingEntry.value.id
+    closeEdit()
+    await fetchList()
+    await refreshDetailIfOpen(updatedId)
+    showSuccess('Transaksi picking berhasil diupdate')
+  } catch (err: any) {
+    error.value = getErrorMessage(err, 'Gagal update transaksi picking')
+  } finally {
+    editSubmitting.value = false
   }
 }
 
@@ -727,6 +768,8 @@ onUnmounted(() => {
           :page="page"
           :limit="limit"
           :can-cancel="!isWarehouse"
+          :can-edit="!isWarehouse"
+          @edit="openEdit"
           @start="requestStart"
           @input-picked="openPickedQtyModal"
           @finish="requestFinish"
@@ -774,6 +817,15 @@ onUnmounted(() => {
       :customers="customers"
       @close="createOpen = false"
       @submit="handleCreate"
+    />
+
+    <PickingEditModal
+      :open="editOpen"
+      :submitting="editSubmitting"
+      :customers="customers"
+      :entry="editingEntry"
+      @close="closeEdit"
+      @submit="handleEdit"
     />
 
     <PickingDetailDrawer :open="drawerOpen" :entry="selectedEntry" @close="closeDrawer" />

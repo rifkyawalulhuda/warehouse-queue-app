@@ -4,7 +4,7 @@ export type PickingStatus = 'MENUNGGU' | 'ON_PROCESS' | 'SELESAI' | 'BATAL'
 
 export type PickingLog = {
   id: string
-  action: 'CREATE' | 'START' | 'UPDATE_PICKED_QTY' | 'FINISH' | 'CANCEL'
+  action: 'CREATE' | 'UPDATE' | 'START' | 'UPDATE_PICKED_QTY' | 'FINISH' | 'CANCEL'
   note?: string | null
   fromStatus?: PickingStatus | null
   toStatus?: PickingStatus | null
@@ -58,6 +58,21 @@ export const createPickingProgress = (payload: {
   pickingQty: number
 }) => {
   return api.post('/picking-progress', payload)
+}
+
+export const updatePickingProgress = (
+  id: string,
+  payload: {
+    date?: string
+    customerId: string
+    doNumber: string
+    destination: string
+    volumeCbm: number
+    plTimeRelease?: string
+    pickingQty: number
+  }
+) => {
+  return api.patch(`/picking-progress/${id}`, payload)
 }
 
 export const listPickingProgress = (params: {

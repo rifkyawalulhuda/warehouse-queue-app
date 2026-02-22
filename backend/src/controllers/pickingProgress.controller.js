@@ -118,6 +118,20 @@ async function createPickingProgress(req, res, next) {
   }
 }
 
+async function updatePickingProgress(req, res, next) {
+  try {
+    const actorUserId = await resolveActorUserId(req);
+    const entry = await pickingProgressService.updatePickingProgress(
+      req.params.id,
+      req.body,
+      actorUserId
+    );
+    return sendSuccess(res, entry);
+  } catch (err) {
+    return next(err);
+  }
+}
+
 async function listPickingProgress(req, res, next) {
   try {
     const result = await pickingProgressService.listPickingProgress(req.query);
@@ -354,6 +368,7 @@ async function cancelPickingProgress(req, res, next) {
 
 module.exports = {
   createPickingProgress,
+  updatePickingProgress,
   listPickingProgress,
   exportPickingProgress,
   downloadPickingProgressTemplate,

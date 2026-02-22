@@ -382,6 +382,75 @@ async function createPickingProgress(data, actorUserId) {
   return computeSlaFields(created);
 }
 
+async function updatePickingProgress(id, data, actorUserId) {
+  const existing = await prisma.pickingProgress.findUnique({ where: { id } });
+  if (!existing) {
+    throw createHttpError(404, "Data picking progress tidak ditemukan");
+  }
+  if (existing.status !== "MENUNGGU") {
+    throw createHttpError(400, "Edit hanya bisa dilakukan saat status MENUNGGU");
+  }
+
+  await ensureCustomerExists(data.customerId);
+
+  const transactionDate = resolveTransactionDate(data.date);
+  const doNumber = normalizeText(data.doNumber);
+  const destination = normalizeText(data.destination);
+  const volumeCbm = Number(data.volumeCbm);
+  const nextPickingQty = Number(data.pickingQty);
+  const plTimeRelease = data.plTimeRelease
+    ? new Date(data.plTimeRelease)
+    : existing.plTimeRelease || new Date();
+
+  if (Number.isNaN(plTimeRelease.getTime())) {
+    throw createHttpError(400, "Format plTimeRelease tidak valid");
+  }
+  if (existing.pickedQty > nextPickingQty) {
+    throw createHttpError(400, "Picking Qty tidak boleh lebih kecil dari Picked Qty saat ini");
+  }
+
+  const note = [
+    `customerId=${existing.customerId}->${data.customerId}`,
+    `doNumber=${existing.doNumber || existing.noContainer}->${doNumber}`,
+    `destination=${existing.destination || existing.noDock}->${destination}`,
+    `volumeCbm=${existing.volumeCbm ?? 0}->${volumeCbm}`,
+    `pickingQty=${existing.pickingQty}->${nextPickingQty}`,
+  ].join(", ");
+
+  const updated = await prisma.pickingProgress.update({
+    where: { id },
+    data: {
+      date: transactionDate,
+      customerId: data.customerId,
+      doNumber,
+      destination,
+      volumeCbm,
+      plTimeRelease,
+      noContainer: doNumber,
+      noDock: destination,
+      pickingQty: nextPickingQty,
+      updatedById: actorUserId || null,
+      logs: {
+        create: {
+          action: "UPDATE",
+          note,
+          fromStatus: existing.status,
+          toStatus: existing.status,
+          userId: actorUserId || null,
+        },
+      },
+    },
+    include: {
+      customer: true,
+      pickerEmployee: true,
+      createdBy: { select: { id: true, name: true, username: true, role: true } },
+      updatedBy: { select: { id: true, name: true, username: true, role: true } },
+    },
+  });
+
+  return computeSlaFields(updated);
+}
+
 async function listPickingProgress(query) {
   const status = normalizeStatus(query.status);
   const search = typeof query.search === "string" ? query.search.trim() : "";
@@ -837,6 +906,7 @@ async function cancelPickingProgress(id, actorUserId, cancelReason) {
 
 module.exports = {
   createPickingProgress,
+  updatePickingProgress,
   listPickingProgress,
   listPickingProgressForExport,
   listCustomerNamesForTemplate,

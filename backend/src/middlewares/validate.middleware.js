@@ -179,6 +179,49 @@ function validatePickingCreate(req, res, next) {
   return next();
 }
 
+function validatePickingUpdate(req, res, next) {
+  const errors = [];
+  const { date, customerId, doNumber, destination, volumeCbm, plTimeRelease, pickingQty } = req.body || {};
+
+  if (date !== undefined && date !== null && date !== "" && !isValidDateInput(date)) {
+    errors.push("date tidak valid");
+  }
+  if (
+    plTimeRelease !== undefined &&
+    plTimeRelease !== null &&
+    plTimeRelease !== "" &&
+    !isValidDateInput(plTimeRelease)
+  ) {
+    errors.push("plTimeRelease tidak valid");
+  }
+  if (!isNonEmptyString(customerId)) {
+    errors.push("customerId wajib diisi");
+  }
+  if (!isNonEmptyString(doNumber)) {
+    errors.push("doNumber wajib diisi");
+  }
+  if (!isNonEmptyString(destination)) {
+    errors.push("destination wajib diisi");
+  }
+  if (
+    volumeCbm === undefined ||
+    volumeCbm === null ||
+    volumeCbm === "" ||
+    !Number.isFinite(Number(volumeCbm)) ||
+    Number(volumeCbm) < 0
+  ) {
+    errors.push("volumeCbm harus angka dan minimal 0");
+  }
+  if (!Number.isInteger(pickingQty) || pickingQty < 1) {
+    errors.push("pickingQty harus angka bulat minimal 1");
+  }
+
+  if (errors.length > 0) {
+    return sendError(res, 400, "Validasi gagal", errors);
+  }
+  return next();
+}
+
 function validatePickingQtyUpdate(req, res, next) {
   const { delta } = req.body || {};
   if (!Number.isInteger(delta) || delta === 0) {
@@ -211,6 +254,7 @@ module.exports = {
   validateScheduleCreate: validateSchedulePayload,
   validateScheduleUpdate: validateSchedulePayload,
   validatePickingCreate,
+  validatePickingUpdate,
   validatePickingStart,
   validatePickingCancel,
   validatePickingQtyUpdate,

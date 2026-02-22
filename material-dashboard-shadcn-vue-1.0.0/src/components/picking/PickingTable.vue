@@ -9,9 +9,11 @@ defineProps<{
   page: number
   limit: number
   canCancel: boolean
+  canEdit: boolean
 }>()
 
 const emit = defineEmits<{
+  (e: 'edit', entry: PickingProgressEntry): void
   (e: 'start', entry: PickingProgressEntry): void
   (e: 'input-picked', entry: PickingProgressEntry): void
   (e: 'finish', entry: PickingProgressEntry): void
@@ -167,6 +169,14 @@ const displayProgressPercent = (entry: PickingProgressEntry) => {
           </td>
           <td class="px-3 py-2">
             <div class="flex flex-wrap items-center gap-2">
+              <Button
+                v-if="canEdit && entry.status === 'MENUNGGU'"
+                size="sm"
+                variant="outline"
+                @click="emit('edit', entry)"
+              >
+                Edit
+              </Button>
               <Button
                 v-if="entry.status === 'MENUNGGU'"
                 size="sm"

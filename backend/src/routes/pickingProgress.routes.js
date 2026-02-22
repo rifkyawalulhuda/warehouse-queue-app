@@ -3,6 +3,7 @@ const multer = require("multer");
 const pickingProgressController = require("../controllers/pickingProgress.controller");
 const {
   validatePickingCreate,
+  validatePickingUpdate,
   validatePickingStart,
   validatePickingCancel,
   validatePickingQtyUpdate,
@@ -33,6 +34,12 @@ router.post(
 );
 router.get("/picking-progress/export", pickingProgressController.exportPickingProgress);
 router.get("/picking-progress/:id", pickingProgressController.getPickingProgressById);
+router.patch(
+  "/picking-progress/:id",
+  requireRole("ADMIN", "CS"),
+  validatePickingUpdate,
+  pickingProgressController.updatePickingProgress
+);
 router.patch(
   "/picking-progress/:id/start",
   validatePickingStart,
