@@ -45,11 +45,14 @@ const props = defineProps<{
 const emit = defineEmits<{
   (e: 'close'): void
   (e: 'wh-notes-saved', id: string): void
+  (e: 'edit', entry: QueueEntry): void
 }>()
 
 const { user } = useAuth()
 const isAdmin = computed(() => user.value?.role === 'ADMIN')
+const isCs = computed(() => user.value?.role === 'CS')
 const isWarehouse = computed(() => user.value?.role === 'WAREHOUSE')
+const canEdit = computed(() => isAdmin.value || isCs.value)
 const soundEnabled = ref(true)
 const { enqueue, supported: ttsSupported } = useTtsQueue({
   enabled: soundEnabled,
@@ -219,6 +222,14 @@ const saveWhNotes = async () => {
           </span>
         </div>
         <div class="flex items-center gap-2">
+          <Button
+            v-if="canEdit && entry"
+            variant="outline"
+            size="sm"
+            @click="emit('edit', entry)"
+          >
+            Edit
+          </Button>
           <Button
             v-if="isAdmin"
             variant="outline"

@@ -8,6 +8,7 @@ import Button from '@/components/ui/Button.vue'
 import QueueTable from '@/components/queue/QueueTable.vue'
 import QueueDetailDrawer from '@/components/queue/QueueDetailDrawer.vue'
 import QueueCreateModal from '@/components/queue/QueueCreateModal.vue'
+import QueueEditModal from '@/components/queue/QueueEditModal.vue'
 import { RefreshCw, Search, ChevronDown } from 'lucide-vue-next'
 import api from '@/services/api'
 import { getMasterGates, setInWh, type MasterGate } from '@/services/queueApi'
@@ -61,6 +62,9 @@ const selectedEntry = ref<QueueEntry | null>(null)
 const drawerOpen = ref(false)
 const createOpen = ref(false)
 const createSubmitting = ref(false)
+const editOpen = ref(false)
+const editSubmitting = ref(false)
+const editingEntry = ref<QueueEntry | null>(null)
 const confirmOpen = ref(false)
 const confirmEntry = ref<QueueEntry | null>(null)
 const confirmNextStatus = ref<QueueEntry['status'] | null>(null)
@@ -165,6 +169,7 @@ const categoryOptions = [
 ]
 
 const canCreateTransaction = computed(() => user.value?.role === 'ADMIN' || user.value?.role === 'CS')
+const canEditTransaction = computed(() => user.value?.role === 'ADMIN' || user.value?.role === 'CS')
 const canOpenDisplay = computed(() => user.value?.role === 'ADMIN')
 
 const applyInitialRouteQuery = () => {
@@ -467,6 +472,57 @@ const handleCreate = async (payload: {
     error.value = getErrorMessage(err, 'Gagal menambah transaksi')
   } finally {
     createSubmitting.value = false
+  }
+}
+
+const openEditFromDrawer = (entry: QueueEntry) => {
+  if (!canEditTransaction.value) return
+  editingEntry.value = entry
+  editOpen.value = true
+}
+
+const closeEdit = () => {
+  editOpen.value = false
+  editingEntry.value = null
+}
+
+const handleEdit = async (payload: {
+  customerId: string
+  category: 'RECEIVING' | 'DELIVERY'
+  driverName: string
+  truckNumber: string
+  containerNumber: string
+  notes: string
+  registerTime: string
+}) => {
+  if (!editingEntry.value) return
+  editSubmitting.value = true
+  error.value = null
+  try {
+    const body: Record<string, any> = {
+      category: payload.category,
+      customerId: payload.customerId,
+      driverName: payload.driverName,
+      truckNumber: payload.truckNumber,
+      containerNumber: payload.containerNumber.trim(),
+      notes: payload.notes.trim(),
+    }
+    if (payload.registerTime) {
+      body.registerTime = new Date(payload.registerTime).toISOString()
+    }
+
+    const targetId = editingEntry.value.id
+    await api.patch(`/queue/${targetId}`, body)
+    closeEdit()
+    await fetchList()
+    if (drawerOpen.value && selectedEntry.value?.id === targetId) {
+      await fetchDetail(targetId)
+    }
+    showSuccess('Transaksi berhasil diupdate')
+  } catch (err: any) {
+    error.value = getErrorMessage(err, 'Gagal update transaksi')
+  } finally {
+    editSubmitting.value = false
   }
 }
 
@@ -785,6 +841,7 @@ watch(
       :entry="selectedEntry"
       @close="closeDrawer"
       @wh-notes-saved="handleWhNotesSaved"
+      @edit="openEditFromDrawer"
     />
     <QueueCreateModal
       v-if="canCreateTransaction"
@@ -793,6 +850,15 @@ watch(
       :customers="customers"
       @close="createOpen = false"
       @submit="handleCreate"
+    />
+    <QueueEditModal
+      v-if="canEditTransaction"
+      :open="editOpen"
+      :submitting="editSubmitting"
+      :customers="customers"
+      :entry="editingEntry"
+      @close="closeEdit"
+      @submit="handleEdit"
     />
 
     <div v-if="setInWhOpen" class="fixed inset-0 z-50">
