@@ -7,6 +7,7 @@ const {
   validatePickingStart,
   validatePickingCancel,
   validatePickingQtyUpdate,
+  validatePickingWhNotesUpdate,
 } = require("../middlewares/validate.middleware");
 const authMiddleware = require("../middlewares/auth.middleware");
 const { requireRole } = require("../middlewares/role.middleware");
@@ -50,6 +51,12 @@ router.patch(
   "/picking-progress/:id/picked-qty",
   validatePickingQtyUpdate,
   pickingProgressController.updatePickedQty
+);
+router.patch(
+  "/picking-progress/:id/wh-notes",
+  requireRole("WAREHOUSE"),
+  validatePickingWhNotesUpdate,
+  pickingProgressController.updatePickingWhNotes
 );
 router.patch("/picking-progress/:id/finish", pickingProgressController.finishPickingProgress);
 router.patch(

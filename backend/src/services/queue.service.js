@@ -425,6 +425,9 @@ async function updateQueueEntry(id, data, actorUser) {
 async function updateQueueWhNotes(id, notesFromWh, actorUser) {
   const entry = await prisma.queueEntry.findUnique({ where: { id } });
   if (!entry) throw createHttpError(404, "Data tidak ditemukan");
+  if (entry.status === "SELESAI" || entry.status === "BATAL") {
+    throw createHttpError(400, "Notes from WH tidak bisa diubah saat status SELESAI atau BATAL");
+  }
 
   const resolvedName = actorUser?.name || "system";
   const actorUserId = actorUser?.id || null;

@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import Button from '@/components/ui/Button.vue'
-import type { PickingProgressEntry } from '@/services/pickingProgressApi'
+import { useAuth } from '@/composables/useAuth'
+import { updatePickingWhNotes, type PickingProgressEntry } from '@/services/pickingProgressApi'
 
 const props = defineProps<{
   open: boolean
@@ -10,7 +11,14 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   (e: 'close'): void
+  (e: 'wh-notes-saved', id: string): void
 }>()
+
+const { user } = useAuth()
+const isWarehouse = computed(() => user.value?.role === 'WAREHOUSE')
+const isWhNotesLocked = computed(
+  () => props.entry?.status === 'SELESAI' || props.entry?.status === 'BATAL'
+)
 
 const nowTick = ref(Date.now())
 let tickTimer: number | undefined
@@ -68,6 +76,49 @@ const formatProgressPercent = (value?: number | null) => {
   const num = Number(value ?? 0)
   if (!Number.isFinite(num)) return '0%'
   return `${num.toFixed(2).replace(/\.?0+$/, '')}%`
+}
+
+const whNotesInput = ref('')
+const whNotesSubmitting = ref(false)
+const whNotesError = ref('')
+const whNotesSuccess = ref('')
+
+watch(
+  () => [props.open, props.entry?.id],
+  () => {
+    whNotesInput.value = props.entry?.notesFromWh || ''
+    whNotesError.value = ''
+    whNotesSuccess.value = ''
+  },
+  { immediate: true }
+)
+
+watch(
+  () => props.entry?.notesFromWh,
+  () => {
+    whNotesInput.value = props.entry?.notesFromWh || ''
+  }
+)
+
+const saveWhNotes = async () => {
+  if (!props.entry) return
+  if (isWhNotesLocked.value) {
+    whNotesError.value = 'Notes from WH tidak bisa diubah saat status SELESAI atau BATAL'
+    return
+  }
+  whNotesSubmitting.value = true
+  whNotesError.value = ''
+  whNotesSuccess.value = ''
+  try {
+    await updatePickingWhNotes(props.entry.id, String(whNotesInput.value || ''))
+    whNotesSuccess.value = 'Notes from WH berhasil disimpan'
+    emit('wh-notes-saved', props.entry.id)
+  } catch (err: any) {
+    whNotesError.value =
+      err?.response?.data?.message || err?.message || 'Gagal menyimpan Notes from WH'
+  } finally {
+    whNotesSubmitting.value = false
+  }
 }
 </script>
 
@@ -166,6 +217,42 @@ const formatProgressPercent = (value?: number | null) => {
             <span :class="['inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold', statusClass(entry?.status)]">
               {{ entry?.status || '-' }}
             </span>
+          </div>
+          <div class="col-span-2">
+            <p class="text-muted-foreground">Notes from WH :</p>
+            <div v-if="isWarehouse" class="mt-1 space-y-2">
+              <textarea
+                v-model="whNotesInput"
+                rows="3"
+                class="w-full rounded-md border bg-transparent px-2 py-2 text-sm"
+                placeholder="Input catatan dari warehouse..."
+                :disabled="isWhNotesLocked"
+              ></textarea>
+              <div class="flex items-center justify-end">
+                <Button size="sm" :disabled="whNotesSubmitting || isWhNotesLocked" @click="saveWhNotes">
+                  {{ whNotesSubmitting ? 'Menyimpan...' : 'Simpan Notes WH' }}
+                </Button>
+              </div>
+              <div
+                v-if="isWhNotesLocked"
+                class="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-700"
+              >
+                Notes from WH terkunci karena status transaksi sudah SELESAI atau BATAL.
+              </div>
+              <div
+                v-if="whNotesSuccess"
+                class="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700"
+              >
+                {{ whNotesSuccess }}
+              </div>
+              <div
+                v-if="whNotesError"
+                class="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700"
+              >
+                {{ whNotesError }}
+              </div>
+            </div>
+            <p v-else class="font-medium">{{ entry?.notesFromWh || '-' }}</p>
           </div>
         </div>
 

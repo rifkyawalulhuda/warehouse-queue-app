@@ -208,6 +208,7 @@ model PickingProgress {
   startTime            DateTime?
   finishTime           DateTime?
   status               PickingStatus        @default(MENUNGGU)
+  notesFromWh          String?
   createdById          String?
   createdBy            AdminUser?           @relation("PickingCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
   updatedById          String?

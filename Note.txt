@@ -12,7 +12,7 @@ SETIAP KALI PINDAH LAPTOP (RITUAL WAJIB
 
 git pull
 docker compose up -d (docker)
-npx prisma migrate dev (backend)
+npx prisma migrate dev (backend) hanya untuk development
 npm run migrate:deploy (backend)
 npx prisma generate (backend)
 npm install (jika ada perubahan dependency) (Backend)

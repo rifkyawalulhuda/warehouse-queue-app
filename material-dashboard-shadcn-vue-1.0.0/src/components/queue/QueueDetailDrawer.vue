@@ -52,6 +52,9 @@ const { user } = useAuth()
 const isAdmin = computed(() => user.value?.role === 'ADMIN')
 const isCs = computed(() => user.value?.role === 'CS')
 const isWarehouse = computed(() => user.value?.role === 'WAREHOUSE')
+const isWhNotesLocked = computed(
+  () => props.entry?.status === 'SELESAI' || props.entry?.status === 'BATAL'
+)
 const canEdit = computed(() => isAdmin.value || isCs.value)
 const soundEnabled = ref(true)
 const { enqueue, supported: ttsSupported } = useTtsQueue({
@@ -189,6 +192,10 @@ watch(
 
 const saveWhNotes = async () => {
   if (!props.entry) return
+  if (isWhNotesLocked.value) {
+    whNotesError.value = 'Notes from WH tidak bisa diubah saat status SELESAI atau BATAL'
+    return
+  }
   whNotesSubmitting.value = true
   whNotesError.value = ''
   whNotesSuccess.value = ''
@@ -314,11 +321,18 @@ const saveWhNotes = async () => {
                 rows="3"
                 class="w-full rounded-md border bg-transparent px-2 py-2 text-sm"
                 placeholder="Input catatan dari warehouse..."
+                :disabled="isWhNotesLocked"
               ></textarea>
               <div class="flex items-center justify-end">
-                <Button size="sm" :disabled="whNotesSubmitting" @click="saveWhNotes">
+                <Button size="sm" :disabled="whNotesSubmitting || isWhNotesLocked" @click="saveWhNotes">
                   {{ whNotesSubmitting ? 'Menyimpan...' : 'Simpan Notes WH' }}
                 </Button>
+              </div>
+              <div
+                v-if="isWhNotesLocked"
+                class="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-700"
+              >
+                Notes from WH terkunci karena status transaksi sudah SELESAI atau BATAL.
               </div>
               <div
                 v-if="whNotesSuccess"

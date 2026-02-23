@@ -260,6 +260,14 @@ function validatePickingCancel(req, res, next) {
   return next();
 }
 
+function validatePickingWhNotesUpdate(req, res, next) {
+  const { notesFromWh } = req.body || {};
+  if (notesFromWh !== undefined && typeof notesFromWh !== "string") {
+    return sendError(res, 400, "Validasi gagal", ["notesFromWh harus string"]);
+  }
+  return next();
+}
+
 module.exports = {
   validateQueueCreate,
   validateQueueUpdate,
@@ -273,4 +281,5 @@ module.exports = {
   validatePickingStart,
   validatePickingCancel,
   validatePickingQtyUpdate,
+  validatePickingWhNotesUpdate,
 };

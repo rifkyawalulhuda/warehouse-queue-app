@@ -342,6 +342,7 @@ function buildSearchTokens(entry) {
     entry.pickerEmployee?.name,
     entry.pickerEmployee?.nik,
     entry.status,
+    entry.notesFromWh,
     entry.volumeCbm !== null && entry.volumeCbm !== undefined ? String(entry.volumeCbm) : "",
     String(entry.pickingQty ?? ""),
     String(entry.pickedQty ?? ""),
@@ -1121,6 +1122,40 @@ async function cancelPickingProgress(id, actorUserId, cancelReason) {
   return computeSlaFields(result);
 }
 
+async function updatePickingProgressWhNotes(id, notesFromWh, actorUserId) {
+  const entry = await prisma.pickingProgress.findUnique({ where: { id } });
+  if (!entry) {
+    throw createHttpError(404, "Data picking progress tidak ditemukan");
+  }
+  if (entry.status === "SELESAI" || entry.status === "BATAL") {
+    throw createHttpError(400, "Notes from WH tidak bisa diubah saat status SELESAI atau BATAL");
+  }
+
+  const normalizedNotes = typeof notesFromWh === "string" ? notesFromWh.trim() : "";
+  const result = await prisma.pickingProgress.update({
+    where: { id },
+    data: {
+      notesFromWh: normalizedNotes || null,
+      updatedById: actorUserId || null,
+      logs: {
+        create: {
+          action: "WH_NOTES",
+          note: normalizedNotes || null,
+          fromStatus: entry.status,
+          toStatus: entry.status,
+          userId: actorUserId || null,
+        },
+      },
+    },
+    include: {
+      customer: true,
+      pickerEmployee: true,
+    },
+  });
+
+  return computeSlaFields(result);
+}
+
 module.exports = {
   createPickingProgress,
   updatePickingProgress,
@@ -1134,4 +1169,5 @@ module.exports = {
   updatePickedQty,
   finishPickingProgress,
   cancelPickingProgress,
+  updatePickingProgressWhNotes,
 };

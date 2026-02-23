@@ -762,6 +762,11 @@ const closeDrawer = () => {
   selectedEntry.value = null
 }
 
+const handleWhNotesSaved = async (entryId: string) => {
+  await openDetailById(entryId)
+  await fetchList()
+}
+
 const paginationItems = computed(() => {
   const total = totalPages.value
   const current = page.value
@@ -1270,7 +1275,12 @@ onUnmounted(() => {
       @submit="handleEdit"
     />
 
-    <PickingDetailDrawer :open="drawerOpen" :entry="selectedEntry" @close="closeDrawer" />
+    <PickingDetailDrawer
+      :open="drawerOpen"
+      :entry="selectedEntry"
+      @close="closeDrawer"
+      @wh-notes-saved="handleWhNotesSaved"
+    />
 
     <div v-if="exportOpen" class="fixed inset-0 z-50">
       <div class="absolute inset-0 bg-black/40" @click="closeExport"></div>

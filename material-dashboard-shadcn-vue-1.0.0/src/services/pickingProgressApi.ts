@@ -18,7 +18,7 @@ export type PickingSortField =
 
 export type PickingLog = {
   id: string
-  action: 'CREATE' | 'UPDATE' | 'START' | 'UPDATE_PICKED_QTY' | 'FINISH' | 'CANCEL'
+  action: 'CREATE' | 'UPDATE' | 'START' | 'UPDATE_PICKED_QTY' | 'FINISH' | 'CANCEL' | 'WH_NOTES'
   note?: string | null
   fromStatus?: PickingStatus | null
   toStatus?: PickingStatus | null
@@ -49,6 +49,7 @@ export type PickingProgressEntry = {
   isOverSla: boolean
   isNearSla: boolean
   status: PickingStatus
+  notesFromWh?: string | null
   createdById?: string | null
   createdBy?: { id: string; name: string; username: string; role: string } | null
   updatedById?: string | null
@@ -133,6 +134,10 @@ export const finishPickingProgress = (id: string) => {
 
 export const cancelPickingProgress = (id: string, reason: string) => {
   return api.patch(`/picking-progress/${id}/cancel`, { reason })
+}
+
+export const updatePickingWhNotes = (id: string, notesFromWh: string) => {
+  return api.patch(`/picking-progress/${id}/wh-notes`, { notesFromWh })
 }
 
 export const exportPickingProgress = (params?: { dateFrom?: string; dateTo?: string }) => {

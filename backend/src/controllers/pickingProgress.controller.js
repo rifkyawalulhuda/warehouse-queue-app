@@ -175,6 +175,7 @@ async function exportPickingProgress(req, res, next) {
       { header: "Time Remaining", key: "timeRemaining", width: 18 },
       { header: "Status", key: "status", width: 14 },
       { header: "Keterangan Batal", key: "cancelReason", width: 30 },
+      { header: "Notes from WH", key: "notesFromWh", width: 30 },
       { header: "Start Time", key: "startTime", width: 20 },
       { header: "Finish Time", key: "finishTime", width: 20 },
     ];
@@ -197,6 +198,7 @@ async function exportPickingProgress(req, res, next) {
         timeRemaining: formatTimeRemaining(entry.timeRemainingSeconds, entry.status),
         status: entry.status || "-",
         cancelReason: entry.logs?.[0]?.note || "-",
+        notesFromWh: entry.notesFromWh || "-",
         startTime: formatDateTime(entry.startTime),
         finishTime: formatDateTime(entry.finishTime),
       });
@@ -395,6 +397,20 @@ async function cancelPickingProgress(req, res, next) {
   }
 }
 
+async function updatePickingWhNotes(req, res, next) {
+  try {
+    const actorUserId = await resolveActorUserId(req);
+    const entry = await pickingProgressService.updatePickingProgressWhNotes(
+      req.params.id,
+      req.body?.notesFromWh,
+      actorUserId
+    );
+    return sendSuccess(res, entry);
+  } catch (err) {
+    return next(err);
+  }
+}
+
 module.exports = {
   createPickingProgress,
   updatePickingProgress,
@@ -408,4 +424,5 @@ module.exports = {
   updatePickedQty,
   finishPickingProgress,
   cancelPickingProgress,
+  updatePickingWhNotes,
 };
