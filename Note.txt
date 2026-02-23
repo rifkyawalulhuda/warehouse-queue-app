@@ -14,6 +14,7 @@ git pull
 docker compose up -d (docker)
 npx prisma migrate dev (backend)
 npm run migrate:deploy (backend)
+npx prisma generate (backend)
 npm install (jika ada perubahan dependency) (Backend)
 npm run dev (front end)
 
