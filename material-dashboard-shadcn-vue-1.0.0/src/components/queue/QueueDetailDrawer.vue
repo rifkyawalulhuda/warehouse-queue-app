@@ -1,13 +1,14 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import QueueStatusBadge from './QueueStatusBadge.vue'
 import Button from '@/components/ui/Button.vue'
 import { useAuth } from '@/composables/useAuth'
 import { useTtsQueue } from '@/composables/useTtsQueue'
+import api from '@/services/api'
 
 type QueueLog = {
   id: string
-  type: 'CREATE' | 'UPDATE' | 'STATUS_CHANGE'
+  type: 'CREATE' | 'UPDATE' | 'STATUS_CHANGE' | 'WH_NOTES'
   fromStatus?: string | null
   toStatus?: string | null
   note?: string | null
@@ -32,6 +33,7 @@ type QueueEntry = {
   finishTime?: string | null
   status: 'MENUNGGU' | 'IN_WH' | 'PROSES' | 'SELESAI' | 'BATAL'
   notes?: string | null
+  notesFromWh?: string | null
   logs?: QueueLog[]
 }
 
@@ -42,10 +44,12 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   (e: 'close'): void
+  (e: 'wh-notes-saved', id: string): void
 }>()
 
 const { user } = useAuth()
 const isAdmin = computed(() => user.value?.role === 'ADMIN')
+const isWarehouse = computed(() => user.value?.role === 'WAREHOUSE')
 const soundEnabled = ref(true)
 const { enqueue, supported: ttsSupported } = useTtsQueue({
   enabled: soundEnabled,
@@ -157,6 +161,46 @@ const cancelReason = computed(() => {
     .find((log) => log.toStatus === 'BATAL' && typeof log.note === 'string' && log.note.trim().length > 0)
   return latestCancelLog?.note?.trim() || '-'
 })
+
+const whNotesInput = ref('')
+const whNotesSubmitting = ref(false)
+const whNotesError = ref('')
+const whNotesSuccess = ref('')
+
+watch(
+  () => [props.open, props.entry?.id],
+  () => {
+    whNotesInput.value = props.entry?.notesFromWh || ''
+    whNotesError.value = ''
+    whNotesSuccess.value = ''
+  },
+  { immediate: true }
+)
+
+watch(
+  () => props.entry?.notesFromWh,
+  () => {
+    whNotesInput.value = props.entry?.notesFromWh || ''
+  }
+)
+
+const saveWhNotes = async () => {
+  if (!props.entry) return
+  whNotesSubmitting.value = true
+  whNotesError.value = ''
+  whNotesSuccess.value = ''
+  try {
+    await api.patch(`/queue/${props.entry.id}/wh-notes`, {
+      notesFromWh: String(whNotesInput.value || ''),
+    })
+    whNotesSuccess.value = 'Notes from WH berhasil disimpan'
+    emit('wh-notes-saved', props.entry.id)
+  } catch (err: any) {
+    whNotesError.value = err?.response?.data?.message || err?.message || 'Gagal menyimpan Notes from WH'
+  } finally {
+    whNotesSubmitting.value = false
+  }
+}
 </script>
 
 <template>
@@ -250,6 +294,35 @@ const cancelReason = computed(() => {
           <div class="col-span-2">
             <p class="text-muted-foreground">Notes</p>
             <p class="font-medium">{{ entry?.notes || '-' }}</p>
+          </div>
+          <div class="col-span-2">
+            <p class="text-muted-foreground">Notes from WH :</p>
+            <div v-if="isWarehouse" class="mt-1 space-y-2">
+              <textarea
+                v-model="whNotesInput"
+                rows="3"
+                class="w-full rounded-md border bg-transparent px-2 py-2 text-sm"
+                placeholder="Input catatan dari warehouse..."
+              ></textarea>
+              <div class="flex items-center justify-end">
+                <Button size="sm" :disabled="whNotesSubmitting" @click="saveWhNotes">
+                  {{ whNotesSubmitting ? 'Menyimpan...' : 'Simpan Notes WH' }}
+                </Button>
+              </div>
+              <div
+                v-if="whNotesSuccess"
+                class="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700"
+              >
+                {{ whNotesSuccess }}
+              </div>
+              <div
+                v-if="whNotesError"
+                class="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700"
+              >
+                {{ whNotesError }}
+              </div>
+            </div>
+            <p v-else class="font-medium">{{ entry?.notesFromWh || '-' }}</p>
           </div>
           <div class="col-span-2">
             <p class="text-muted-foreground">Keterangan Batal</p>

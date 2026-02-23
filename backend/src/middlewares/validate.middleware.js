@@ -108,6 +108,14 @@ function validateSetInWh(req, res, next) {
   return next();
 }
 
+function validateQueueWhNotesUpdate(req, res, next) {
+  const { notesFromWh } = req.body || {};
+  if (notesFromWh !== undefined && typeof notesFromWh !== "string") {
+    return sendError(res, 400, "Validasi gagal", ["notesFromWh harus string"]);
+  }
+  return next();
+}
+
 function validateSchedulePayload(req, res, next) {
   const errors = [];
   const { scheduleDate, storeType, customerId, items } = req.body || {};
@@ -257,6 +265,7 @@ module.exports = {
   validateQueueUpdate,
   validateStatusChange,
   validateSetInWh,
+  validateQueueWhNotesUpdate,
   validateScheduleCreate: validateSchedulePayload,
   validateScheduleUpdate: validateSchedulePayload,
   validatePickingCreate,

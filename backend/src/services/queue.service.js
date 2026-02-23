@@ -196,6 +196,7 @@ async function createQueueEntry(data, actorUser) {
       containerNumber: data.containerNumber || null,
       registerTime: data.registerTime ? new Date(data.registerTime) : undefined,
       notes: data.notes || null,
+      notesFromWh: null,
       logs: {
         create: {
           type: "CREATE",
@@ -421,6 +422,34 @@ async function updateQueueEntry(id, data, actorUser) {
   });
 }
 
+async function updateQueueWhNotes(id, notesFromWh, actorUser) {
+  const entry = await prisma.queueEntry.findUnique({ where: { id } });
+  if (!entry) throw createHttpError(404, "Data tidak ditemukan");
+
+  const resolvedName = actorUser?.name || "system";
+  const actorUserId = actorUser?.id || null;
+  const normalizedNotes = typeof notesFromWh === "string" ? notesFromWh.trim() : "";
+
+  return prisma.queueEntry.update({
+    where: { id },
+    data: {
+      notesFromWh: normalizedNotes || null,
+      logs: {
+        create: {
+          type: "WH_NOTES",
+          userName: resolvedName,
+          actorUserId,
+          note: normalizedNotes || null,
+        },
+      },
+    },
+    include: {
+      customer: true,
+      gate: true,
+    },
+  });
+}
+
 function isNextStatus(current, next) {
   const idx = STATUS_FLOW.indexOf(current);
   const nextIdx = STATUS_FLOW.indexOf(next);
@@ -512,5 +541,6 @@ module.exports = {
   listQueueEntriesForDisplay,
   getQueueEntryById,
   updateQueueEntry,
+  updateQueueWhNotes,
   changeQueueStatus,
 };

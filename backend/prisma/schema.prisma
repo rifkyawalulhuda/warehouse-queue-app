@@ -76,6 +76,7 @@ model QueueEntry {
   finishTime      DateTime?
   status          QueueStatus   @default(MENUNGGU)
   notes           String?
+  notesFromWh     String?
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
   logs            QueueLog[]

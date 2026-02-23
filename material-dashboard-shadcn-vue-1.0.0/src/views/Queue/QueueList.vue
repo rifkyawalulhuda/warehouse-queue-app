@@ -15,7 +15,7 @@ import { useAuth } from '@/composables/useAuth'
 
 type QueueLog = {
   id: string
-  type: 'CREATE' | 'UPDATE' | 'STATUS_CHANGE'
+  type: 'CREATE' | 'UPDATE' | 'STATUS_CHANGE' | 'WH_NOTES'
   fromStatus?: string | null
   toStatus?: string | null
   note?: string | null
@@ -40,6 +40,7 @@ type QueueEntry = {
   finishTime?: string | null
   status: 'MENUNGGU' | 'IN_WH' | 'PROSES' | 'SELESAI' | 'BATAL'
   notes?: string | null
+  notesFromWh?: string | null
   logs?: QueueLog[]
 }
 
@@ -474,6 +475,11 @@ const closeDrawer = () => {
   selectedEntry.value = null
 }
 
+const handleWhNotesSaved = async (entryId: string) => {
+  await fetchDetail(entryId)
+  await fetchList()
+}
+
 const isQueueSortColumn = (column: string): column is QueueSortColumn => {
   return (
     column === 'registerTime' ||
@@ -774,7 +780,12 @@ watch(
       </CardContent>
     </Card>
 
-    <QueueDetailDrawer :open="drawerOpen" :entry="selectedEntry" @close="closeDrawer" />
+    <QueueDetailDrawer
+      :open="drawerOpen"
+      :entry="selectedEntry"
+      @close="closeDrawer"
+      @wh-notes-saved="handleWhNotesSaved"
+    />
     <QueueCreateModal
       v-if="canCreateTransaction"
       :open="createOpen"

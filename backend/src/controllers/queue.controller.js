@@ -86,6 +86,20 @@ async function updateQueue(req, res, next) {
   }
 }
 
+async function updateQueueWhNotes(req, res, next) {
+  try {
+    const actorUser = req.user?.sub ? await adminUserService.getAdminUserById(req.user.sub) : null;
+    const entry = await queueService.updateQueueWhNotes(
+      req.params.id,
+      req.body?.notesFromWh,
+      actorUser
+    );
+    return sendSuccess(res, entry);
+  } catch (err) {
+    return next(err);
+  }
+}
+
 async function updateQueueStatus(req, res, next) {
   try {
     const actorUser = req.user?.sub ? await adminUserService.getAdminUserById(req.user.sub) : null;
@@ -132,6 +146,7 @@ async function exportQueue(req, res, next) {
       { header: "No Truck", key: "truckNumber", width: 16 },
       { header: "No Container", key: "containerNumber", width: 18 },
       { header: "Notes", key: "notes", width: 24 },
+      { header: "Notes from WH", key: "notesFromWh", width: 30 },
       { header: "Gate No", key: "gateNo", width: 12 },
       { header: "Gate Area", key: "gateArea", width: 20 },
       { header: "Gate Warehouse", key: "gateWarehouse", width: 18 },
@@ -156,6 +171,7 @@ async function exportQueue(req, res, next) {
         truckNumber: entry.truckNumber || "-",
         containerNumber: entry.containerNumber || "-",
         notes: entry.notes || "-",
+        notesFromWh: entry.notesFromWh || "-",
         gateNo: entry.gate?.gateNo || "-",
         gateArea: entry.gate?.area || "-",
         gateWarehouse: entry.gate?.warehouse || "-",
@@ -199,6 +215,7 @@ module.exports = {
   listQueue,
   getQueueById,
   updateQueue,
+  updateQueueWhNotes,
   updateQueueStatus,
   setInWh,
   exportQueue,
