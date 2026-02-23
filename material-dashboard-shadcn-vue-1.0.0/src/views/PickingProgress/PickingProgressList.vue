@@ -5,6 +5,7 @@ import Card from '@/components/ui/Card.vue'
 import CardHeader from '@/components/ui/CardHeader.vue'
 import CardContent from '@/components/ui/CardContent.vue'
 import Button from '@/components/ui/Button.vue'
+import Combobox from '@/components/ui/Combobox.vue'
 import PickingCreateModal from '@/components/picking/PickingCreateModal.vue'
 import PickingEditModal from '@/components/picking/PickingEditModal.vue'
 import PickingDetailDrawer from '@/components/picking/PickingDetailDrawer.vue'
@@ -80,8 +81,6 @@ const cancelReasonError = ref('')
 const startConfirmOpen = ref(false)
 const pendingStartEntry = ref<PickingProgressEntry | null>(null)
 const selectedPickerEmployeeId = ref('')
-const startEmployeeSearch = ref('')
-const startEmployeeOpen = ref(false)
 const pickedQtyModalOpen = ref(false)
 const pendingPickedQtyEntry = ref<PickingProgressEntry | null>(null)
 const pickedQtyInput = ref<string | number>('')
@@ -118,6 +117,14 @@ const filters = reactive({
   status: 'ALL',
   search: parseSearchQuery(route.query.search),
 })
+
+const statusOptions = [
+  { value: 'ALL', label: 'Semua' },
+  { value: 'MENUNGGU', label: 'MENUNGGU' },
+  { value: 'ON_PROCESS', label: 'ON_PROCESS' },
+  { value: 'SELESAI', label: 'SELESAI' },
+  { value: 'BATAL', label: 'BATAL' },
+]
 
 const SORTABLE_COLUMNS: PickingSortField[] = [
   'createdAt',
@@ -600,8 +607,6 @@ const refreshDetailIfOpen = async (id: string) => {
 const requestStart = (entry: PickingProgressEntry) => {
   pendingStartEntry.value = entry
   selectedPickerEmployeeId.value = ''
-  startEmployeeSearch.value = ''
-  startEmployeeOpen.value = false
   startConfirmOpen.value = true
 }
 
@@ -630,8 +635,6 @@ const closeStartConfirm = () => {
   startConfirmOpen.value = false
   pendingStartEntry.value = null
   selectedPickerEmployeeId.value = ''
-  startEmployeeSearch.value = ''
-  startEmployeeOpen.value = false
 }
 
 const submitPickedQty = async () => {
@@ -775,51 +778,18 @@ const paginationItems = computed(() => {
   return items
 })
 
-const selectedPickerEmployee = computed(() => {
-  return employees.value.find((employee) => employee.id === selectedPickerEmployeeId.value) || null
-})
-
-const filteredStartEmployees = computed(() => {
-  const keyword = String(startEmployeeSearch.value || '').trim().toLowerCase()
-  let results = employees.value
-
-  if (keyword) {
-    results = employees.value.filter((employee) => {
-      const name = String(employee.name || '').toLowerCase()
-      const nik = String(employee.nik || '').toLowerCase()
-      return name.includes(keyword) || nik.includes(keyword)
-    })
-  }
-
-  if (selectedPickerEmployee.value && !results.some((item) => item.id === selectedPickerEmployee.value?.id)) {
-    return [selectedPickerEmployee.value, ...results]
-  }
-
-  return results
-})
-
 const formatEmployeeLabel = (employee?: Employee | null) => {
   if (!employee) return ''
   const nik = String(employee.nik || '').trim()
   return nik ? `${employee.name} (${nik})` : employee.name
 }
 
-const selectStartEmployee = (employee: Employee) => {
-  selectedPickerEmployeeId.value = employee.id
-  startEmployeeSearch.value = formatEmployeeLabel(employee)
-  startEmployeeOpen.value = false
-}
-
-const onStartEmployeeInput = () => {
-  selectedPickerEmployeeId.value = ''
-  startEmployeeOpen.value = true
-}
-
-const handleStartEmployeeBlur = () => {
-  window.setTimeout(() => {
-    startEmployeeOpen.value = false
-  }, 120)
-}
+const startEmployeeOptions = computed(() =>
+  employees.value.map((employee) => ({
+    value: employee.id,
+    label: formatEmployeeLabel(employee),
+  }))
+)
 
 const toggleSort = (column: PickingSortField) => {
   if (!isPickingSortField(column)) return
@@ -1191,13 +1161,13 @@ onUnmounted(() => {
             />
           </div>
           <div>
-            <select v-model="filters.status" class="w-full bg-transparent border rounded-md px-2 py-2 text-sm">
-              <option value="ALL">Semua</option>
-              <option value="MENUNGGU">MENUNGGU</option>
-              <option value="ON_PROCESS">ON_PROCESS</option>
-              <option value="SELESAI">SELESAI</option>
-              <option value="BATAL">BATAL</option>
-            </select>
+            <Combobox
+              v-model="filters.status"
+              :options="statusOptions"
+              placeholder="Pilih status..."
+              search-placeholder="Cari status..."
+              empty-text="Status tidak ditemukan"
+            />
           </div>
           <div>
             <div class="grid grid-cols-2 gap-2">
@@ -1412,33 +1382,14 @@ onUnmounted(() => {
           </p>
           <div>
             <label class="text-sm text-muted-foreground">Nama Karyawan</label>
-            <div class="relative mt-1">
-              <input
-                v-model="startEmployeeSearch"
-                type="text"
-                placeholder="Cari / pilih karyawan..."
-                class="w-full bg-transparent border rounded-md px-2 py-2 text-sm"
-                @focus="startEmployeeOpen = true"
-                @blur="handleStartEmployeeBlur"
-                @input="onStartEmployeeInput"
+            <div class="mt-1">
+              <Combobox
+                v-model="selectedPickerEmployeeId"
+                :options="startEmployeeOptions"
+                placeholder="Pilih karyawan..."
+                search-placeholder="Cari nama / NIK..."
+                empty-text="Karyawan tidak ditemukan"
               />
-              <div
-                v-if="startEmployeeOpen"
-                class="absolute z-50 mt-1 w-full max-h-56 overflow-auto rounded-md border bg-card shadow-lg"
-              >
-                <button
-                  v-for="employee in filteredStartEmployees"
-                  :key="employee.id"
-                  type="button"
-                  class="w-full px-3 py-2 text-left text-sm hover:bg-accent"
-                  @click="selectStartEmployee(employee)"
-                >
-                  {{ formatEmployeeLabel(employee) }}
-                </button>
-                <div v-if="filteredStartEmployees.length === 0" class="px-3 py-2 text-sm text-muted-foreground">
-                  Karyawan tidak ditemukan
-                </div>
-              </div>
             </div>
           </div>
         </div>

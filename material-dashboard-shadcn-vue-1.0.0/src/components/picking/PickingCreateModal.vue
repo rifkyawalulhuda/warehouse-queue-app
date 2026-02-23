@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { computed, reactive, ref, watch } from 'vue'
+import { computed, reactive, watch } from 'vue'
 import Button from '@/components/ui/Button.vue'
+import Combobox from '@/components/ui/Combobox.vue'
 
 type FormState = {
   date: string
@@ -50,9 +51,6 @@ const form = reactive<FormState>({
   pickingQty: 1,
 })
 
-const customerQuery = ref('')
-const customerOpen = ref(false)
-
 const errors = reactive({
   date: '',
   customerId: '',
@@ -63,6 +61,13 @@ const errors = reactive({
   pickingQty: '',
 })
 
+const customerOptions = computed(() =>
+  props.customers.map((customer) => ({
+    value: customer.id,
+    label: customer.name,
+  }))
+)
+
 const resetForm = () => {
   form.date = todayString()
   form.customerId = ''
@@ -71,8 +76,6 @@ const resetForm = () => {
   form.volumeCbm = 0
   form.plTimeRelease = currentDateTimeLocal()
   form.pickingQty = 1
-  customerQuery.value = ''
-  customerOpen.value = false
   errors.date = ''
   errors.customerId = ''
   errors.doNumber = ''
@@ -80,25 +83,6 @@ const resetForm = () => {
   errors.volumeCbm = ''
   errors.plTimeRelease = ''
   errors.pickingQty = ''
-}
-
-const filteredCustomers = computed(() => {
-  const q = customerQuery.value.trim().toLowerCase()
-  if (!q) return props.customers
-  return props.customers.filter((customer) => customer.name.toLowerCase().includes(q))
-})
-
-const selectCustomer = (id: string) => {
-  form.customerId = id
-  const selected = props.customers.find((customer) => customer.id === id)
-  customerQuery.value = selected ? selected.name : ''
-  customerOpen.value = false
-}
-
-const handleCustomerBlur = () => {
-  window.setTimeout(() => {
-    customerOpen.value = false
-  }, 120)
 }
 
 const validate = () => {
@@ -180,33 +164,14 @@ watch(
 
         <div>
           <label class="text-muted-foreground">Customer Name</label>
-          <div class="relative mt-1">
-            <input
-              v-model="customerQuery"
-              type="text"
-              placeholder="Cari customer..."
-              class="w-full bg-transparent border rounded-md px-2 py-2 text-sm"
-              @focus="customerOpen = true"
-              @blur="handleCustomerBlur"
-              @input="customerOpen = true"
+          <div class="mt-1">
+            <Combobox
+              v-model="form.customerId"
+              :options="customerOptions"
+              placeholder="Pilih customer..."
+              search-placeholder="Cari customer..."
+              empty-text="Tidak ada customer"
             />
-            <div
-              v-if="customerOpen"
-              class="absolute z-50 mt-1 w-full max-h-56 overflow-auto rounded-md border bg-card shadow-lg"
-            >
-              <button
-                v-for="customer in filteredCustomers"
-                :key="customer.id"
-                type="button"
-                class="w-full px-3 py-2 text-left text-sm hover:bg-accent"
-                @click="selectCustomer(customer.id)"
-              >
-                {{ customer.name }}
-              </button>
-              <div v-if="filteredCustomers.length === 0" class="px-3 py-2 text-sm text-muted-foreground">
-                Tidak ada customer
-              </div>
-            </div>
           </div>
           <p v-if="errors.customerId" class="mt-1 text-xs text-red-600">{{ errors.customerId }}</p>
         </div>
