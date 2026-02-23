@@ -103,7 +103,7 @@ const formatCategoryLabel = (category?: string | null) => {
 
 const getCategoryBadgeClass = (category?: string | null) => {
   if (category === 'RECEIVING') return 'bg-blue-100 text-blue-700'
-  if (category === 'DELIVERY') return 'bg-purple-100 text-purple-700'
+  if (category === 'DELIVERY') return 'bg-green-100 text-green-700'
   return 'bg-muted text-muted-foreground'
 }
 

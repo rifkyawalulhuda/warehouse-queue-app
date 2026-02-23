@@ -106,7 +106,7 @@ const categoryLabel = (category?: DisplayEntry['category']) => {
 
 const categoryBadgeClass = (category?: DisplayEntry['category']) => {
   if (category === 'RECEIVING') return 'bg-blue-200 text-blue-900'
-  if (category === 'DELIVERY') return 'bg-purple-200 text-purple-900'
+  if (category === 'DELIVERY') return 'bg-green-200 text-green-900'
   return 'bg-slate-200 text-slate-700'
 }
 
