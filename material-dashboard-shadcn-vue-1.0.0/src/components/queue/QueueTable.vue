@@ -121,8 +121,8 @@ const prioritizedEntries = computed(() => {
 })
 
 const sortIndicator = (column: string) => {
-  if (props.sortBy !== column) return ''
-  return props.sortDir === 'asc' ? '^' : 'v'
+  if (props.sortBy !== column) return '↕'
+  return props.sortDir === 'asc' ? '↑' : '↓'
 }
 </script>
 
@@ -132,61 +132,97 @@ const sortIndicator = (column: string) => {
       <thead class="bg-muted/60 text-muted-foreground">
         <tr>
           <th class="px-3 py-2 text-left font-medium">No</th>
-          <th
-            class="px-3 py-2 text-left font-medium cursor-pointer select-none"
-            @click="emit('toggle-sort', 'customerName')"
-          >
-            Customer Name <span class="ml-1 text-xs">{{ sortIndicator('customerName') }}</span>
+          <th class="px-3 py-2 text-left font-medium">
+            <button
+              type="button"
+              class="inline-flex items-center gap-1 hover:text-foreground"
+              @click="emit('toggle-sort', 'customerName')"
+            >
+              Customer Name
+              <span class="text-xs">{{ sortIndicator('customerName') }}</span>
+            </button>
           </th>
-          <th
-            class="px-3 py-2 text-left font-medium cursor-pointer select-none"
-            @click="emit('toggle-sort', 'driverName')"
-          >
-            Driver Name <span class="ml-1 text-xs">{{ sortIndicator('driverName') }}</span>
+          <th class="px-3 py-2 text-left font-medium">
+            <button
+              type="button"
+              class="inline-flex items-center gap-1 hover:text-foreground"
+              @click="emit('toggle-sort', 'driverName')"
+            >
+              Driver Name
+              <span class="text-xs">{{ sortIndicator('driverName') }}</span>
+            </button>
           </th>
-          <th
-            class="px-3 py-2 text-left font-medium cursor-pointer select-none"
-            @click="emit('toggle-sort', 'truckNumber')"
-          >
-            No Truck <span class="ml-1 text-xs">{{ sortIndicator('truckNumber') }}</span>
+          <th class="px-3 py-2 text-left font-medium">
+            <button
+              type="button"
+              class="inline-flex items-center gap-1 hover:text-foreground"
+              @click="emit('toggle-sort', 'truckNumber')"
+            >
+              No Truck
+              <span class="text-xs">{{ sortIndicator('truckNumber') }}</span>
+            </button>
           </th>
           <th class="px-3 py-2 text-left font-medium">No Container</th>
-          <th
-            class="px-3 py-2 text-left font-medium cursor-pointer select-none"
-            @click="emit('toggle-sort', 'gateNo')"
-          >
-            Gate No <span class="ml-1 text-xs">{{ sortIndicator('gateNo') }}</span>
+          <th class="px-3 py-2 text-left font-medium">
+            <button
+              type="button"
+              class="inline-flex items-center gap-1 hover:text-foreground"
+              @click="emit('toggle-sort', 'gateNo')"
+            >
+              Gate No
+              <span class="text-xs">{{ sortIndicator('gateNo') }}</span>
+            </button>
           </th>
-          <th
-            class="px-3 py-2 text-left font-medium cursor-pointer select-none"
-            @click="emit('toggle-sort', 'registerTime')"
-          >
-            Register Time <span class="ml-1 text-xs">{{ sortIndicator('registerTime') }}</span>
+          <th class="px-3 py-2 text-left font-medium">
+            <button
+              type="button"
+              class="inline-flex items-center gap-1 hover:text-foreground"
+              @click="emit('toggle-sort', 'registerTime')"
+            >
+              Register Time
+              <span class="text-xs">{{ sortIndicator('registerTime') }}</span>
+            </button>
           </th>
-          <th
-            class="px-3 py-2 text-left font-medium cursor-pointer select-none"
-            @click="emit('toggle-sort', 'inWhTime')"
-          >
-            In WH - Time <span class="ml-1 text-xs">{{ sortIndicator('inWhTime') }}</span>
+          <th class="px-3 py-2 text-left font-medium">
+            <button
+              type="button"
+              class="inline-flex items-center gap-1 hover:text-foreground"
+              @click="emit('toggle-sort', 'inWhTime')"
+            >
+              In WH - Time
+              <span class="text-xs">{{ sortIndicator('inWhTime') }}</span>
+            </button>
           </th>
-          <th
-            class="px-3 py-2 text-left font-medium cursor-pointer select-none"
-            @click="emit('toggle-sort', 'startTime')"
-          >
-            Start <span class="ml-1 text-xs">{{ sortIndicator('startTime') }}</span>
+          <th class="px-3 py-2 text-left font-medium">
+            <button
+              type="button"
+              class="inline-flex items-center gap-1 hover:text-foreground"
+              @click="emit('toggle-sort', 'startTime')"
+            >
+              Start
+              <span class="text-xs">{{ sortIndicator('startTime') }}</span>
+            </button>
           </th>
-          <th
-            class="px-3 py-2 text-left font-medium cursor-pointer select-none"
-            @click="emit('toggle-sort', 'finishTime')"
-          >
-            Finish <span class="ml-1 text-xs">{{ sortIndicator('finishTime') }}</span>
+          <th class="px-3 py-2 text-left font-medium">
+            <button
+              type="button"
+              class="inline-flex items-center gap-1 hover:text-foreground"
+              @click="emit('toggle-sort', 'finishTime')"
+            >
+              Finish
+              <span class="text-xs">{{ sortIndicator('finishTime') }}</span>
+            </button>
           </th>
           <th class="px-3 py-2 text-left font-medium">Time Remaining</th>
-          <th
-            class="px-3 py-2 text-left font-medium cursor-pointer select-none"
-            @click="emit('toggle-sort', 'status')"
-          >
-            Status <span class="ml-1 text-xs">{{ sortIndicator('status') }}</span>
+          <th class="px-3 py-2 text-left font-medium">
+            <button
+              type="button"
+              class="inline-flex items-center gap-1 hover:text-foreground"
+              @click="emit('toggle-sort', 'status')"
+            >
+              Status
+              <span class="text-xs">{{ sortIndicator('status') }}</span>
+            </button>
           </th>
           <th class="px-3 py-2 text-left font-medium">Aksi</th>
         </tr>
