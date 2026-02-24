@@ -5,6 +5,7 @@ import Card from '@/components/ui/Card.vue'
 import CardHeader from '@/components/ui/CardHeader.vue'
 import CardContent from '@/components/ui/CardContent.vue'
 import Button from '@/components/ui/Button.vue'
+import Input from '@/components/ui/Input.vue'
 import QueueTable from '@/components/queue/QueueTable.vue'
 import QueueDetailDrawer from '@/components/queue/QueueDetailDrawer.vue'
 import QueueCreateModal from '@/components/queue/QueueCreateModal.vue'
@@ -747,13 +748,13 @@ watch(
     <Card>
       <CardHeader>
         <div class="grid gap-3 md:grid-cols-5">
-          <div class="flex items-center gap-2">
-            <Search class="h-4 w-4 text-muted-foreground" />
-            <input
+          <div class="relative">
+            <Search class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
               v-model="filters.search"
               type="text"
               placeholder="Search customer/driver/truck/container"
-              class="flex-1 bg-transparent border-none outline-none text-sm"
+              class="pl-9"
             />
           </div>
           <div>
