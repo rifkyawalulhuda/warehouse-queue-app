@@ -10,7 +10,7 @@ import QueueTable from '@/components/queue/QueueTable.vue'
 import QueueDetailDrawer from '@/components/queue/QueueDetailDrawer.vue'
 import QueueCreateModal from '@/components/queue/QueueCreateModal.vue'
 import QueueEditModal from '@/components/queue/QueueEditModal.vue'
-import { RefreshCw, Search, ChevronDown } from 'lucide-vue-next'
+import { RefreshCw, Search, ChevronDown, CalendarDays } from 'lucide-vue-next'
 import api from '@/services/api'
 import { getMasterGates, setInWh, type MasterGate } from '@/services/queueApi'
 import { useAuth } from '@/composables/useAuth'
@@ -94,6 +94,10 @@ const exportForm = reactive({
   dateFrom: '',
   dateTo: ''
 })
+const filterDateFromInputRef = ref<HTMLInputElement | null>(null)
+const filterDateToInputRef = ref<HTMLInputElement | null>(null)
+const exportDateFromInputRef = ref<HTMLInputElement | null>(null)
+const exportDateToInputRef = ref<HTMLInputElement | null>(null)
 
 const getErrorMessage = (err: any, fallback: string) => {
   return err?.response?.data?.message || err?.message || fallback
@@ -639,6 +643,17 @@ const closeExport = () => {
   exportError.value = null
 }
 
+const openDatePicker = (input: HTMLInputElement | null) => {
+  if (!input) return
+  const pickerInput = input as HTMLInputElement & { showPicker?: () => void }
+  if (typeof pickerInput.showPicker === 'function') {
+    pickerInput.showPicker()
+  } else {
+    input.focus()
+    input.click()
+  }
+}
+
 let searchTimer: number | undefined
 
 watch(
@@ -771,19 +786,39 @@ watch(
               </option>
             </select>
           </div>
-          <div>
+          <div class="relative">
             <input
+              ref="filterDateFromInputRef"
               v-model="filters.dateFrom"
               type="date"
-              class="w-full bg-transparent border rounded-md px-2 py-2 text-sm"
+              class="w-full appearance-none bg-transparent border rounded-md px-2 py-2 pr-10 text-sm"
+              @click="openDatePicker(filterDateFromInputRef)"
             />
+            <button
+              type="button"
+              class="absolute inset-y-0 right-0 inline-flex items-center px-3 text-muted-foreground hover:text-foreground"
+              aria-label="Pilih tanggal dari"
+              @click="openDatePicker(filterDateFromInputRef)"
+            >
+              <CalendarDays class="h-4 w-4" />
+            </button>
           </div>
-          <div>
+          <div class="relative">
             <input
+              ref="filterDateToInputRef"
               v-model="filters.dateTo"
               type="date"
-              class="w-full bg-transparent border rounded-md px-2 py-2 text-sm"
+              class="w-full appearance-none bg-transparent border rounded-md px-2 py-2 pr-10 text-sm"
+              @click="openDatePicker(filterDateToInputRef)"
             />
+            <button
+              type="button"
+              class="absolute inset-y-0 right-0 inline-flex items-center px-3 text-muted-foreground hover:text-foreground"
+              aria-label="Pilih tanggal sampai"
+              @click="openDatePicker(filterDateToInputRef)"
+            >
+              <CalendarDays class="h-4 w-4" />
+            </button>
           </div>
         </div>
       </CardHeader>
@@ -983,11 +1018,43 @@ watch(
         <div class="p-4 space-y-3 text-sm">
           <div>
             <label class="text-sm text-muted-foreground">Tanggal Dari</label>
-            <input v-model="exportForm.dateFrom" type="date" class="mt-1 w-full bg-transparent border rounded-md px-2 py-2 text-sm" />
+            <div class="relative mt-1">
+              <input
+                ref="exportDateFromInputRef"
+                v-model="exportForm.dateFrom"
+                type="date"
+                class="w-full appearance-none bg-transparent border rounded-md px-2 py-2 pr-10 text-sm"
+                @click="openDatePicker(exportDateFromInputRef)"
+              />
+              <button
+                type="button"
+                class="absolute inset-y-0 right-0 inline-flex items-center px-3 text-muted-foreground hover:text-foreground"
+                aria-label="Pilih tanggal export dari"
+                @click="openDatePicker(exportDateFromInputRef)"
+              >
+                <CalendarDays class="h-4 w-4" />
+              </button>
+            </div>
           </div>
           <div>
             <label class="text-sm text-muted-foreground">Tanggal Sampai</label>
-            <input v-model="exportForm.dateTo" type="date" class="mt-1 w-full bg-transparent border rounded-md px-2 py-2 text-sm" />
+            <div class="relative mt-1">
+              <input
+                ref="exportDateToInputRef"
+                v-model="exportForm.dateTo"
+                type="date"
+                class="w-full appearance-none bg-transparent border rounded-md px-2 py-2 pr-10 text-sm"
+                @click="openDatePicker(exportDateToInputRef)"
+              />
+              <button
+                type="button"
+                class="absolute inset-y-0 right-0 inline-flex items-center px-3 text-muted-foreground hover:text-foreground"
+                aria-label="Pilih tanggal export sampai"
+                @click="openDatePicker(exportDateToInputRef)"
+              >
+                <CalendarDays class="h-4 w-4" />
+              </button>
+            </div>
           </div>
           <p class="text-xs text-muted-foreground">Kosongkan tanggal untuk export semua data.</p>
           <p v-if="exportError" class="text-xs text-red-600">{{ exportError }}</p>

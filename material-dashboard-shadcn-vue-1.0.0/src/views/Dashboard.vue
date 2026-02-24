@@ -12,6 +12,7 @@ import MonthlyTruckCategoryStackedBar from '@/components/dashboard/MonthlyTruckC
 import StatusPieChart from '@/components/dashboard/StatusPieChart.vue'
 import TopCustomerDurationTable from '@/components/dashboard/TopCustomerDurationTable.vue'
 import OverSlaTable from '@/components/dashboard/OverSlaTable.vue'
+import { CalendarDays } from 'lucide-vue-next'
 import {
   getDashboardHourly,
   getDashboardMonthlyReport,
@@ -220,6 +221,8 @@ const monthlyReportOpen = ref(false)
 const monthlyReportMonth = ref(getCurrentMonth())
 const monthlyReportPrinting = ref(false)
 const monthlyReportError = ref<string | null>(null)
+const selectedDateInputRef = ref<HTMLInputElement | null>(null)
+const monthlyReportMonthInputRef = ref<HTMLInputElement | null>(null)
 
 const isToday = computed(() => selectedDate.value === today.value)
 const hasProgressTarget = computed(() => progressSummary.targetPengiriman > 0)
@@ -309,6 +312,17 @@ const closeMonthlyReportDialog = () => {
   if (monthlyReportPrinting.value) return
   monthlyReportOpen.value = false
   monthlyReportError.value = null
+}
+
+const openDatePicker = (input: HTMLInputElement | null) => {
+  if (!input) return
+  const pickerInput = input as HTMLInputElement & { showPicker?: () => void }
+  if (typeof pickerInput.showPicker === 'function') {
+    pickerInput.showPicker()
+  } else {
+    input.focus()
+    input.click()
+  }
 }
 
 const buildMonthlyReportHtml = (report: MonthlyReportPayload) => {
@@ -901,11 +915,23 @@ onUnmounted(() => {
         <p class="dashboard-print-date">Tanggal: {{ formatPrintDate(selectedDate) }}</p>
       </div>
       <div class="dashboard-actions flex flex-wrap items-center gap-2">
-        <input
-          v-model="selectedDate"
-          type="date"
-          class="bg-transparent border rounded-md px-2 py-2 text-sm"
-        />
+        <div class="relative">
+          <input
+            ref="selectedDateInputRef"
+            v-model="selectedDate"
+            type="date"
+            class="w-full appearance-none bg-transparent border rounded-md px-2 py-2 pr-10 text-sm"
+            @click="openDatePicker(selectedDateInputRef)"
+          />
+          <button
+            type="button"
+            class="absolute inset-y-0 right-0 inline-flex items-center px-3 text-muted-foreground hover:text-foreground"
+            aria-label="Pilih tanggal dashboard"
+            @click="openDatePicker(selectedDateInputRef)"
+          >
+            <CalendarDays class="h-4 w-4" />
+          </button>
+        </div>
         <Button
           size="sm"
           variant="outline"
@@ -1255,11 +1281,23 @@ onUnmounted(() => {
         <div class="p-4 space-y-3 text-sm">
           <div>
             <label class="text-sm text-muted-foreground">Bulan Laporan</label>
-            <input
-              v-model="monthlyReportMonth"
-              type="month"
-              class="mt-1 w-full bg-transparent border rounded-md px-2 py-2 text-sm"
-            />
+            <div class="relative mt-1">
+              <input
+                ref="monthlyReportMonthInputRef"
+                v-model="monthlyReportMonth"
+                type="month"
+                class="w-full appearance-none bg-transparent border rounded-md px-2 py-2 pr-10 text-sm"
+                @click="openDatePicker(monthlyReportMonthInputRef)"
+              />
+              <button
+                type="button"
+                class="absolute inset-y-0 right-0 inline-flex items-center px-3 text-muted-foreground hover:text-foreground"
+                aria-label="Pilih bulan laporan"
+                @click="openDatePicker(monthlyReportMonthInputRef)"
+              >
+                <CalendarDays class="h-4 w-4" />
+              </button>
+            </div>
           </div>
           <p v-if="monthlyReportError" class="text-xs text-red-600">{{ monthlyReportError }}</p>
         </div>

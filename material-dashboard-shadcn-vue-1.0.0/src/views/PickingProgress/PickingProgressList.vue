@@ -11,7 +11,7 @@ import PickingCreateModal from '@/components/picking/PickingCreateModal.vue'
 import PickingEditModal from '@/components/picking/PickingEditModal.vue'
 import PickingDetailDrawer from '@/components/picking/PickingDetailDrawer.vue'
 import PickingTable from '@/components/picking/PickingTable.vue'
-import { RefreshCw, Search } from 'lucide-vue-next'
+import { RefreshCw, Search, CalendarDays } from 'lucide-vue-next'
 import api from '@/services/api'
 import { useAuth } from '@/composables/useAuth'
 import { listEmployees, type Employee } from '@/services/employeeApi'
@@ -67,6 +67,10 @@ const printError = ref<string | null>(null)
 const importing = ref(false)
 const importFile = ref<File | null>(null)
 const importFileInput = ref<HTMLInputElement | null>(null)
+const filterDateFromInputRef = ref<HTMLInputElement | null>(null)
+const filterDateToInputRef = ref<HTMLInputElement | null>(null)
+const exportDateFromInputRef = ref<HTMLInputElement | null>(null)
+const exportDateToInputRef = ref<HTMLInputElement | null>(null)
 
 const page = ref(1)
 const limit = ref(15)
@@ -827,6 +831,17 @@ const closeExport = () => {
   exportError.value = null
 }
 
+const openDatePicker = (input: HTMLInputElement | null) => {
+  if (!input) return
+  const pickerInput = input as HTMLInputElement & { showPicker?: () => void }
+  if (typeof pickerInput.showPicker === 'function') {
+    pickerInput.showPicker()
+  } else {
+    input.focus()
+    input.click()
+  }
+}
+
 const handleExportDownload = async () => {
   exportError.value = null
   const hasFrom = Boolean(exportForm.dateFrom)
@@ -1177,18 +1192,42 @@ onUnmounted(() => {
           </div>
           <div>
             <div class="grid grid-cols-2 gap-2">
-              <input
-                v-model="filters.dateFrom"
-                type="date"
-                class="w-full bg-transparent border rounded-md px-2 py-2 text-sm"
-                title="Tanggal mulai"
-              />
-              <input
-                v-model="filters.dateTo"
-                type="date"
-                class="w-full bg-transparent border rounded-md px-2 py-2 text-sm"
-                title="Tanggal akhir"
-              />
+              <div class="relative">
+                <input
+                  ref="filterDateFromInputRef"
+                  v-model="filters.dateFrom"
+                  type="date"
+                  class="w-full appearance-none bg-transparent border rounded-md px-2 py-2 pr-10 text-sm"
+                  title="Tanggal mulai"
+                  @click="openDatePicker(filterDateFromInputRef)"
+                />
+                <button
+                  type="button"
+                  class="absolute inset-y-0 right-0 inline-flex items-center px-3 text-muted-foreground hover:text-foreground"
+                  aria-label="Pilih tanggal mulai"
+                  @click="openDatePicker(filterDateFromInputRef)"
+                >
+                  <CalendarDays class="h-4 w-4" />
+                </button>
+              </div>
+              <div class="relative">
+                <input
+                  ref="filterDateToInputRef"
+                  v-model="filters.dateTo"
+                  type="date"
+                  class="w-full appearance-none bg-transparent border rounded-md px-2 py-2 pr-10 text-sm"
+                  title="Tanggal akhir"
+                  @click="openDatePicker(filterDateToInputRef)"
+                />
+                <button
+                  type="button"
+                  class="absolute inset-y-0 right-0 inline-flex items-center px-3 text-muted-foreground hover:text-foreground"
+                  aria-label="Pilih tanggal akhir"
+                  @click="openDatePicker(filterDateToInputRef)"
+                >
+                  <CalendarDays class="h-4 w-4" />
+                </button>
+              </div>
             </div>
           </div>
           <div class="text-xs text-muted-foreground flex items-center">
@@ -1292,11 +1331,43 @@ onUnmounted(() => {
         <div class="p-4 space-y-3 text-sm">
           <div>
             <label class="text-sm text-muted-foreground">Tanggal Dari</label>
-            <input v-model="exportForm.dateFrom" type="date" class="mt-1 w-full bg-transparent border rounded-md px-2 py-2 text-sm" />
+            <div class="relative mt-1">
+              <input
+                ref="exportDateFromInputRef"
+                v-model="exportForm.dateFrom"
+                type="date"
+                class="w-full appearance-none bg-transparent border rounded-md px-2 py-2 pr-10 text-sm"
+                @click="openDatePicker(exportDateFromInputRef)"
+              />
+              <button
+                type="button"
+                class="absolute inset-y-0 right-0 inline-flex items-center px-3 text-muted-foreground hover:text-foreground"
+                aria-label="Pilih tanggal export dari"
+                @click="openDatePicker(exportDateFromInputRef)"
+              >
+                <CalendarDays class="h-4 w-4" />
+              </button>
+            </div>
           </div>
           <div>
             <label class="text-sm text-muted-foreground">Tanggal Sampai</label>
-            <input v-model="exportForm.dateTo" type="date" class="mt-1 w-full bg-transparent border rounded-md px-2 py-2 text-sm" />
+            <div class="relative mt-1">
+              <input
+                ref="exportDateToInputRef"
+                v-model="exportForm.dateTo"
+                type="date"
+                class="w-full appearance-none bg-transparent border rounded-md px-2 py-2 pr-10 text-sm"
+                @click="openDatePicker(exportDateToInputRef)"
+              />
+              <button
+                type="button"
+                class="absolute inset-y-0 right-0 inline-flex items-center px-3 text-muted-foreground hover:text-foreground"
+                aria-label="Pilih tanggal export sampai"
+                @click="openDatePicker(exportDateToInputRef)"
+              >
+                <CalendarDays class="h-4 w-4" />
+              </button>
+            </div>
           </div>
           <p class="text-xs text-muted-foreground">Kosongkan tanggal untuk export semua data.</p>
           <p v-if="exportError" class="text-xs text-red-600">{{ exportError }}</p>
