@@ -78,6 +78,89 @@ const formatProgressPercent = (value?: number | null) => {
   return `${num.toFixed(2).replace(/\.?0+$/, '')}%`
 }
 
+const latestCancelLog = computed(() => {
+  const logs = props.entry?.logs || []
+  return [...logs]
+    .reverse()
+    .find(
+      (log) =>
+        log.toStatus === 'BATAL' &&
+        (log.action === 'CANCEL' || (typeof log.note === 'string' && log.note.trim().length > 0))
+    )
+})
+
+const statusTimelineSteps = [
+  { key: 'MENUNGGU', label: 'Menunggu' },
+  { key: 'ON_PROCESS', label: 'Proses' },
+  { key: 'SELESAI', label: 'Finish' },
+] as const
+
+type TimelineStatus = (typeof statusTimelineSteps)[number]['key']
+type TimelineState = 'completed' | 'active' | 'cancelled' | 'upcoming'
+
+const normalizeTimelineStatus = (value?: string | null): TimelineStatus => {
+  if (value === 'MENUNGGU' || value === 'ON_PROCESS' || value === 'SELESAI') return value
+  return 'MENUNGGU'
+}
+
+const isTimelineCancelled = computed(() => props.entry?.status === 'BATAL')
+
+const timelineCurrentStatus = computed<TimelineStatus>(() => {
+  if (!props.entry) return 'MENUNGGU'
+  if (props.entry.status === 'BATAL') {
+    return normalizeTimelineStatus(latestCancelLog.value?.fromStatus || 'MENUNGGU')
+  }
+  return normalizeTimelineStatus(props.entry.status)
+})
+
+const timelineCurrentIndex = computed(() =>
+  statusTimelineSteps.findIndex((step) => step.key === timelineCurrentStatus.value)
+)
+
+const timelineCancelledLabel = computed(() => {
+  const step = statusTimelineSteps.find((item) => item.key === timelineCurrentStatus.value)
+  return step?.label || 'Menunggu'
+})
+
+const getTimelineStepState = (status: TimelineStatus): TimelineState => {
+  const stepIndex = statusTimelineSteps.findIndex((item) => item.key === status)
+  const currentIndex = timelineCurrentIndex.value
+
+  if (stepIndex < 0 || currentIndex < 0) return 'upcoming'
+  if (isTimelineCancelled.value) {
+    if (stepIndex < currentIndex) return 'completed'
+    if (stepIndex === currentIndex) return 'cancelled'
+    return 'upcoming'
+  }
+
+  if (stepIndex < currentIndex) return 'completed'
+  if (timelineCurrentStatus.value === 'SELESAI' && stepIndex === currentIndex) return 'completed'
+  if (stepIndex === currentIndex) return 'active'
+  return 'upcoming'
+}
+
+const getTimelineDotClass = (status: TimelineStatus) => {
+  const state = getTimelineStepState(status)
+  if (state === 'completed') return 'border-emerald-600 bg-emerald-600 text-white'
+  if (state === 'active') return 'border-blue-600 bg-blue-600 text-white'
+  if (state === 'cancelled') return 'border-red-600 bg-red-600 text-white'
+  return 'border-border bg-background text-muted-foreground'
+}
+
+const getTimelineLabelClass = (status: TimelineStatus) => {
+  const state = getTimelineStepState(status)
+  if (state === 'completed') return 'text-emerald-700'
+  if (state === 'active') return 'text-blue-700'
+  if (state === 'cancelled') return 'text-red-700'
+  return 'text-muted-foreground'
+}
+
+const getTimelineConnectorClass = (stepIndex: number) => {
+  const currentIndex = timelineCurrentIndex.value
+  if (stepIndex < currentIndex) return 'bg-emerald-500'
+  return 'bg-border'
+}
+
 const whNotesInput = ref('')
 const whNotesSubmitting = ref(false)
 const whNotesError = ref('')
@@ -135,6 +218,36 @@ const saveWhNotes = async () => {
       </div>
 
       <div class="p-4 space-y-4 text-sm">
+        <div class="rounded-md border bg-muted/20 px-3 py-3">
+          <p class="text-xs font-medium text-muted-foreground">Timeline Status</p>
+          <div class="mt-3 grid grid-cols-3">
+            <div
+              v-for="(step, index) in statusTimelineSteps"
+              :key="step.key"
+              class="relative flex flex-col items-center px-1"
+            >
+              <div
+                v-if="index < statusTimelineSteps.length - 1"
+                :class="['absolute left-1/2 top-3 h-0.5 w-full', getTimelineConnectorClass(index)]"
+              ></div>
+              <div
+                :class="[
+                  'relative z-10 flex h-6 w-6 items-center justify-center rounded-full border text-[10px] font-semibold',
+                  getTimelineDotClass(step.key),
+                ]"
+              >
+                {{ index + 1 }}
+              </div>
+              <span :class="['mt-1 text-[11px] font-medium', getTimelineLabelClass(step.key)]">
+                {{ step.label }}
+              </span>
+            </div>
+          </div>
+          <p v-if="isTimelineCancelled" class="mt-2 text-xs text-red-700">
+            Transaksi dibatalkan pada tahap {{ timelineCancelledLabel }}.
+          </p>
+        </div>
+
         <div class="grid grid-cols-2 gap-3">
           <div>
             <p class="text-muted-foreground">Customer Name</p>
