@@ -4,7 +4,7 @@ const prisma = new PrismaClient();
 
 const ALLOWED_STORE_TYPES = new Set(["STORE_IN", "STORE_OUT"]);
 const ALLOWED_TRUCK_TYPES = ["CDD", "CDE", "FUSO", "WB", "FT20", "FT40", "OTHER"];
-const SORTABLE_FIELDS = new Set(["scheduleDate", "createdAt"]);
+const SORTABLE_FIELDS = new Set(["scheduleDate", "storeType", "customerName", "createdAt"]);
 
 const TRUCK_TYPE_LABELS = {
   CDD: "CDD",
@@ -55,6 +55,12 @@ function normalizeSort(query) {
 function buildOrderBy(sortBy, sortDir) {
   if (sortBy === "scheduleDate") {
     return [{ scheduleDate: sortDir }, { createdAt: "desc" }];
+  }
+  if (sortBy === "storeType") {
+    return [{ storeType: sortDir }, { scheduleDate: "desc" }, { createdAt: "desc" }];
+  }
+  if (sortBy === "customerName") {
+    return [{ customer: { name: sortDir } }, { scheduleDate: "desc" }, { createdAt: "desc" }];
   }
   return [{ createdAt: sortDir }, { scheduleDate: "desc" }];
 }

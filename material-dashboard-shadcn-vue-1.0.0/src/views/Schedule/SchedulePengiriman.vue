@@ -93,7 +93,7 @@ const page = ref(1)
 const limit = ref(15)
 const totalPages = ref(1)
 const totalItems = ref(0)
-const sortBy = ref<'scheduleDate' | 'createdAt'>('createdAt')
+const sortBy = ref<'scheduleDate' | 'storeType' | 'customerName' | 'createdAt'>('createdAt')
 const sortDir = ref<'asc' | 'desc'>('desc')
 const submitting = ref(false)
 const deleting = ref(false)
@@ -644,7 +644,7 @@ const confirmDelete = async () => {
   }
 }
 
-const toggleSort = (column: 'scheduleDate' | 'createdAt') => {
+const toggleSort = (column: 'scheduleDate' | 'storeType' | 'customerName' | 'createdAt') => {
   if (sortBy.value !== column) {
     sortBy.value = column
     sortDir.value = 'desc'
@@ -655,9 +655,9 @@ const toggleSort = (column: 'scheduleDate' | 'createdAt') => {
   fetchList()
 }
 
-const sortIndicator = (column: 'scheduleDate' | 'createdAt') => {
-  if (sortBy.value !== column) return ''
-  return sortDir.value === 'asc' ? '^' : 'v'
+const sortIndicator = (column: 'scheduleDate' | 'storeType' | 'customerName' | 'createdAt') => {
+  if (sortBy.value !== column) return '\u2195'
+  return sortDir.value === 'asc' ? '\u2191' : '\u2193'
 }
 
 const goToPage = (target: number) => {
@@ -933,17 +933,25 @@ watch(
               <tr>
                 <th class="px-3 py-2 text-left font-medium">No</th>
                 <th class="px-3 py-2 text-left font-medium">
-                  <button type="button" class="inline-flex items-center gap-1" @click="toggleSort('scheduleDate')">
-                    Tanggal <span>{{ sortIndicator('scheduleDate') }}</span>
+                  <button type="button" class="inline-flex items-center gap-1 hover:text-foreground" @click="toggleSort('scheduleDate')">
+                    Tanggal <span class="text-xs">{{ sortIndicator('scheduleDate') }}</span>
                   </button>
                 </th>
-                <th class="px-3 py-2 text-left font-medium">Store Type</th>
-                <th class="px-3 py-2 text-left font-medium">Customer Name</th>
+                <th class="px-3 py-2 text-left font-medium">
+                  <button type="button" class="inline-flex items-center gap-1 hover:text-foreground" @click="toggleSort('storeType')">
+                    Store Type <span class="text-xs">{{ sortIndicator('storeType') }}</span>
+                  </button>
+                </th>
+                <th class="px-3 py-2 text-left font-medium">
+                  <button type="button" class="inline-flex items-center gap-1 hover:text-foreground" @click="toggleSort('customerName')">
+                    Customer Name <span class="text-xs">{{ sortIndicator('customerName') }}</span>
+                  </button>
+                </th>
                 <th class="px-3 py-2 text-left font-medium">Total Jenis Truck</th>
                 <th class="px-3 py-2 text-left font-medium">Total Qty</th>
                 <th class="px-3 py-2 text-left font-medium">
-                  <button type="button" class="inline-flex items-center gap-1" @click="toggleSort('createdAt')">
-                    Created At <span>{{ sortIndicator('createdAt') }}</span>
+                  <button type="button" class="inline-flex items-center gap-1 hover:text-foreground" @click="toggleSort('createdAt')">
+                    Created At <span class="text-xs">{{ sortIndicator('createdAt') }}</span>
                   </button>
                 </th>
                 <th class="px-3 py-2 text-left font-medium">Aksi</th>
