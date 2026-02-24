@@ -6,6 +6,7 @@ import CardHeader from '@/components/ui/CardHeader.vue'
 import CardContent from '@/components/ui/CardContent.vue'
 import Button from '@/components/ui/Button.vue'
 import Combobox from '@/components/ui/Combobox.vue'
+import Input from '@/components/ui/Input.vue'
 import PickingCreateModal from '@/components/picking/PickingCreateModal.vue'
 import PickingEditModal from '@/components/picking/PickingEditModal.vue'
 import PickingDetailDrawer from '@/components/picking/PickingDetailDrawer.vue'
@@ -1156,13 +1157,13 @@ onUnmounted(() => {
     <Card>
       <CardHeader>
         <div class="grid gap-3 md:grid-cols-4">
-          <div class="flex items-center gap-2">
-            <Search class="h-4 w-4 text-muted-foreground" />
-            <input
+          <div class="relative">
+            <Search class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
               v-model="filters.search"
               type="text"
               placeholder="Search semua kolom..."
-              class="flex-1 bg-transparent border-none outline-none text-sm"
+              class="pl-9"
             />
           </div>
           <div>

@@ -4,6 +4,7 @@ import Card from '@/components/ui/Card.vue'
 import CardHeader from '@/components/ui/CardHeader.vue'
 import CardContent from '@/components/ui/CardContent.vue'
 import Button from '@/components/ui/Button.vue'
+import Input from '@/components/ui/Input.vue'
 import api from '@/services/api'
 
 type Customer = {
@@ -265,11 +266,11 @@ onMounted(() => {
         <div class="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
           <div class="text-sm text-muted-foreground">Daftar customer</div>
           <div class="flex w-full flex-col gap-2 md:w-auto md:flex-row md:items-center">
-            <input
+            <Input
               v-model="search"
               type="text"
               placeholder="Cari customer..."
-              class="w-full md:w-64 bg-transparent border rounded-md px-2 py-2 text-sm"
+              class="w-full md:w-64"
             />
             <Button size="sm" variant="outline" :disabled="exportLoading" @click="handleExport">
               {{ exportLoading ? 'Exporting...' : 'Export Excel' }}
