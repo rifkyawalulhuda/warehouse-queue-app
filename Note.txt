@@ -20,6 +20,10 @@ npm run dev (front end)
 
 Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned
 
+Install Shadcn > Powershell > \warehouse-queue-app
+
+npx shadcn@latest mcp init --client codex
+
 
 
 http://localhost:5000/material-dashboard-shadcn-vue/display/antrian-truk
