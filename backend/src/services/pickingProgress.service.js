@@ -860,8 +860,12 @@ async function importPickingProgressFromExcel(rows, actorUserId) {
     const rowNumber = row?.rowNumber || 0;
     const rawDateValue = row?.date;
     const customerName = normalizeText(row?.customerName);
-    const doNumber = normalizeText(row?.doNumber);
-    const destination = normalizeText(row?.destination);
+    const doNumber =
+      row?.doNumber === null || row?.doNumber === undefined ? "" : String(row?.doNumber).trim();
+    const destination =
+      row?.destination === null || row?.destination === undefined
+        ? ""
+        : String(row?.destination).trim();
     const volumeRaw = row?.volumeCbm;
     const pickingQtyRaw = row?.pickingQty;
 

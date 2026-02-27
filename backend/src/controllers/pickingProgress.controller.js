@@ -251,8 +251,9 @@ async function downloadPickingProgressTemplate(req, res, next) {
       { header: "Picking Qty (Barcode)", key: "pickingQty", width: 22 },
     ];
     worksheet.getRow(1).font = { bold: true };
-    // Force DO Number column as text to preserve exact user input (leading zero, long digits).
+    // Force DO Number and Destination columns as text to preserve exact user input.
     worksheet.getColumn(3).numFmt = "@";
+    worksheet.getColumn(4).numFmt = "@";
 
     customerSheet.columns = [{ header: "Customer Name", key: "name", width: 30 }];
     customerSheet.getRow(1).font = { bold: true };
