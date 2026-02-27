@@ -1194,7 +1194,7 @@ onUnmounted(() => {
             />
             <p class="mt-1 text-xs text-muted-foreground">
               Header kolom: Tanggal, Customer Name, DO Number, Destination, Volume (CBM), Picking Qty (Barcode).
-              PL Time Release otomatis mengikuti waktu upload file.
+              PL Time Release otomatis: tanggal mengikuti kolom Tanggal, jam mengikuti waktu upload file.
             </p>
           </div>
           <div class="flex items-center gap-2">

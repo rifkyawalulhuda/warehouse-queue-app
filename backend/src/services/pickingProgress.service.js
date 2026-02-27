@@ -173,6 +173,34 @@ function resolveTransactionDate(rawDate) {
   return toUtcMidnightByLocalDateParts(dateTime);
 }
 
+function mergePlTimeReleaseWithTransactionDate(transactionDate, rawPlTimeRelease, fallbackDateTime) {
+  const baseDate =
+    transactionDate instanceof Date && !Number.isNaN(transactionDate.getTime())
+      ? transactionDate
+      : toUtcMidnightByLocalDateParts(new Date());
+
+  let sourceDateTime = fallbackDateTime instanceof Date ? fallbackDateTime : new Date();
+  if (rawPlTimeRelease !== undefined && rawPlTimeRelease !== null && rawPlTimeRelease !== "") {
+    const parsed = new Date(rawPlTimeRelease);
+    if (Number.isNaN(parsed.getTime())) {
+      throw createHttpError(400, "Format plTimeRelease tidak valid");
+    }
+    sourceDateTime = parsed;
+  } else if (Number.isNaN(sourceDateTime.getTime())) {
+    sourceDateTime = new Date();
+  }
+
+  return new Date(
+    baseDate.getUTCFullYear(),
+    baseDate.getUTCMonth(),
+    baseDate.getUTCDate(),
+    sourceDateTime.getHours(),
+    sourceDateTime.getMinutes(),
+    sourceDateTime.getSeconds(),
+    0
+  );
+}
+
 function buildExportDateRange(query) {
   const { dateFrom, dateTo } = query || {};
   if (!dateFrom || !dateTo) return null;
@@ -451,7 +479,11 @@ async function createPickingProgress(data, actorUserId) {
   const transactionDate = resolveTransactionDate(data.date);
   const doNumber = normalizeText(data.doNumber);
   const destination = normalizeText(data.destination);
-  const plTimeRelease = data.plTimeRelease ? new Date(data.plTimeRelease) : new Date();
+  const plTimeRelease = mergePlTimeReleaseWithTransactionDate(
+    transactionDate,
+    data.plTimeRelease,
+    new Date()
+  );
   const volumeCbm = Number(data.volumeCbm);
 
   const created = await prisma.pickingProgress.create({
@@ -511,13 +543,11 @@ async function updatePickingProgress(id, data, actorUserId) {
   const destination = normalizeText(data.destination);
   const volumeCbm = Number(data.volumeCbm);
   const nextPickingQty = Number(data.pickingQty);
-  const plTimeRelease = data.plTimeRelease
-    ? new Date(data.plTimeRelease)
-    : existing.plTimeRelease || new Date();
-
-  if (Number.isNaN(plTimeRelease.getTime())) {
-    throw createHttpError(400, "Format plTimeRelease tidak valid");
-  }
+  const plTimeRelease = mergePlTimeReleaseWithTransactionDate(
+    transactionDate,
+    data.plTimeRelease,
+    existing.plTimeRelease || new Date()
+  );
   if (existing.pickedQty > nextPickingQty) {
     throw createHttpError(400, "Picking Qty tidak boleh lebih kecil dari Picked Qty saat ini");
   }
@@ -896,9 +926,7 @@ async function importPickingProgressFromExcel(rows, actorUserId) {
       rowErrors.push("Picking Qty (Barcode) harus angka bulat minimal 1");
     }
 
-    let date = new Date(
-      Date.UTC(uploadNow.getUTCFullYear(), uploadNow.getUTCMonth(), uploadNow.getUTCDate(), 0, 0, 0, 0)
-    );
+    let date = toUtcMidnightByLocalDateParts(uploadNow);
     if (rawDateValue !== null && rawDateValue !== undefined && rawDateValue !== "") {
       if (rawDateValue instanceof Date && !Number.isNaN(rawDateValue.getTime())) {
         date = new Date(
@@ -975,7 +1003,7 @@ async function importPickingProgressFromExcel(rows, actorUserId) {
           doNumber: row.doNumber,
           destination: row.destination,
           volumeCbm: row.volumeCbm,
-          plTimeRelease: uploadNow,
+          plTimeRelease: mergePlTimeReleaseWithTransactionDate(row.date, null, uploadNow),
           pickingQty: row.pickingQty,
           pickedQty: 0,
           status: "MENUNGGU",

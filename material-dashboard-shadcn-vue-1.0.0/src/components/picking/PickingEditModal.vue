@@ -48,6 +48,16 @@ const toDatetimeLocalInput = (value?: string | null) => {
   return `${year}-${month}-${day}T${hour}:${minute}`
 }
 
+const extractTimeFromDateTimeLocal = (value: string) => {
+  const match = value.match(/T(\d{2}:\d{2})/)
+  return match?.[1] || ''
+}
+
+const currentTimeLocal = () => {
+  const now = new Date()
+  return `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
+}
+
 const form = reactive<FormState>({
   date: '',
   customerId: '',
@@ -92,6 +102,14 @@ const syncFormFromEntry = () => {
   errors.volumeCbm = ''
   errors.plTimeRelease = ''
   errors.pickingQty = ''
+  syncPlTimeReleaseDateWithTransactionDate()
+}
+
+const syncPlTimeReleaseDateWithTransactionDate = () => {
+  if (!form.date) return
+  const selectedTime = extractTimeFromDateTimeLocal(form.plTimeRelease)
+  const time = selectedTime || currentTimeLocal()
+  form.plTimeRelease = `${form.date}T${time}`
 }
 
 const validate = () => {
@@ -114,6 +132,7 @@ const validate = () => {
 }
 
 const handleSubmit = () => {
+  syncPlTimeReleaseDateWithTransactionDate()
   if (!validate()) return
   emit('submit', {
     date: form.date,
@@ -131,6 +150,13 @@ watch(
   ([isOpen]) => {
     if (!isOpen) return
     syncFormFromEntry()
+  }
+)
+
+watch(
+  () => form.date,
+  () => {
+    syncPlTimeReleaseDateWithTransactionDate()
   }
 )
 </script>

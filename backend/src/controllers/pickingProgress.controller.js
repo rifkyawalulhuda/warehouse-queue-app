@@ -267,7 +267,7 @@ async function downloadPickingProgressTemplate(req, res, next) {
       "1. Kolom wajib: Tanggal, Customer Name, DO Number, Destination, Volume (CBM), Picking Qty (Barcode).";
     noteSheet.getCell("A3").value = "2. Customer Name wajib pilih dari data Master Customer.";
     noteSheet.getCell("A4").value =
-      "3. PL Time Release tidak perlu diisi. Nilainya diisi otomatis oleh sistem saat file di-upload.";
+      "3. PL Time Release tidak perlu diisi. Tanggal mengikuti kolom Tanggal, jam mengikuti waktu upload file.";
     noteSheet.getCell("A5").value = "4. Tanggal boleh kosong, maka otomatis mengikuti tanggal upload.";
 
     if (customerNames.length > 0) {
