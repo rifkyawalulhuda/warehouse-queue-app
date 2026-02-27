@@ -221,22 +221,26 @@ async function listQueueEntries(query) {
   const limit = Number.isFinite(rawLimit) && rawLimit > 0 ? rawLimit : 15;
   let page = Number.isFinite(rawPage) && rawPage > 0 ? Math.floor(rawPage) : 1;
 
-  const where = {};
-  if (status) where.status = status;
-  if (category) where.category = category;
+  const baseWhere = {};
   if (from || to) {
-    where.registerTime = {};
-    if (from) where.registerTime.gte = from;
-    if (to) where.registerTime.lte = to;
+    baseWhere.registerTime = {};
+    if (from) baseWhere.registerTime.gte = from;
+    if (to) baseWhere.registerTime.lte = to;
   }
   if (search) {
-    where.OR = [
+    baseWhere.OR = [
       { customer: { name: { contains: search, mode: "insensitive" } } },
       { driverName: { contains: search, mode: "insensitive" } },
       { truckNumber: { contains: search, mode: "insensitive" } },
       { containerNumber: { contains: search, mode: "insensitive" } },
     ];
   }
+  if (category) baseWhere.category = category;
+
+  const where = {
+    ...baseWhere,
+  };
+  if (status) where.status = status;
 
   const rows = await prisma.queueEntry.findMany({
     where,
@@ -265,6 +269,26 @@ async function listQueueEntries(query) {
   const skip = (page - 1) * limit;
   const data = prioritizedRows.slice(skip, skip + limit).map((item) => item.entry);
 
+  const groupedStatusRows = await prisma.queueEntry.groupBy({
+    by: ["status"],
+    where: baseWhere,
+    _count: {
+      _all: true,
+    },
+  });
+  const statusCounts = {
+    MENUNGGU: 0,
+    IN_WH: 0,
+    PROSES: 0,
+    SELESAI: 0,
+    BATAL: 0,
+  };
+  groupedStatusRows.forEach((row) => {
+    if (Object.prototype.hasOwnProperty.call(statusCounts, row.status)) {
+      statusCounts[row.status] = row._count._all || 0;
+    }
+  });
+
   return {
     data,
     meta: {
@@ -272,6 +296,7 @@ async function listQueueEntries(query) {
       limit,
       totalItems,
       totalPages,
+      statusCounts,
     },
   };
 }

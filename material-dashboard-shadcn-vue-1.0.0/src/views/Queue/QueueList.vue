@@ -146,6 +146,7 @@ type QueueSortColumn =
   | 'driverName'
   | 'truckNumber'
   | 'status'
+type QueueStatusKey = 'MENUNGGU' | 'IN_WH' | 'PROSES' | 'SELESAI' | 'BATAL'
 
 const filters = reactive({
   dateFrom: todayString(),
@@ -157,6 +158,13 @@ const filters = reactive({
 
 const sortBy = ref<QueueSortColumn>('registerTime')
 const sortDir = ref<'asc' | 'desc'>('desc')
+const statusCounts = ref<Record<QueueStatusKey, number>>({
+  MENUNGGU: 0,
+  IN_WH: 0,
+  PROSES: 0,
+  SELESAI: 0,
+  BATAL: 0,
+})
 
 const statusOptions = [
   { label: 'Semua', value: '' },
@@ -166,6 +174,73 @@ const statusOptions = [
   { label: 'SELESAI', value: 'SELESAI' },
   { label: 'BATAL', value: 'BATAL' }
 ]
+
+const statusSequenceItems = computed(() => [
+  {
+    key: 'MENUNGGU' as const,
+    label: 'Menunggu',
+  },
+  {
+    key: 'IN_WH' as const,
+    label: 'In_WH',
+  },
+  {
+    key: 'PROSES' as const,
+    label: 'Proses',
+  },
+  {
+    key: 'SELESAI' as const,
+    label: 'Selesai',
+  },
+])
+
+const isSequenceStatusActive = (status: QueueStatusKey) => filters.status === status
+
+const toggleSequenceStatus = (status: QueueStatusKey) => {
+  filters.status = filters.status === status ? '' : status
+}
+
+const statusSequenceColorClass = (status: QueueStatusKey) => {
+  switch (status) {
+    case 'MENUNGGU':
+      return {
+        card: 'border-yellow-200 bg-yellow-50 text-yellow-900',
+        bubble: 'border-yellow-300 bg-yellow-100 text-yellow-800',
+      }
+    case 'IN_WH':
+      return {
+        card: 'border-purple-200 bg-purple-50 text-purple-900',
+        bubble: 'border-purple-300 bg-purple-100 text-purple-800',
+      }
+    case 'PROSES':
+      return {
+        card: 'border-blue-200 bg-blue-50 text-blue-900',
+        bubble: 'border-blue-300 bg-blue-100 text-blue-800',
+      }
+    case 'SELESAI':
+      return {
+        card: 'border-green-200 bg-green-50 text-green-900',
+        bubble: 'border-green-300 bg-green-100 text-green-800',
+      }
+    default:
+      return {
+        card: 'border-border bg-muted/40 text-muted-foreground',
+        bubble: 'border-border bg-background text-muted-foreground',
+      }
+  }
+}
+
+const getSequenceCardClass = (status: QueueStatusKey) => {
+  const count = statusCounts.value[status] || 0
+  if (count <= 0) return 'border-border bg-muted/40 text-muted-foreground'
+  return statusSequenceColorClass(status).card
+}
+
+const getSequenceBubbleClass = (status: QueueStatusKey) => {
+  const count = statusCounts.value[status] || 0
+  if (count <= 0) return 'border-border bg-background text-muted-foreground'
+  return statusSequenceColorClass(status).bubble
+}
 
 const categoryOptions = [
   { label: 'Semua', value: '' },
@@ -244,6 +319,14 @@ const fetchList = async () => {
     const url = `/queue?${queryString.value}`
     const response = await api.get(url)
     entries.value = response.data?.data || []
+    const serverCounts = response.data?.meta?.statusCounts || {}
+    statusCounts.value = {
+      MENUNGGU: Number(serverCounts.MENUNGGU || 0),
+      IN_WH: Number(serverCounts.IN_WH || 0),
+      PROSES: Number(serverCounts.PROSES || 0),
+      SELESAI: Number(serverCounts.SELESAI || 0),
+      BATAL: Number(serverCounts.BATAL || 0),
+    }
     totalPages.value = response.data?.meta?.totalPages || 1
     totalItems.value = response.data?.meta?.totalItems || 0
     page.value = response.data?.meta?.page || page.value
@@ -757,6 +840,40 @@ watch(
           <RefreshCw class="mr-2 h-4 w-4" />
           Refresh
         </Button>
+      </div>
+    </div>
+
+    <div class="mx-auto w-full max-w-4xl">
+      <div class="grid gap-3 md:grid-cols-4">
+        <div
+          v-for="(item, index) in statusSequenceItems"
+          :key="item.key"
+          class="relative"
+        >
+          <button
+            type="button"
+            class="w-full rounded-xl border px-4 py-3 text-left transition hover:shadow-sm"
+            :class="[
+              getSequenceCardClass(item.key),
+              isSequenceStatusActive(item.key) ? 'ring-2 ring-primary/40 border-primary' : '',
+            ]"
+            @click="toggleSequenceStatus(item.key)"
+          >
+            <div class="flex items-center justify-between gap-2">
+              <span class="text-sm font-semibold">{{ item.label }}</span>
+              <span
+                class="inline-flex min-w-8 items-center justify-center rounded-full border px-2 py-0.5 text-xs font-semibold"
+                :class="getSequenceBubbleClass(item.key)"
+              >
+                {{ statusCounts[item.key] }}
+              </span>
+            </div>
+          </button>
+          <span
+            v-if="index < statusSequenceItems.length - 1"
+            class="pointer-events-none absolute left-full top-1/2 hidden h-0.5 w-3 -translate-y-1/2 bg-border md:block"
+          ></span>
+        </div>
       </div>
     </div>
 
