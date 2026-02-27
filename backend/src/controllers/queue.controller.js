@@ -17,6 +17,17 @@ function formatDateTime(value) {
   return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
 }
 
+function formatDateOnly(value) {
+  if (!value) return "-";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "-";
+  const pad = (num) => String(num).padStart(2, "0");
+  const year = date.getFullYear();
+  const month = pad(date.getMonth() + 1);
+  const day = pad(date.getDate());
+  return `${year}-${month}-${day}`;
+}
+
 function mapCategory(category) {
   if (category === "RECEIVING") return "Receiving";
   if (category === "DELIVERY") return "Delivery";
@@ -141,6 +152,7 @@ async function exportQueue(req, res, next) {
 
     worksheet.columns = [
       { header: "No", key: "no", width: 6 },
+      { header: "Tanggal", key: "date", width: 14 },
       { header: "Customer Name", key: "customerName", width: 28 },
       { header: "Driver Name", key: "driverName", width: 20 },
       { header: "No Truck", key: "truckNumber", width: 16 },
@@ -166,6 +178,7 @@ async function exportQueue(req, res, next) {
     entries.forEach((entry, index) => {
       worksheet.addRow({
         no: index + 1,
+        date: formatDateOnly(entry.registerTime),
         customerName: entry.customer?.name || "-",
         driverName: entry.driverName || "-",
         truckNumber: entry.truckNumber || "-",
