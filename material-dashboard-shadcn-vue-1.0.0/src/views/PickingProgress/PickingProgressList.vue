@@ -37,6 +37,7 @@ type Customer = {
   id: string
   name: string
 }
+type PickingStatusKey = 'MENUNGGU' | 'ON_PROCESS' | 'SELESAI' | 'BATAL'
 
 const route = useRoute()
 const router = useRouter()
@@ -149,11 +150,47 @@ const SORTABLE_COLUMNS: PickingSortField[] = [
 
 const sortBy = ref<PickingSortField>('createdAt')
 const sortDir = ref<'asc' | 'desc'>('desc')
+const statusCounts = ref<Record<PickingStatusKey, number>>({
+  MENUNGGU: 0,
+  ON_PROCESS: 0,
+  SELESAI: 0,
+  BATAL: 0,
+})
 
 const exportForm = reactive({
   dateFrom: '',
   dateTo: ''
 })
+
+const statusSequenceItems = computed(() => [
+  { key: 'MENUNGGU' as const, label: 'Menunggu' },
+  { key: 'ON_PROCESS' as const, label: 'On_Process' },
+  { key: 'SELESAI' as const, label: 'Selesai' },
+])
+
+const isSequenceStatusActive = (status: PickingStatusKey) => filters.status === status
+
+const toggleSequenceStatus = (status: PickingStatusKey) => {
+  filters.status = filters.status === status ? 'ALL' : status
+}
+
+const getSequenceCardClass = (status: PickingStatusKey) => {
+  const count = statusCounts.value[status] || 0
+  if (count <= 0) return 'border-border bg-muted/40 text-muted-foreground'
+  if (status === 'MENUNGGU') return 'border-yellow-200 bg-yellow-50 text-yellow-900'
+  if (status === 'ON_PROCESS') return 'border-blue-200 bg-blue-50 text-blue-900'
+  if (status === 'SELESAI') return 'border-green-200 bg-green-50 text-green-900'
+  return 'border-red-200 bg-red-50 text-red-900'
+}
+
+const getSequenceBubbleClass = (status: PickingStatusKey) => {
+  const count = statusCounts.value[status] || 0
+  if (count <= 0) return 'border-border bg-background text-muted-foreground'
+  if (status === 'MENUNGGU') return 'border-yellow-300 bg-yellow-100 text-yellow-800'
+  if (status === 'ON_PROCESS') return 'border-blue-300 bg-blue-100 text-blue-800'
+  if (status === 'SELESAI') return 'border-green-300 bg-green-100 text-green-800'
+  return 'border-red-300 bg-red-100 text-red-800'
+}
 
 const getErrorMessage = (err: any, fallback: string) => {
   return err?.response?.data?.message || err?.message || fallback
@@ -459,6 +496,13 @@ const fetchList = async () => {
       sortDir: sortDir.value,
     })
     entries.value = response.data?.items || []
+    const serverCounts = response.data?.meta?.statusCounts || {}
+    statusCounts.value = {
+      MENUNGGU: Number(serverCounts.MENUNGGU || 0),
+      ON_PROCESS: Number(serverCounts.ON_PROCESS || 0),
+      SELESAI: Number(serverCounts.SELESAI || 0),
+      BATAL: Number(serverCounts.BATAL || 0),
+    }
     totalItems.value = response.data?.meta?.total || 0
     totalPages.value = response.data?.meta?.totalPages || 1
     page.value = response.data?.meta?.page || page.value
@@ -1168,6 +1212,40 @@ onUnmounted(() => {
         </div>
       </CardContent>
     </Card>
+
+    <div class="mx-auto w-full max-w-4xl">
+      <div class="grid gap-3 md:grid-cols-4">
+        <div
+          v-for="(item, index) in statusSequenceItems"
+          :key="item.key"
+          class="relative"
+        >
+          <button
+            type="button"
+            class="w-full rounded-xl border px-4 py-3 text-left transition hover:shadow-sm"
+            :class="[
+              getSequenceCardClass(item.key),
+              isSequenceStatusActive(item.key) ? 'ring-2 ring-primary/40 border-primary' : '',
+            ]"
+            @click="toggleSequenceStatus(item.key)"
+          >
+            <div class="flex items-center justify-between gap-2">
+              <span class="text-sm font-semibold">{{ item.label }}</span>
+              <span
+                class="inline-flex min-w-8 items-center justify-center rounded-full border px-2 py-0.5 text-xs font-semibold"
+                :class="getSequenceBubbleClass(item.key)"
+              >
+                {{ statusCounts[item.key] }}
+              </span>
+            </div>
+          </button>
+          <span
+            v-if="index < statusSequenceItems.length - 1"
+            class="pointer-events-none absolute left-full top-1/2 hidden h-0.5 w-3 -translate-y-1/2 bg-border md:block"
+          ></span>
+        </div>
+      </div>
+    </div>
 
     <Card>
       <CardHeader>

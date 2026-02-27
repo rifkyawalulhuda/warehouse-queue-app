@@ -570,16 +570,16 @@ async function listPickingProgress(query) {
   const { page, limit } = normalizePagination(query);
   const orderBy = buildOrderBy(sort, sortDir);
 
-  const where = {
+  const baseWhere = {
     date: {
       gte: from,
       lte: to,
     },
   };
-  if (status) where.status = status;
+
   if (search) {
     const itemsRaw = await prisma.pickingProgress.findMany({
-      where,
+      where: baseWhere,
       orderBy,
       include: {
         customer: true,
@@ -588,11 +588,26 @@ async function listPickingProgress(query) {
     });
     const nowMs = Date.now();
     const loweredSearch = search.toLowerCase();
-    const filteredItems = itemsRaw
+    const searchedItems = itemsRaw
       .map((item) => computeSlaFields(item, nowMs))
       .filter((entry) =>
         buildSearchTokens(entry).some((token) => token.toLowerCase().includes(loweredSearch))
       );
+    const statusCounts = {
+      MENUNGGU: 0,
+      ON_PROCESS: 0,
+      SELESAI: 0,
+      BATAL: 0,
+    };
+    searchedItems.forEach((item) => {
+      if (Object.prototype.hasOwnProperty.call(statusCounts, item.status)) {
+        statusCounts[item.status] += 1;
+      }
+    });
+
+    const filteredItems = status
+      ? searchedItems.filter((item) => item.status === status)
+      : searchedItems;
 
     const total = filteredItems.length;
     const totalPages = Math.max(1, Math.ceil(total / limit));
@@ -607,9 +622,15 @@ async function listPickingProgress(query) {
         page: currentPage,
         limit,
         totalPages,
+        statusCounts,
       },
     };
   }
+
+  const where = {
+    ...baseWhere,
+  };
+  if (status) where.status = status;
 
   const total = await prisma.pickingProgress.count({ where });
   const totalPages = Math.max(1, Math.ceil(total / limit));
@@ -629,6 +650,24 @@ async function listPickingProgress(query) {
 
   const nowMs = Date.now();
   const items = itemsRaw.map((item) => computeSlaFields(item, nowMs));
+  const groupedStatusRows = await prisma.pickingProgress.groupBy({
+    by: ["status"],
+    where: baseWhere,
+    _count: {
+      _all: true,
+    },
+  });
+  const statusCounts = {
+    MENUNGGU: 0,
+    ON_PROCESS: 0,
+    SELESAI: 0,
+    BATAL: 0,
+  };
+  groupedStatusRows.forEach((row) => {
+    if (Object.prototype.hasOwnProperty.call(statusCounts, row.status)) {
+      statusCounts[row.status] = row._count._all || 0;
+    }
+  });
 
   return {
     items,
@@ -637,6 +676,7 @@ async function listPickingProgress(query) {
       page: currentPage,
       limit,
       totalPages,
+      statusCounts,
     },
   };
 }
