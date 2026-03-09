@@ -464,7 +464,7 @@ async function updateQueueEntry(id, data, actorUser) {
   const resolvedName = actorUser?.name || "system";
   const actorUserId = actorUser?.id || null;
   const waitingSlaMinutes =
-    data.slaWaitingMinutes !== undefined
+    entry.status === "MENUNGGU" && data.slaWaitingMinutes !== undefined
       ? normalizeSlaMinutes(data.slaWaitingMinutes) ?? LEGACY_WAITING_SLA_MINUTES
       : undefined;
   const inWhProcessSlaMinutes =
@@ -481,7 +481,10 @@ async function updateQueueEntry(id, data, actorUser) {
       driverName: data.driverName ?? undefined,
       truckNumber: data.truckNumber ?? undefined,
       containerNumber: data.containerNumber ?? undefined,
-      registerTime: data.registerTime ? new Date(data.registerTime) : undefined,
+      registerTime:
+        entry.status === "MENUNGGU" && data.registerTime
+          ? new Date(data.registerTime)
+          : undefined,
       slaWaitingMinutes: waitingSlaMinutes,
       slaInWhProcessMinutes: inWhProcessSlaMinutes,
       notes: data.notes ?? undefined,

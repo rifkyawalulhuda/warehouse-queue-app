@@ -7,6 +7,7 @@ type QueueEntry = {
   id: string
   customerId?: string | null
   category: 'RECEIVING' | 'DELIVERY'
+  status?: 'MENUNGGU' | 'IN_WH' | 'PROSES' | 'SELESAI' | 'BATAL'
   driverName: string
   truckNumber: string
   containerNumber?: string | null
@@ -90,6 +91,9 @@ const slaOptions = computed(() =>
   })
 )
 
+const canEditRegisterTime = computed(() => (props.entry?.status || 'MENUNGGU') === 'MENUNGGU')
+const canEditWaitingSla = computed(() => (props.entry?.status || 'MENUNGGU') === 'MENUNGGU')
+
 const toDatetimeLocal = (value?: string | null) => {
   if (!value) return ''
   const date = new Date(value)
@@ -157,8 +161,10 @@ const handleSubmit = () => {
     notes: form.notes,
     registerTime: form.registerTime,
   }
-  if (form.slaWaitingMinutes) {
+  if (canEditWaitingSla.value && form.slaWaitingMinutes) {
     payload.slaWaitingMinutes = Number(form.slaWaitingMinutes)
+  }
+  if (form.slaInWhProcessMinutes) {
     payload.slaInWhProcessMinutes = Number(form.slaInWhProcessMinutes)
   }
   emit('submit', payload)
@@ -208,8 +214,16 @@ watch(
             <input
               v-model="form.registerTime"
               type="datetime-local"
+              :disabled="!canEditRegisterTime"
               class="mt-1 w-full bg-transparent border rounded-md px-2 py-2 text-sm"
             />
+            <p class="mt-1 text-xs text-muted-foreground">
+              {{
+                canEditRegisterTime
+                  ? 'Opsional. Jika tidak diubah, sistem akan memakai waktu register yang tersimpan.'
+                  : 'Register Time tidak bisa diubah karena transaksi sudah melewati status Menunggu.'
+              }}
+            </p>
           </div>
         </div>
 
@@ -250,13 +264,18 @@ watch(
               <Combobox
                 v-model="form.slaWaitingMinutes"
                 :options="slaOptions"
+                :disabled="!canEditWaitingSla"
                 placeholder="Pilih SLA Menunggu..."
                 search-placeholder="Cari SLA Menunggu..."
                 empty-text="Tidak ada pilihan SLA"
               />
             </div>
             <p class="mt-1 text-xs text-muted-foreground">
-              Opsional. Jika dilewati, sistem akan memakai SLA default atau SLA lama yang tersimpan.
+              {{
+                canEditWaitingSla
+                  ? 'Opsional. Jika dilewati, sistem akan memakai SLA default atau SLA lama yang tersimpan.'
+                  : 'SLA Menunggu tidak bisa diubah karena transaksi sudah melewati status Menunggu.'
+              }}
             </p>
           </div>
           <div v-if="form.slaWaitingMinutes !== ''">
