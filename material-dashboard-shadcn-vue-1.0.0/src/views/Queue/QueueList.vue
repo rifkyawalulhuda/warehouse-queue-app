@@ -40,6 +40,8 @@ type QueueEntry = {
   inWhTime?: string | null
   startTime?: string | null
   finishTime?: string | null
+  slaWaitingMinutes: number
+  slaInWhProcessMinutes: number
   status: 'MENUNGGU' | 'IN_WH' | 'PROSES' | 'SELESAI' | 'BATAL'
   notes?: string | null
   notesFromWh?: string | null
@@ -533,6 +535,8 @@ const handleCreate = async (payload: {
   driverName: string
   truckNumber: string
   containerNumber: string
+  slaWaitingMinutes: number
+  slaInWhProcessMinutes: number
   notes: string
   registerTime: string
 }) => {
@@ -543,7 +547,9 @@ const handleCreate = async (payload: {
       category: payload.category,
       customerId: payload.customerId,
       driverName: payload.driverName,
-      truckNumber: payload.truckNumber
+      truckNumber: payload.truckNumber,
+      slaWaitingMinutes: payload.slaWaitingMinutes,
+      slaInWhProcessMinutes: payload.slaInWhProcessMinutes,
     }
     if (payload.containerNumber.trim()) body.containerNumber = payload.containerNumber.trim()
     if (payload.notes.trim()) body.notes = payload.notes.trim()
@@ -580,6 +586,8 @@ const handleEdit = async (payload: {
   driverName: string
   truckNumber: string
   containerNumber: string
+  slaWaitingMinutes: number
+  slaInWhProcessMinutes: number
   notes: string
   registerTime: string
 }) => {
@@ -594,6 +602,8 @@ const handleEdit = async (payload: {
       truckNumber: payload.truckNumber,
       containerNumber: payload.containerNumber.trim(),
       notes: payload.notes.trim(),
+      slaWaitingMinutes: payload.slaWaitingMinutes,
+      slaInWhProcessMinutes: payload.slaInWhProcessMinutes,
     }
     if (payload.registerTime) {
       body.registerTime = new Date(payload.registerTime).toISOString()

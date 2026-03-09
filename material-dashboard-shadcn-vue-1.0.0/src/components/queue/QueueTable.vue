@@ -18,6 +18,8 @@ type QueueEntry = {
   inWhTime?: string | null
   startTime?: string | null
   finishTime?: string | null
+  slaWaitingMinutes: number
+  slaInWhProcessMinutes: number
   status: 'MENUNGGU' | 'IN_WH' | 'PROSES' | 'SELESAI' | 'BATAL'
 }
 
@@ -73,15 +75,15 @@ const getSlaBadgeClass = (entry: QueueEntry) => {
 }
 
 const getSlaMinutes = (entry: QueueEntry) => {
-  if (entry.status === 'MENUNGGU' || entry.status === 'IN_WH') return 30
-  if (entry.status === 'PROSES') return entry.category === 'RECEIVING' ? 120 : 90
+  if (entry.status === 'MENUNGGU') return entry.slaWaitingMinutes
+  if (entry.status === 'IN_WH' || entry.status === 'PROSES') return entry.slaInWhProcessMinutes
   return null
 }
 
 const getElapsedMinutes = (entry: QueueEntry) => {
   let start: string | null | undefined = null
-  if (entry.status === 'MENUNGGU' || entry.status === 'IN_WH') start = entry.registerTime
-  if (entry.status === 'PROSES') start = entry.startTime
+  if (entry.status === 'MENUNGGU') start = entry.registerTime
+  if (entry.status === 'IN_WH' || entry.status === 'PROSES') start = entry.inWhTime || entry.startTime
   if (!start) return null
   const diffMs = nowTick.value - new Date(start).getTime()
   return Math.floor(diffMs / 60000)

@@ -10,6 +10,8 @@ type QueueEntry = {
   driverName: string
   truckNumber: string
   containerNumber?: string | null
+  slaWaitingMinutes?: number | null
+  slaInWhProcessMinutes?: number | null
   notes?: string | null
   registerTime?: string | null
 }
@@ -20,8 +22,15 @@ type FormState = {
   driverName: string
   truckNumber: string
   containerNumber: string
+  slaWaitingMinutes: number
+  slaInWhProcessMinutes: number
   notes: string
   registerTime: string
+}
+
+type DraftFormState = Omit<FormState, 'slaWaitingMinutes' | 'slaInWhProcessMinutes'> & {
+  slaWaitingMinutes: number | ''
+  slaInWhProcessMinutes: number | ''
 }
 
 const props = defineProps<{
@@ -36,12 +45,14 @@ const emit = defineEmits<{
   (e: 'submit', payload: FormState): void
 }>()
 
-const form = reactive<FormState>({
+const form = reactive<DraftFormState>({
   customerId: '',
   category: 'RECEIVING',
   driverName: '',
   truckNumber: '',
   containerNumber: '',
+  slaWaitingMinutes: '',
+  slaInWhProcessMinutes: '',
   notes: '',
   registerTime: '',
 })
@@ -50,13 +61,33 @@ const errors = reactive({
   customerId: '',
   driverName: '',
   truckNumber: '',
+  slaWaitingMinutes: '',
+  slaInWhProcessMinutes: '',
 })
+
+const formatSlaLabel = (minutes: number) => {
+  const hours = Math.floor(minutes / 60)
+  const remainingMinutes = minutes % 60
+  if (hours > 0 && remainingMinutes > 0) return `${hours} jam ${remainingMinutes} menit`
+  if (hours > 0 && remainingMinutes === 0) return `${hours} jam`
+  return `${minutes} menit`
+}
 
 const customerOptions = computed(() =>
   props.customers.map((customer) => ({
     value: customer.id,
     label: customer.name,
   }))
+)
+
+const slaOptions = computed(() =>
+  Array.from({ length: 96 }, (_, index) => {
+    const value = (index + 1) * 15
+    return {
+      value,
+      label: formatSlaLabel(value),
+    }
+  })
 )
 
 const toDatetimeLocal = (value?: string | null) => {
@@ -78,11 +109,15 @@ const syncFormFromEntry = () => {
   form.driverName = props.entry?.driverName || ''
   form.truckNumber = props.entry?.truckNumber || ''
   form.containerNumber = props.entry?.containerNumber || ''
+  form.slaWaitingMinutes = props.entry?.slaWaitingMinutes ?? ''
+  form.slaInWhProcessMinutes = props.entry?.slaInWhProcessMinutes ?? ''
   form.notes = props.entry?.notes || ''
   form.registerTime = toDatetimeLocal(props.entry?.registerTime)
   errors.customerId = ''
   errors.driverName = ''
   errors.truckNumber = ''
+  errors.slaWaitingMinutes = ''
+  errors.slaInWhProcessMinutes = ''
 }
 
 watch(
@@ -98,12 +133,28 @@ const validate = () => {
   errors.customerId = form.customerId ? '' : 'Customer wajib'
   errors.driverName = form.driverName.trim() ? '' : 'Driver Name wajib'
   errors.truckNumber = form.truckNumber.trim() ? '' : 'No Truck wajib'
-  return !errors.customerId && !errors.driverName && !errors.truckNumber
+  errors.slaWaitingMinutes =
+    typeof form.slaWaitingMinutes === 'number' ? '' : 'SLA Menunggu wajib dipilih'
+  errors.slaInWhProcessMinutes =
+    typeof form.slaInWhProcessMinutes === 'number'
+      ? ''
+      : 'SLA IN_WH + Proses wajib dipilih'
+  return (
+    !errors.customerId &&
+    !errors.driverName &&
+    !errors.truckNumber &&
+    !errors.slaWaitingMinutes &&
+    !errors.slaInWhProcessMinutes
+  )
 }
 
 const handleSubmit = () => {
   if (!validate()) return
-  emit('submit', { ...form })
+  emit('submit', {
+    ...form,
+    slaWaitingMinutes: Number(form.slaWaitingMinutes),
+    slaInWhProcessMinutes: Number(form.slaInWhProcessMinutes),
+  })
 }
 </script>
 
@@ -171,6 +222,39 @@ const handleSubmit = () => {
           <div>
             <label class="text-muted-foreground">No Container</label>
             <input v-model="form.containerNumber" type="text" class="mt-1 w-full bg-transparent border rounded-md px-2 py-2 text-sm" />
+          </div>
+        </div>
+
+        <div class="grid gap-3 md:grid-cols-2">
+          <div>
+            <label class="text-muted-foreground">SLA Status Menunggu</label>
+            <select
+              v-model.number="form.slaWaitingMinutes"
+              class="mt-1 w-full bg-transparent border rounded-md px-2 py-2 text-sm"
+            >
+              <option value="">Pilih SLA Menunggu...</option>
+              <option v-for="option in slaOptions" :key="option.value" :value="option.value">
+                {{ option.label }}
+              </option>
+            </select>
+            <p v-if="errors.slaWaitingMinutes" class="mt-1 text-xs text-red-600">
+              {{ errors.slaWaitingMinutes }}
+            </p>
+          </div>
+          <div v-if="form.slaWaitingMinutes !== ''">
+            <label class="text-muted-foreground">SLA Status IN_WH + Proses</label>
+            <select
+              v-model.number="form.slaInWhProcessMinutes"
+              class="mt-1 w-full bg-transparent border rounded-md px-2 py-2 text-sm"
+            >
+              <option value="">Pilih SLA IN_WH + Proses...</option>
+              <option v-for="option in slaOptions" :key="option.value" :value="option.value">
+                {{ option.label }}
+              </option>
+            </select>
+            <p v-if="errors.slaInWhProcessMinutes" class="mt-1 text-xs text-red-600">
+              {{ errors.slaInWhProcessMinutes }}
+            </p>
           </div>
         </div>
 

@@ -14,6 +14,8 @@ type DisplayEntry = {
   registerTime: string
   inWhTime?: string | null
   startTime?: string | null
+  slaWaitingMinutes: number
+  slaInWhProcessMinutes: number
   status: 'MENUNGGU' | 'IN_WH' | 'PROSES' | 'SELESAI' | 'BATAL'
   remainingMinutes?: number | null
   statusTime?: string | null
@@ -241,15 +243,17 @@ const parseRemainingMinutes = (value: unknown) => {
 }
 
 const getSlaMinutes = (entry: DisplayEntry) => {
-  if (entry.status === 'MENUNGGU' || entry.status === 'IN_WH') return 30
-  if (entry.status === 'PROSES') return entry.category === 'RECEIVING' ? 120 : 90
+  if (entry.status === 'MENUNGGU') return entry.slaWaitingMinutes
+  if (entry.status === 'IN_WH' || entry.status === 'PROSES') return entry.slaInWhProcessMinutes
   return null
 }
 
 const getElapsedMinutes = (entry: DisplayEntry) => {
   if (entry.status === 'SELESAI' || entry.status === 'BATAL') return null
   const start =
-    entry.status === 'PROSES' ? entry.startTime : entry.registerTime
+    entry.status === 'MENUNGGU'
+      ? entry.registerTime
+      : entry.inWhTime || entry.startTime
   if (!start) return null
   const startMs = new Date(start).getTime()
   if (Number.isNaN(startMs)) return null
