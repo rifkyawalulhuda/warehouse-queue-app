@@ -16,8 +16,8 @@ type FormState = {
 }
 
 type DraftFormState = Omit<FormState, 'slaWaitingMinutes' | 'slaInWhProcessMinutes'> & {
-  slaWaitingMinutes: number | ''
-  slaInWhProcessMinutes: number | ''
+  slaWaitingMinutes: string
+  slaInWhProcessMinutes: string
 }
 
 const props = defineProps<{
@@ -70,7 +70,7 @@ const slaOptions = computed(() =>
   Array.from({ length: 96 }, (_, index) => {
     const value = (index + 1) * 15
     return {
-      value,
+      value: String(value),
       label: formatSlaLabel(value),
     }
   })
@@ -97,12 +97,8 @@ const validate = () => {
   errors.customerId = form.customerId ? '' : 'Customer wajib'
   errors.driverName = form.driverName.trim() ? '' : 'Driver Name wajib'
   errors.truckNumber = form.truckNumber.trim() ? '' : 'No Truck wajib'
-  errors.slaWaitingMinutes =
-    typeof form.slaWaitingMinutes === 'number' ? '' : 'SLA Menunggu wajib dipilih'
-  errors.slaInWhProcessMinutes =
-    typeof form.slaInWhProcessMinutes === 'number'
-      ? ''
-      : 'SLA IN_WH + Proses wajib dipilih'
+  errors.slaWaitingMinutes = form.slaWaitingMinutes ? '' : 'SLA Menunggu wajib dipilih'
+  errors.slaInWhProcessMinutes = form.slaInWhProcessMinutes ? '' : 'SLA IN_WH + Proses wajib dipilih'
   return (
     !errors.customerId &&
     !errors.driverName &&
@@ -195,30 +191,30 @@ watch(
         <div class="grid gap-3 md:grid-cols-2">
           <div>
             <label class="text-muted-foreground">SLA Status Menunggu</label>
-            <select
-              v-model.number="form.slaWaitingMinutes"
-              class="mt-1 w-full bg-transparent border rounded-md px-2 py-2 text-sm"
-            >
-              <option value="">Pilih SLA Menunggu...</option>
-              <option v-for="option in slaOptions" :key="option.value" :value="option.value">
-                {{ option.label }}
-              </option>
-            </select>
+            <div class="mt-1">
+              <Combobox
+                v-model="form.slaWaitingMinutes"
+                :options="slaOptions"
+                placeholder="Pilih SLA Menunggu..."
+                search-placeholder="Cari SLA Menunggu..."
+                empty-text="Tidak ada pilihan SLA"
+              />
+            </div>
             <p v-if="errors.slaWaitingMinutes" class="mt-1 text-xs text-red-600">
               {{ errors.slaWaitingMinutes }}
             </p>
           </div>
           <div v-if="form.slaWaitingMinutes !== ''">
             <label class="text-muted-foreground">SLA Status IN_WH + Proses</label>
-            <select
-              v-model.number="form.slaInWhProcessMinutes"
-              class="mt-1 w-full bg-transparent border rounded-md px-2 py-2 text-sm"
-            >
-              <option value="">Pilih SLA IN_WH + Proses...</option>
-              <option v-for="option in slaOptions" :key="option.value" :value="option.value">
-                {{ option.label }}
-              </option>
-            </select>
+            <div class="mt-1">
+              <Combobox
+                v-model="form.slaInWhProcessMinutes"
+                :options="slaOptions"
+                placeholder="Pilih SLA IN_WH + Proses..."
+                search-placeholder="Cari SLA IN_WH + Proses..."
+                empty-text="Tidak ada pilihan SLA"
+              />
+            </div>
             <p v-if="errors.slaInWhProcessMinutes" class="mt-1 text-xs text-red-600">
               {{ errors.slaInWhProcessMinutes }}
             </p>

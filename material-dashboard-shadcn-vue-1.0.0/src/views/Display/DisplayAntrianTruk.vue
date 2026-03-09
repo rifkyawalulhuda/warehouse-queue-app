@@ -122,7 +122,9 @@ const statusBadgeClass = (status: DisplayEntry['status']) => {
 const rowHighlightClass = (entry: DisplayEntry) => {
   const state = getSlaState(entry)
   if (state !== 'normal') return ''
-  if (entry.status === 'IN_WH' || entry.status === 'PROSES') return 'bg-blue-50'
+  if (entry.status === 'IN_WH' || entry.status === 'PROSES') {
+    return 'bg-cyan-50/70 dark:bg-[rgba(22,92,120,0.18)] dark:hover:bg-[rgba(28,112,146,0.24)]'
+  }
   return ''
 }
 
@@ -279,12 +281,20 @@ const getSlaState = (entry: DisplayEntry) => {
   return 'normal'
 }
 
-const rowClass = (entry: DisplayEntry) => {
-  if (entry.status === 'BATAL') return 'bg-gray-100 hover:bg-gray-200'
+const getSlaRowToneClass = (entry: DisplayEntry) => {
+  if (entry.status === 'BATAL') return 'bg-muted/70 hover:bg-muted'
   const state = getSlaState(entry)
-  if (state === 'over') return 'bg-red-100 hover:bg-red-200 border-l-4 border-red-400'
-  if (state === 'warning') return 'bg-yellow-100 hover:bg-yellow-200 border-l-4 border-yellow-400'
-  return 'hover:bg-gray-50'
+  if (state === 'over') {
+    return 'bg-red-50 text-red-950 hover:bg-red-100 border-l-4 border-red-400 dark:bg-[rgba(120,24,38,0.34)] dark:text-red-50 dark:hover:bg-[rgba(136,28,43,0.42)] dark:border-red-400/60'
+  }
+  if (state === 'warning') {
+    return 'bg-amber-50 text-amber-950 hover:bg-amber-100 border-l-4 border-amber-400 dark:bg-[rgba(120,88,18,0.28)] dark:text-amber-50 dark:hover:bg-[rgba(146,104,24,0.36)] dark:border-amber-300/60'
+  }
+  return 'hover:bg-muted/45'
+}
+
+const rowClass = (entry: DisplayEntry) => {
+  return getSlaRowToneClass(entry)
 }
 
 const formatRemaining = (mins?: number | null) => {

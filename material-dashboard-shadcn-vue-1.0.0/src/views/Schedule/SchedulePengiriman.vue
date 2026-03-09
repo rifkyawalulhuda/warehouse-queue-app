@@ -93,6 +93,21 @@ const page = ref(1)
 const limit = ref(15)
 const totalPages = ref(1)
 const totalItems = ref(0)
+const rowLimitOptions = [
+  { label: '15', value: '15' },
+  { label: '30', value: '30' },
+  { label: '50', value: '50' },
+  { label: '100', value: '100' }
+]
+const rowLimitValue = computed({
+  get: () => String(limit.value),
+  set: (value: string) => {
+    const parsed = Number(value)
+    if (Number.isFinite(parsed) && parsed > 0) {
+      limit.value = parsed
+    }
+  }
+})
 const sortBy = ref<'scheduleDate' | 'storeType' | 'customerName' | 'createdAt'>('createdAt')
 const sortDir = ref<'asc' | 'desc'>('desc')
 const submitting = ref(false)
@@ -998,12 +1013,16 @@ watch(
         <div class="mt-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div class="flex items-center gap-2 text-sm">
             <span class="text-muted-foreground">Rows:</span>
-            <select v-model.number="limit" class="bg-transparent border rounded-md px-2 py-1 text-sm">
-              <option :value="15">15</option>
-              <option :value="30">30</option>
-              <option :value="50">50</option>
-              <option :value="100">100</option>
-            </select>
+            <div class="w-24">
+              <Combobox
+                v-model="rowLimitValue"
+                :options="rowLimitOptions"
+                :searchable="false"
+                placeholder="Rows"
+                search-placeholder="Cari jumlah rows..."
+                empty-text="Jumlah rows tidak ditemukan"
+              />
+            </div>
             <span class="text-muted-foreground">Total: {{ totalItems }}</span>
           </div>
           <div class="flex flex-wrap items-center gap-1">

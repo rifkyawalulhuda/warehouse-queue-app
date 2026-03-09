@@ -9,13 +9,13 @@ const props = defineProps<{
 }>()
 
 const buttonClass = computed(() => {
-  const baseClass = 'inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50'
+  const baseClass = 'inline-flex items-center justify-center whitespace-nowrap rounded-xl border border-transparent text-sm font-medium ring-offset-background transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 active:scale-[0.99] disabled:pointer-events-none disabled:opacity-50'
   
   const variantClasses = {
-    default: 'bg-primary text-primary-foreground hover:bg-primary/90',
-    secondary: 'bg-secondary text-secondary-foreground hover:bg-secondary/80',
-    outline: 'border border-input bg-background hover:bg-accent hover:text-accent-foreground',
-    ghost: 'hover:bg-accent hover:text-accent-foreground',
+    default: 'bg-primary text-primary-foreground shadow-lg shadow-primary/20 hover:bg-primary/90 hover:shadow-xl hover:shadow-primary/25',
+    secondary: 'bg-secondary/85 text-secondary-foreground shadow-sm hover:bg-secondary',
+    outline: 'border-border/70 bg-card/75 shadow-sm backdrop-blur-sm hover:bg-accent/70 hover:text-accent-foreground',
+    ghost: 'hover:bg-accent/70 hover:text-accent-foreground',
     link: 'text-primary underline-offset-4 hover:underline'
   }
   

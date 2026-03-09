@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Search, Menu, User, LogOut, ChevronDown } from 'lucide-vue-next'
+import { Search, Menu, User, LogOut, ChevronDown, MoonStar, SunMedium } from 'lucide-vue-next'
 import { useAuth } from '@/composables/useAuth'
+import { useTheme } from '@/composables/useTheme'
 import Button from '@/components/ui/Button.vue'
 
 defineProps<{
@@ -12,6 +13,7 @@ defineProps<{
 const router = useRouter()
 const route = useRoute()
 const { user, logout } = useAuth()
+const { isDark, toggleTheme } = useTheme()
 const searchQuery = ref('')
 const accountDropdownOpen = ref(false)
 const confirmLogoutOpen = ref(false)
@@ -76,13 +78,13 @@ watch(
 </script>
 
 <template>
-  <nav class="bg-card border-b sticky top-0 z-40">
+  <nav class="sticky top-0 z-40 border-b border-border/70 bg-card/80 backdrop-blur-xl">
     <div class="px-4 lg:px-8">
-      <div class="flex items-center justify-between h-16">
+      <div class="flex h-[72px] items-center justify-between py-3">
         <div class="flex items-center gap-4">
           <button
             @click="onToggleSidebar"
-            class="lg:hidden p-2 hover:bg-accent rounded-md"
+            class="rounded-xl border border-border/60 bg-background/60 p-2 hover:bg-accent lg:hidden"
             aria-label="Toggle menu"
           >
             <Menu :size="20" />
@@ -95,7 +97,7 @@ watch(
                 v-model="searchQuery"
                 type="search"
                 placeholder="Search..."
-                class="pl-10 pr-4 py-2 bg-background border rounded-md focus:outline-none focus:ring-2 focus:ring-primary w-64 lg:w-96"
+                class="h-11 w-64 rounded-full border border-border/70 bg-background/75 pl-10 pr-4 text-sm shadow-sm backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-primary lg:w-96"
               />
             </div>
           </form>
@@ -104,19 +106,29 @@ watch(
         <div class="flex items-center gap-2">
           <button
             @click="onToggleSidebar"
-            class="hidden lg:block p-2 hover:bg-accent rounded-md"
+            class="hidden rounded-xl border border-border/60 bg-background/60 p-2 hover:bg-accent lg:block"
             aria-label="Toggle sidebar"
           >
             <Menu :size="20" />
           </button>
 
+          <button
+            @click="toggleTheme"
+            class="inline-flex h-11 items-center gap-2 rounded-full border border-border/70 bg-background/75 px-3 text-sm font-medium shadow-sm backdrop-blur-sm hover:bg-accent/70"
+            :aria-label="isDark ? 'Aktifkan light mode' : 'Aktifkan dark mode'"
+          >
+            <SunMedium v-if="isDark" :size="16" />
+            <MoonStar v-else :size="16" />
+            <span class="hidden sm:inline">{{ isDark ? 'Light' : 'Dark' }}</span>
+          </button>
+
           <div class="relative">
             <button
               @click="toggleAccountDropdown"
-              class="flex items-center gap-2 px-3 py-2 hover:bg-accent rounded-md"
+              class="flex h-11 items-center gap-2 rounded-full border border-border/70 bg-background/75 px-3 shadow-sm backdrop-blur-sm hover:bg-accent/70"
               aria-label="Account menu"
             >
-              <div class="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center">
+              <div class="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg shadow-primary/25">
                 <User :size="18" />
               </div>
               <span class="hidden sm:block text-sm font-medium">{{ displayUserName }}</span>
@@ -139,16 +151,16 @@ watch(
             >
               <div
                 v-if="accountDropdownOpen"
-                class="absolute right-0 mt-2 w-56 bg-card border rounded-md shadow-lg py-1 z-50"
+                class="absolute right-0 z-50 mt-3 w-56 overflow-hidden rounded-2xl border border-border/70 bg-card/95 py-1 shadow-2xl backdrop-blur-xl"
               >
-                <div class="px-4 py-3 border-b">
+                <div class="border-b border-border/70 px-4 py-3">
                   <p class="text-sm font-medium">{{ user?.name || 'User' }}</p>
                   <p class="text-xs text-muted-foreground">{{ user?.username || '-' }}</p>
                 </div>
 
                 <button
                   @click="openLogoutConfirm"
-                  class="w-full flex items-center gap-2 px-4 py-2 text-sm hover:bg-accent text-red-600"
+                  class="flex w-full items-center gap-2 px-4 py-2.5 text-sm text-red-600 hover:bg-red-500/10"
                 >
                   <LogOut :size="16" />
                   <span>Logout</span>
@@ -167,7 +179,7 @@ watch(
               v-model="searchQuery"
               type="search"
               placeholder="Search..."
-              class="w-full pl-10 pr-4 py-2 bg-background border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+              class="h-11 w-full rounded-full border border-border/70 bg-background/75 pl-10 pr-4 text-sm shadow-sm backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-primary"
             />
           </div>
         </form>
@@ -176,17 +188,17 @@ watch(
   </nav>
 
   <div v-if="confirmLogoutOpen" class="fixed inset-0 z-50">
-    <div class="absolute inset-0 bg-black/40" @click="closeLogoutConfirm"></div>
+    <div class="absolute inset-0 bg-background/60 backdrop-blur-sm" @click="closeLogoutConfirm"></div>
     <div
-      class="absolute left-1/2 top-1/2 w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-lg bg-card shadow-xl border"
+      class="absolute left-1/2 top-1/2 w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-border/70 bg-card/95 shadow-2xl backdrop-blur-xl"
     >
-      <div class="p-4 border-b">
+      <div class="border-b border-border/70 p-4">
         <h3 class="text-lg font-semibold">Konfirmasi Logout</h3>
         <p class="text-sm text-muted-foreground mt-1">
           Apakah Anda yakin ingin keluar dari akun ini?
         </p>
       </div>
-      <div class="p-4 border-t flex items-center justify-end gap-2">
+      <div class="flex items-center justify-end gap-2 border-t border-border/70 p-4">
         <Button variant="ghost" :disabled="loggingOut" @click="closeLogoutConfirm">Batal</Button>
         <Button variant="outline" class="border-red-200 bg-red-600 text-white hover:bg-red-700 hover:text-white" :disabled="loggingOut" @click="handleLogout">
           {{ loggingOut ? 'Memproses...' : 'Ya, Logout' }}

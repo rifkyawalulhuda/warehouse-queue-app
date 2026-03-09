@@ -6,11 +6,14 @@ import CardHeader from '@/components/ui/CardHeader.vue'
 import CardContent from '@/components/ui/CardContent.vue'
 import Button from '@/components/ui/Button.vue'
 import { useAuth } from '@/composables/useAuth'
+import { useTheme } from '@/composables/useTheme'
+import { MoonStar, SunMedium } from 'lucide-vue-next'
 import sankyuLogo from '../../../img/logo_sankyu.png'
 
 const router = useRouter()
 const route = useRoute()
 const { login } = useAuth()
+const { isDark, toggleTheme } = useTheme()
 
 const form = reactive({
   username: '',
@@ -46,16 +49,25 @@ const handleSubmit = async () => {
 </script>
 
 <template>
-  <div
-    class="min-h-screen bg-background px-4 py-8 sm:px-6 lg:px-8"
-    style="
-      background-image:
-        linear-gradient(180deg, rgba(15, 23, 42, 0.03) 0%, rgba(15, 23, 42, 0) 35%),
-        radial-gradient(circle at 88% 14%, rgba(34, 197, 94, 0.07), transparent 28%);
-    "
-  >
+  <div class="relative min-h-screen bg-background px-4 py-8 sm:px-6 lg:px-8">
+    <div class="pointer-events-none absolute inset-0 overflow-hidden">
+      <div class="absolute left-[-5rem] top-[-5rem] h-40 w-40 rounded-full bg-primary/12 blur-3xl"></div>
+      <div class="absolute bottom-0 right-[-4rem] h-48 w-48 rounded-full bg-sky-500/12 blur-3xl"></div>
+    </div>
+    <div class="absolute right-4 top-4 z-10 sm:right-6 sm:top-6">
+      <button
+        type="button"
+        class="inline-flex h-11 items-center gap-2 rounded-full border border-border/70 bg-card/80 px-3 text-sm font-medium shadow-sm backdrop-blur-sm hover:bg-accent/70"
+        :aria-label="isDark ? 'Aktifkan light mode' : 'Aktifkan dark mode'"
+        @click="toggleTheme"
+      >
+        <SunMedium v-if="isDark" :size="16" />
+        <MoonStar v-else :size="16" />
+        <span>{{ isDark ? 'Light' : 'Dark' }}</span>
+      </button>
+    </div>
     <div class="mx-auto flex min-h-[calc(100vh-4rem)] w-full max-w-6xl items-center">
-      <div class="w-full overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
+      <div class="w-full overflow-hidden rounded-[28px] border border-border/70 bg-card/90 shadow-[0_35px_70px_-40px_hsl(var(--foreground)/0.45)] backdrop-blur-xl">
         <div class="h-1 bg-primary"></div>
         <div class="grid lg:grid-cols-[1.1fr_0.9fr]">
           <section class="order-2 border-t border-border/80 p-6 sm:p-8 lg:order-1 lg:border-r lg:border-t-0 lg:p-10">
@@ -66,7 +78,7 @@ const handleSubmit = async () => {
             </p>
 
             <div class="mt-5 flex items-start gap-4">
-              <div class="shrink-0 rounded-lg bg-white p-2 ring-1 ring-border">
+              <div class="shrink-0 rounded-2xl bg-card/90 p-2 ring-1 ring-border/70 shadow-sm backdrop-blur-sm">
                 <img
                   :src="sankyuLogo"
                   alt="PT. Sankyu Indonesia International"
@@ -99,8 +111,8 @@ const handleSubmit = async () => {
             </div>
           </section>
 
-          <section class="order-1 bg-muted/20 p-6 sm:p-8 lg:order-2 lg:p-10">
-            <Card class="mx-auto w-full max-w-md border-border bg-card shadow-none">
+          <section class="order-1 bg-muted/30 p-6 sm:p-8 lg:order-2 lg:p-10">
+            <Card class="mx-auto w-full max-w-md border-border/70 bg-card/90 shadow-none backdrop-blur-sm">
               <CardHeader>
                 <div>
                   <h2 class="text-2xl font-semibold tracking-tight">Login</h2>
