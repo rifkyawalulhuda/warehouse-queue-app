@@ -217,6 +217,10 @@ function getEntryRemainingPriority(entry, nowMs) {
 async function createQueueEntry(data, actorUser) {
   const resolvedName = actorUser?.name || "system";
   const actorUserId = actorUser?.id || null;
+  const waitingSlaMinutes =
+    normalizeSlaMinutes(data.slaWaitingMinutes) ?? LEGACY_WAITING_SLA_MINUTES;
+  const inWhProcessSlaMinutes =
+    normalizeSlaMinutes(data.slaInWhProcessMinutes) ?? getLegacyInWhProcessSlaMinutes(data);
   return prisma.queueEntry.create({
     data: {
       category: data.category,
@@ -225,8 +229,8 @@ async function createQueueEntry(data, actorUser) {
       truckNumber: data.truckNumber,
       containerNumber: data.containerNumber || null,
       registerTime: data.registerTime ? new Date(data.registerTime) : undefined,
-      slaWaitingMinutes: normalizeSlaMinutes(data.slaWaitingMinutes),
-      slaInWhProcessMinutes: normalizeSlaMinutes(data.slaInWhProcessMinutes),
+      slaWaitingMinutes: waitingSlaMinutes,
+      slaInWhProcessMinutes: inWhProcessSlaMinutes,
       notes: data.notes || null,
       notesFromWh: null,
       logs: {
@@ -459,6 +463,15 @@ async function updateQueueEntry(id, data, actorUser) {
 
   const resolvedName = actorUser?.name || "system";
   const actorUserId = actorUser?.id || null;
+  const waitingSlaMinutes =
+    data.slaWaitingMinutes !== undefined
+      ? normalizeSlaMinutes(data.slaWaitingMinutes) ?? LEGACY_WAITING_SLA_MINUTES
+      : undefined;
+  const inWhProcessSlaMinutes =
+    data.slaInWhProcessMinutes !== undefined
+      ? normalizeSlaMinutes(data.slaInWhProcessMinutes) ??
+        getLegacyInWhProcessSlaMinutes({ category: data.category ?? entry.category })
+      : undefined;
 
   return prisma.queueEntry.update({
     where: { id },
@@ -469,14 +482,8 @@ async function updateQueueEntry(id, data, actorUser) {
       truckNumber: data.truckNumber ?? undefined,
       containerNumber: data.containerNumber ?? undefined,
       registerTime: data.registerTime ? new Date(data.registerTime) : undefined,
-      slaWaitingMinutes:
-        data.slaWaitingMinutes !== undefined
-          ? normalizeSlaMinutes(data.slaWaitingMinutes)
-          : undefined,
-      slaInWhProcessMinutes:
-        data.slaInWhProcessMinutes !== undefined
-          ? normalizeSlaMinutes(data.slaInWhProcessMinutes)
-          : undefined,
+      slaWaitingMinutes: waitingSlaMinutes,
+      slaInWhProcessMinutes: inWhProcessSlaMinutes,
       notes: data.notes ?? undefined,
       logs: {
         create: {

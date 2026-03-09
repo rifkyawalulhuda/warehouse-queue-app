@@ -551,8 +551,8 @@ const handleCreate = async (payload: {
   driverName: string
   truckNumber: string
   containerNumber: string
-  slaWaitingMinutes: number
-  slaInWhProcessMinutes: number
+  slaWaitingMinutes?: number
+  slaInWhProcessMinutes?: number
   notes: string
   registerTime: string
 }) => {
@@ -564,8 +564,10 @@ const handleCreate = async (payload: {
       customerId: payload.customerId,
       driverName: payload.driverName,
       truckNumber: payload.truckNumber,
-      slaWaitingMinutes: payload.slaWaitingMinutes,
-      slaInWhProcessMinutes: payload.slaInWhProcessMinutes,
+    }
+    if (typeof payload.slaWaitingMinutes === 'number') body.slaWaitingMinutes = payload.slaWaitingMinutes
+    if (typeof payload.slaInWhProcessMinutes === 'number') {
+      body.slaInWhProcessMinutes = payload.slaInWhProcessMinutes
     }
     if (payload.containerNumber.trim()) body.containerNumber = payload.containerNumber.trim()
     if (payload.notes.trim()) body.notes = payload.notes.trim()
@@ -602,8 +604,8 @@ const handleEdit = async (payload: {
   driverName: string
   truckNumber: string
   containerNumber: string
-  slaWaitingMinutes: number
-  slaInWhProcessMinutes: number
+  slaWaitingMinutes?: number
+  slaInWhProcessMinutes?: number
   notes: string
   registerTime: string
 }) => {
@@ -618,8 +620,10 @@ const handleEdit = async (payload: {
       truckNumber: payload.truckNumber,
       containerNumber: payload.containerNumber.trim(),
       notes: payload.notes.trim(),
-      slaWaitingMinutes: payload.slaWaitingMinutes,
-      slaInWhProcessMinutes: payload.slaInWhProcessMinutes,
+    }
+    if (typeof payload.slaWaitingMinutes === 'number') body.slaWaitingMinutes = payload.slaWaitingMinutes
+    if (typeof payload.slaInWhProcessMinutes === 'number') {
+      body.slaInWhProcessMinutes = payload.slaInWhProcessMinutes
     }
     if (payload.registerTime) {
       body.registerTime = new Date(payload.registerTime).toISOString()

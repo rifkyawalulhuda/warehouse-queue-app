@@ -9,8 +9,8 @@ type FormState = {
   driverName: string
   truckNumber: string
   containerNumber: string
-  slaWaitingMinutes: number
-  slaInWhProcessMinutes: number
+  slaWaitingMinutes?: number
+  slaInWhProcessMinutes?: number
   notes: string
   registerTime: string
 }
@@ -97,25 +97,47 @@ const validate = () => {
   errors.customerId = form.customerId ? '' : 'Customer wajib'
   errors.driverName = form.driverName.trim() ? '' : 'Driver Name wajib'
   errors.truckNumber = form.truckNumber.trim() ? '' : 'No Truck wajib'
-  errors.slaWaitingMinutes = form.slaWaitingMinutes ? '' : 'SLA Menunggu wajib dipilih'
-  errors.slaInWhProcessMinutes = form.slaInWhProcessMinutes ? '' : 'SLA IN_WH + Proses wajib dipilih'
+  errors.slaWaitingMinutes = ''
+  errors.slaInWhProcessMinutes = ''
+  if (form.slaWaitingMinutes && !form.slaInWhProcessMinutes) {
+    errors.slaInWhProcessMinutes = 'SLA IN_WH + Proses wajib dipilih jika SLA Menunggu diisi'
+  }
   return (
     !errors.customerId &&
     !errors.driverName &&
     !errors.truckNumber &&
-    !errors.slaWaitingMinutes &&
     !errors.slaInWhProcessMinutes
   )
 }
 
 const handleSubmit = () => {
   if (!validate()) return
-  emit('submit', {
-    ...form,
-    slaWaitingMinutes: Number(form.slaWaitingMinutes),
-    slaInWhProcessMinutes: Number(form.slaInWhProcessMinutes),
-  })
+  const payload: FormState = {
+    customerId: form.customerId,
+    category: form.category,
+    driverName: form.driverName,
+    truckNumber: form.truckNumber,
+    containerNumber: form.containerNumber,
+    notes: form.notes,
+    registerTime: form.registerTime,
+  }
+  if (form.slaWaitingMinutes) {
+    payload.slaWaitingMinutes = Number(form.slaWaitingMinutes)
+    payload.slaInWhProcessMinutes = Number(form.slaInWhProcessMinutes)
+  }
+  emit('submit', payload)
 }
+
+watch(
+  () => form.slaWaitingMinutes,
+  (value) => {
+    errors.slaWaitingMinutes = ''
+    if (!value) {
+      form.slaInWhProcessMinutes = ''
+      errors.slaInWhProcessMinutes = ''
+    }
+  }
+)
 
 watch(
   () => props.open,
@@ -200,8 +222,8 @@ watch(
                 empty-text="Tidak ada pilihan SLA"
               />
             </div>
-            <p v-if="errors.slaWaitingMinutes" class="mt-1 text-xs text-red-600">
-              {{ errors.slaWaitingMinutes }}
+            <p class="mt-1 text-xs text-muted-foreground">
+              Default: Menunggu 30 menit, IN_WH + Proses Receiving 120 menit / Delivery 90 menit.
             </p>
           </div>
           <div v-if="form.slaWaitingMinutes !== ''">

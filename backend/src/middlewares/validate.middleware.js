@@ -62,6 +62,12 @@ function validateQueueCreate(req, res, next) {
   } = req.body;
   const waitingSla = parseSlaMinutes(slaWaitingMinutes);
   const inWhProcessSla = parseSlaMinutes(slaInWhProcessMinutes);
+  const hasWaitingSla =
+    slaWaitingMinutes !== undefined && slaWaitingMinutes !== null && slaWaitingMinutes !== "";
+  const hasInWhProcessSla =
+    slaInWhProcessMinutes !== undefined &&
+    slaInWhProcessMinutes !== null &&
+    slaInWhProcessMinutes !== "";
 
   if (!ALLOWED_CATEGORIES.includes(category)) {
     errors.push("category harus RECEIVING atau DELIVERY");
@@ -78,13 +84,19 @@ function validateQueueCreate(req, res, next) {
   if (registerTime !== undefined && registerTime !== null && registerTime !== "" && !isValidDateInput(registerTime)) {
     errors.push("registerTime tidak valid");
   }
-  if (!isValidSlaMinutes(waitingSla)) {
+  if (hasWaitingSla && !isValidSlaMinutes(waitingSla)) {
     errors.push("slaWaitingMinutes wajib angka kelipatan 15 menit, minimal 15 dan maksimal 1440");
   }
-  if (!isValidSlaMinutes(inWhProcessSla)) {
+  if (hasInWhProcessSla && !isValidSlaMinutes(inWhProcessSla)) {
     errors.push(
       "slaInWhProcessMinutes wajib angka kelipatan 15 menit, minimal 15 dan maksimal 1440"
     );
+  }
+  if (hasWaitingSla && !hasInWhProcessSla) {
+    errors.push("slaInWhProcessMinutes wajib diisi jika slaWaitingMinutes diisi");
+  }
+  if (!hasWaitingSla && hasInWhProcessSla) {
+    errors.push("slaWaitingMinutes wajib diisi jika slaInWhProcessMinutes diisi");
   }
 
   if (errors.length > 0) {
@@ -110,6 +122,12 @@ function validateQueueUpdate(req, res, next) {
   const waitingSla = slaWaitingMinutes === undefined ? null : parseSlaMinutes(slaWaitingMinutes);
   const inWhProcessSla =
     slaInWhProcessMinutes === undefined ? null : parseSlaMinutes(slaInWhProcessMinutes);
+  const hasWaitingSla =
+    slaWaitingMinutes !== undefined && slaWaitingMinutes !== null && slaWaitingMinutes !== "";
+  const hasInWhProcessSla =
+    slaInWhProcessMinutes !== undefined &&
+    slaInWhProcessMinutes !== null &&
+    slaInWhProcessMinutes !== "";
 
   if (category !== undefined && !ALLOWED_CATEGORIES.includes(category)) {
     errors.push("category harus RECEIVING atau DELIVERY");
@@ -132,11 +150,17 @@ function validateQueueUpdate(req, res, next) {
   if (registerTime !== undefined && registerTime !== null && registerTime !== "" && !isValidDateInput(registerTime)) {
     errors.push("registerTime tidak valid");
   }
-  if (slaWaitingMinutes !== undefined && !isValidSlaMinutes(waitingSla)) {
+  if (hasWaitingSla && !isValidSlaMinutes(waitingSla)) {
     errors.push("slaWaitingMinutes harus kelipatan 15 menit, minimal 15 dan maksimal 1440");
   }
-  if (slaInWhProcessMinutes !== undefined && !isValidSlaMinutes(inWhProcessSla)) {
+  if (hasInWhProcessSla && !isValidSlaMinutes(inWhProcessSla)) {
     errors.push("slaInWhProcessMinutes harus kelipatan 15 menit, minimal 15 dan maksimal 1440");
+  }
+  if (hasWaitingSla && !hasInWhProcessSla) {
+    errors.push("slaInWhProcessMinutes wajib diisi jika slaWaitingMinutes diisi");
+  }
+  if (!hasWaitingSla && hasInWhProcessSla) {
+    errors.push("slaWaitingMinutes wajib diisi jika slaInWhProcessMinutes diisi");
   }
 
   if (errors.length > 0) {

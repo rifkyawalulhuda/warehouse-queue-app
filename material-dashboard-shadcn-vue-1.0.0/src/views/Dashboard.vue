@@ -217,8 +217,6 @@ const isLoadingProgress = ref(false)
 const isLoadingPickingProgress = ref(false)
 const loading = ref(false)
 const error = ref<string | null>(null)
-const dashboardPrintError = ref<string | null>(null)
-const dashboardPrinting = ref(false)
 const monthlyReportOpen = ref(false)
 const monthlyReportMonth = ref(getCurrentMonth())
 const monthlyReportPrinting = ref(false)
@@ -623,104 +621,6 @@ const buildMonthlyReportHtml = (report: MonthlyReportPayload) => {
 </html>`
 }
 
-const buildDashboardPrintHtml = () => {
-  const root = document.getElementById('dashboard-print-root')
-  if (!root) {
-    throw new Error('Area dashboard tidak ditemukan')
-  }
-
-  const clonedRoot = root.cloneNode(true) as HTMLElement
-  const originalCanvases = root.querySelectorAll('canvas')
-  const clonedCanvases = clonedRoot.querySelectorAll('canvas')
-
-  originalCanvases.forEach((canvas, index) => {
-    const clonedCanvas = clonedCanvases[index]
-    if (!clonedCanvas) return
-    const image = document.createElement('img')
-    image.src = canvas.toDataURL('image/png')
-    image.alt = 'Chart preview'
-    image.style.display = 'block'
-    image.style.width = `${canvas.clientWidth || canvas.width}px`
-    image.style.height = `${canvas.clientHeight || canvas.height}px`
-    image.style.maxWidth = '100%'
-    clonedCanvas.replaceWith(image)
-  })
-
-  const headStyles = Array.from(document.head.querySelectorAll('link[rel="stylesheet"], style'))
-    .map((node) => node.outerHTML)
-    .join('\n')
-
-  return `<!doctype html>
-<html>
-  <head>
-    <meta charset="UTF-8" />
-    <title>Dashboard Progress Delivery & Receiving</title>
-    ${headStyles}
-    <style>
-      @page { size: A4 portrait; margin: 10mm; }
-      html, body {
-        margin: 0;
-        padding: 0;
-        background: hsl(var(--background));
-        color: hsl(var(--foreground));
-        -webkit-print-color-adjust: exact;
-        print-color-adjust: exact;
-      }
-      body {
-        padding: 10mm;
-      }
-      #dashboard-print-root {
-        width: 100%;
-      }
-      .dashboard-actions {
-        display: none !important;
-      }
-      .dashboard-print-date {
-        display: block !important;
-        font-size: 12px;
-        color: #6b7280;
-        margin-top: 4px;
-      }
-      #dashboard-print-root canvas {
-        display: none !important;
-      }
-      #dashboard-print-root img {
-        max-width: 100% !important;
-        page-break-inside: avoid;
-      }
-      .cursor-pointer {
-        cursor: default !important;
-      }
-      .hover\\:border-primary\\/40:hover,
-      .hover\\:shadow-md:hover {
-        box-shadow: none !important;
-        border-color: inherit !important;
-      }
-      @media print {
-        #dashboard-print-root,
-        #dashboard-print-root > *,
-        .rounded-xl,
-        .rounded-2xl,
-        .rounded-lg,
-        .rounded-md,
-        .border,
-        .bg-card,
-        .bg-background,
-        .bg-muted,
-        .bg-accent,
-        [class*='bg-'] {
-          -webkit-print-color-adjust: exact !important;
-          print-color-adjust: exact !important;
-        }
-      }
-    </style>
-  </head>
-  <body>
-    ${clonedRoot.outerHTML}
-  </body>
-</html>`
-}
-
 const fetchDashboard = async () => {
   loading.value = true
   error.value = null
@@ -882,70 +782,9 @@ const formatPrintDate = (value: string) => {
 }
 
 const handlePrintDashboard = () => {
-  dashboardPrintError.value = null
-  dashboardPrinting.value = true
-
-  const printWindow = window.open('', '_blank')
-  if (!printWindow) {
-    dashboardPrinting.value = false
-    dashboardPrintError.value = 'Popup print diblokir browser. Izinkan popup lalu coba lagi.'
-    return
-  }
-
-  printWindow.document.open()
-  printWindow.document.write(`
-    <!doctype html>
-    <html>
-      <head>
-        <meta charset="UTF-8" />
-        <title>Menyiapkan Print Dashboard...</title>
-        <style>
-          body { font-family: Arial, Helvetica, sans-serif; margin: 24px; color: #111; }
-          .muted { color: #666; }
-        </style>
-      </head>
-      <body>
-        <h3>Menyiapkan Print Dashboard...</h3>
-        <p class="muted">Mohon tunggu, data sedang dirapikan untuk dicetak.</p>
-      </body>
-    </html>
-  `)
-  printWindow.document.close()
-
-  try {
-    const html = buildDashboardPrintHtml()
-    printWindow.document.open()
-    printWindow.document.write(html)
-    printWindow.document.close()
-    printWindow.focus()
-    window.setTimeout(() => {
-      printWindow.print()
-    }, 300)
-  } catch (err: any) {
-    const message = getErrorMessage(err, 'Gagal menyiapkan print dashboard')
-    dashboardPrintError.value = message
-    printWindow.document.open()
-    printWindow.document.write(`
-      <!doctype html>
-      <html>
-        <head>
-          <meta charset="UTF-8" />
-          <title>Gagal Print</title>
-          <style>
-            body { font-family: Arial, Helvetica, sans-serif; margin: 24px; color: #111; }
-            .error { color: #b91c1c; }
-          </style>
-        </head>
-        <body>
-          <h3 class="error">Gagal menyiapkan print dashboard</h3>
-          <p>${escapeHtml(message)}</p>
-        </body>
-      </html>
-    `)
-    printWindow.document.close()
-  } finally {
-    dashboardPrinting.value = false
-  }
+  window.setTimeout(() => {
+    window.print()
+  }, 100)
 }
 
 const handlePrintMonthlyReport = async () => {
@@ -1103,15 +942,7 @@ onUnmounted(() => {
         >
           Print Laporan Bulanan
         </Button>
-        <Button
-          size="sm"
-          variant="outline"
-          class="border-emerald-200 bg-emerald-600 text-white hover:bg-emerald-700 hover:text-white"
-          :disabled="dashboardPrinting"
-          @click="handlePrintDashboard"
-        >
-          {{ dashboardPrinting ? 'Menyiapkan...' : 'Print' }}
-        </Button>
+        <Button size="sm" variant="outline" class="border-emerald-200 bg-emerald-600 text-white hover:bg-emerald-700 hover:text-white" @click="handlePrintDashboard">Print</Button>
         <Button size="sm" variant="outline" @click="handleRefresh">Refresh</Button>
       </div>
     </div>
@@ -1119,9 +950,6 @@ onUnmounted(() => {
     <div v-if="error" class="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
       {{ error }}
       <Button size="sm" variant="ghost" class="ml-2" @click="handleRefresh">Retry</Button>
-    </div>
-    <div v-if="dashboardPrintError" class="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-      {{ dashboardPrintError }}
     </div>
 
     <div class="grid gap-4 md:grid-cols-3">
@@ -1497,10 +1325,18 @@ onUnmounted(() => {
     margin: 10mm;
   }
 
+  html,
+  body {
+    background: #fff !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
   aside,
   nav.bg-card.border-b,
   footer,
-  .dashboard-actions {
+  .dashboard-actions,
+  .fixed.inset-0.z-50 {
     display: none !important;
   }
 
@@ -1520,6 +1356,22 @@ onUnmounted(() => {
     margin: 0 !important;
     padding: 0 !important;
     font-size: 11px;
+  }
+
+  #dashboard-print-root .overflow-hidden,
+  #dashboard-print-root .overflow-x-auto,
+  #dashboard-print-root .overflow-auto {
+    overflow: visible !important;
+  }
+
+  #dashboard-print-root .grid,
+  #dashboard-print-root .rounded-lg,
+  #dashboard-print-root .rounded-xl,
+  #dashboard-print-root .rounded-2xl,
+  #dashboard-print-root table,
+  #dashboard-print-root canvas {
+    break-inside: avoid;
+    page-break-inside: avoid;
   }
 
   #dashboard-print-root canvas {
