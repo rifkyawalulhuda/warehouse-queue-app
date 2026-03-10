@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import Card from '@/components/ui/Card.vue'
 import CardHeader from '@/components/ui/CardHeader.vue'
@@ -221,6 +221,9 @@ const monthlyReportOpen = ref(false)
 const monthlyReportMonth = ref(getCurrentMonth())
 const monthlyReportPrinting = ref(false)
 const monthlyReportError = ref<string | null>(null)
+const dashboardPrinting = ref(false)
+const dashboardPrintRootRef = ref<HTMLElement | null>(null)
+const dashboardPrintImages = ref<HTMLImageElement[]>([])
 const selectedDateInputRef = ref<HTMLInputElement | null>(null)
 const monthlyReportMonthInputRef = ref<HTMLInputElement | null>(null)
 
@@ -781,10 +784,53 @@ const formatPrintDate = (value: string) => {
   return `${match[3]}/${match[2]}/${match[1]}`
 }
 
-const handlePrintDashboard = () => {
-  window.setTimeout(() => {
-    window.print()
-  }, 100)
+const clearDashboardPrintImages = () => {
+  dashboardPrintImages.value.forEach((image) => image.remove())
+  dashboardPrintImages.value = []
+}
+
+const prepareDashboardPrintImages = () => {
+  const sourceRoot = dashboardPrintRootRef.value
+  if (!sourceRoot) return
+
+  clearDashboardPrintImages()
+
+  const sourceCanvases = Array.from(sourceRoot.querySelectorAll('canvas'))
+  const images: HTMLImageElement[] = []
+
+  sourceCanvases.forEach((sourceCanvas, index) => {
+    const parent = sourceCanvas.parentElement
+    if (!parent) return
+
+    const image = document.createElement('img')
+    image.src = sourceCanvas.toDataURL('image/png')
+    image.alt = `Dashboard chart ${index + 1}`
+    image.className = 'dashboard-print-chart-image'
+    image.style.width = `${sourceCanvas.clientWidth || sourceCanvas.width || 640}px`
+    image.style.height = `${sourceCanvas.clientHeight || sourceCanvas.height || 320}px`
+    image.style.maxWidth = '100%'
+    image.style.objectFit = 'contain'
+    image.style.display = 'none'
+
+    parent.appendChild(image)
+    images.push(image)
+  })
+
+  dashboardPrintImages.value = images
+}
+
+const handlePrintDashboard = async () => {
+  dashboardPrinting.value = true
+
+  try {
+    await nextTick()
+    prepareDashboardPrintImages()
+    window.setTimeout(() => {
+      window.print()
+    }, 150)
+  } finally {
+    dashboardPrinting.value = false
+  }
 }
 
 const handlePrintMonthlyReport = async () => {
@@ -900,16 +946,21 @@ onMounted(() => {
   }, 10000)
   handleRefresh()
   setupAutoRefresh()
+  window.addEventListener('beforeprint', prepareDashboardPrintImages)
+  window.addEventListener('afterprint', clearDashboardPrintImages)
 })
 
 onUnmounted(() => {
   if (refreshTimer) window.clearInterval(refreshTimer)
   if (todayTimer) window.clearInterval(todayTimer)
+  window.removeEventListener('beforeprint', prepareDashboardPrintImages)
+  window.removeEventListener('afterprint', clearDashboardPrintImages)
+  clearDashboardPrintImages()
 })
 </script>
 
 <template>
-  <div id="dashboard-print-root" class="space-y-6">
+  <div ref="dashboardPrintRootRef" id="dashboard-print-root" class="space-y-6">
     <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
       <div class="dashboard-print-title">
         <h1 class="text-xl font-bold tracking-tight">Dashboard Progress Delivery & Receiving</h1>
@@ -942,7 +993,15 @@ onUnmounted(() => {
         >
           Print Laporan Bulanan
         </Button>
-        <Button size="sm" variant="outline" class="border-emerald-200 bg-emerald-600 text-white hover:bg-emerald-700 hover:text-white" @click="handlePrintDashboard">Print</Button>
+        <Button
+          size="sm"
+          variant="outline"
+          class="border-emerald-200 bg-emerald-600 text-white hover:bg-emerald-700 hover:text-white"
+          :disabled="dashboardPrinting"
+          @click="handlePrintDashboard"
+        >
+          {{ dashboardPrinting ? 'Menyiapkan...' : 'Print' }}
+        </Button>
         <Button size="sm" variant="outline" @click="handleRefresh">Refresh</Button>
       </div>
     </div>
@@ -1319,6 +1378,10 @@ onUnmounted(() => {
   display: none;
 }
 
+.dashboard-print-chart-image {
+  display: none;
+}
+
 @media print {
   @page {
     size: A4 portrait;
@@ -1356,6 +1419,22 @@ onUnmounted(() => {
     margin: 0 !important;
     padding: 0 !important;
     font-size: 11px;
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+    --primary: 221.2 83.2% 53.3%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 36.9%;
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+    --border: 214.3 31.8% 86%;
+    color: hsl(var(--foreground)) !important;
   }
 
   #dashboard-print-root .overflow-hidden,
@@ -1376,6 +1455,27 @@ onUnmounted(() => {
 
   #dashboard-print-root canvas {
     max-width: 100% !important;
+    display: none !important;
+  }
+
+  #dashboard-print-root .dashboard-print-chart-image {
+    display: block !important;
+    max-width: 100% !important;
+    height: auto !important;
+  }
+
+  #dashboard-print-root .rounded-lg,
+  #dashboard-print-root .rounded-xl,
+  #dashboard-print-root .rounded-2xl {
+    background: #ffffff !important;
+    box-shadow: none !important;
+    backdrop-filter: none !important;
+    border-color: #d1d5db !important;
+    color: #111827 !important;
+  }
+
+  #dashboard-print-root .text-muted-foreground {
+    color: #6b7280 !important;
   }
 
   .dashboard-print-date {
