@@ -14,6 +14,7 @@ type QueueEntry = {
   driverName: string
   truckNumber: string
   containerNumber?: string | null
+  transporter?: string | null
   registerTime: string
   inWhTime?: string | null
   startTime?: string | null
@@ -178,6 +179,7 @@ const sortIndicator = (column: string) => {
             </button>
           </th>
           <th class="px-3 py-2 text-left font-medium">No Container</th>
+          <th class="px-3 py-2 text-left font-medium">Transporter</th>
           <th class="px-3 py-2 text-left font-medium">
             <button
               type="button"
@@ -244,10 +246,10 @@ const sortIndicator = (column: string) => {
       </thead>
       <tbody>
         <tr v-if="loading">
-          <td colspan="13" class="px-3 py-6 text-center text-muted-foreground">Loading...</td>
+          <td colspan="14" class="px-3 py-6 text-center text-muted-foreground">Loading...</td>
         </tr>
         <tr v-else-if="props.entries.length === 0">
-          <td colspan="13" class="px-3 py-6 text-center text-muted-foreground">Data kosong.</td>
+          <td colspan="14" class="px-3 py-6 text-center text-muted-foreground">Data kosong.</td>
         </tr>
         <tr
           v-for="(entry, index) in prioritizedEntries"
@@ -269,6 +271,7 @@ const sortIndicator = (column: string) => {
           <td class="px-3 py-2">{{ entry.driverName }}</td>
           <td class="px-3 py-2">{{ entry.truckNumber }}</td>
           <td class="px-3 py-2">{{ entry.containerNumber || '-' }}</td>
+          <td class="px-3 py-2">{{ entry.transporter || '-' }}</td>
           <td class="px-3 py-2">{{ entry.gate?.gateNo || '-' }}</td>
           <td class="px-3 py-2">{{ formatTime(entry.registerTime) }}</td>
           <td class="px-3 py-2">{{ formatTime(entry.inWhTime) }}</td>

@@ -228,6 +228,7 @@ async function createQueueEntry(data, actorUser) {
       driverName: data.driverName,
       truckNumber: data.truckNumber,
       containerNumber: data.containerNumber || null,
+      transporter: data.transporter || null,
       registerTime: data.registerTime ? new Date(data.registerTime) : undefined,
       slaWaitingMinutes: waitingSlaMinutes,
       slaInWhProcessMinutes: inWhProcessSlaMinutes,
@@ -481,6 +482,7 @@ async function updateQueueEntry(id, data, actorUser) {
       driverName: data.driverName ?? undefined,
       truckNumber: data.truckNumber ?? undefined,
       containerNumber: data.containerNumber ?? undefined,
+      transporter: data.transporter ?? undefined,
       registerTime:
         entry.status === "MENUNGGU" && data.registerTime
           ? new Date(data.registerTime)

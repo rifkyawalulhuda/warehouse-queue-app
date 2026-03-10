@@ -9,6 +9,7 @@ type FormState = {
   driverName: string
   truckNumber: string
   containerNumber: string
+  transporter: string
   slaWaitingMinutes?: number
   slaInWhProcessMinutes?: number
   notes: string
@@ -37,6 +38,7 @@ const form = reactive<DraftFormState>({
   driverName: '',
   truckNumber: '',
   containerNumber: '',
+  transporter: '',
   slaWaitingMinutes: '',
   slaInWhProcessMinutes: '',
   notes: '',
@@ -82,6 +84,7 @@ const resetForm = () => {
   form.driverName = ''
   form.truckNumber = ''
   form.containerNumber = ''
+  form.transporter = ''
   form.slaWaitingMinutes = ''
   form.slaInWhProcessMinutes = ''
   form.notes = ''
@@ -118,6 +121,7 @@ const handleSubmit = () => {
     driverName: form.driverName,
     truckNumber: form.truckNumber,
     containerNumber: form.containerNumber,
+    transporter: form.transporter,
     notes: form.notes,
     registerTime: form.registerTime,
   }
@@ -207,6 +211,10 @@ watch(
           <div>
             <label class="text-muted-foreground">No Container</label>
             <input v-model="form.containerNumber" type="text" class="mt-1 w-full bg-transparent border rounded-md px-2 py-2 text-sm" />
+          </div>
+          <div>
+            <label class="text-muted-foreground">Transporter</label>
+            <input v-model="form.transporter" type="text" class="mt-1 w-full bg-transparent border rounded-md px-2 py-2 text-sm" />
           </div>
         </div>
 

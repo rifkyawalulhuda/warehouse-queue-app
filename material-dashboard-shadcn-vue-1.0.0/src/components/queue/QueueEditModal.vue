@@ -11,6 +11,7 @@ type QueueEntry = {
   driverName: string
   truckNumber: string
   containerNumber?: string | null
+  transporter?: string | null
   slaWaitingMinutes?: number | null
   slaInWhProcessMinutes?: number | null
   notes?: string | null
@@ -23,6 +24,7 @@ type FormState = {
   driverName: string
   truckNumber: string
   containerNumber: string
+  transporter: string
   slaWaitingMinutes?: number
   slaInWhProcessMinutes?: number
   notes: string
@@ -52,6 +54,7 @@ const form = reactive<DraftFormState>({
   driverName: '',
   truckNumber: '',
   containerNumber: '',
+  transporter: '',
   slaWaitingMinutes: '',
   slaInWhProcessMinutes: '',
   notes: '',
@@ -113,6 +116,7 @@ const syncFormFromEntry = () => {
   form.driverName = props.entry?.driverName || ''
   form.truckNumber = props.entry?.truckNumber || ''
   form.containerNumber = props.entry?.containerNumber || ''
+  form.transporter = props.entry?.transporter || ''
   form.slaWaitingMinutes = props.entry?.slaWaitingMinutes ? String(props.entry.slaWaitingMinutes) : ''
   form.slaInWhProcessMinutes = props.entry?.slaInWhProcessMinutes ? String(props.entry.slaInWhProcessMinutes) : ''
   form.notes = props.entry?.notes || ''
@@ -158,6 +162,7 @@ const handleSubmit = () => {
     driverName: form.driverName,
     truckNumber: form.truckNumber,
     containerNumber: form.containerNumber,
+    transporter: form.transporter,
     notes: form.notes,
     registerTime: form.registerTime,
   }
@@ -254,6 +259,10 @@ watch(
           <div>
             <label class="text-muted-foreground">No Container</label>
             <input v-model="form.containerNumber" type="text" class="mt-1 w-full bg-transparent border rounded-md px-2 py-2 text-sm" />
+          </div>
+          <div>
+            <label class="text-muted-foreground">Transporter</label>
+            <input v-model="form.transporter" type="text" class="mt-1 w-full bg-transparent border rounded-md px-2 py-2 text-sm" />
           </div>
         </div>
 

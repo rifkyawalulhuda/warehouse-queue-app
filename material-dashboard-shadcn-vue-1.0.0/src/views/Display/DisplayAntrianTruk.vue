@@ -11,6 +11,7 @@ type DisplayEntry = {
   driverName: string
   truckNumber: string
   containerNumber?: string | null
+  transporter?: string | null
   registerTime: string
   inWhTime?: string | null
   startTime?: string | null
@@ -482,6 +483,7 @@ const showSoundBanner = computed(() => soundEnabled.value && ttsSupported && sou
               <th class="px-4 py-3 text-left font-semibold">Driver Name</th>
               <th class="px-4 py-3 text-left font-semibold">No Truck</th>
               <th class="px-3 py-3 text-left font-semibold">No Container</th>
+              <th class="px-3 py-3 text-left font-semibold">Transporter</th>
               <th class="px-3 py-3 text-center font-semibold">Gate</th>
               <th class="px-3 py-3 text-left font-semibold">Customer Name</th>
               <th class="px-4 py-3 text-left font-semibold">Register Time</th>
@@ -490,10 +492,10 @@ const showSoundBanner = computed(() => soundEnabled.value && ttsSupported && sou
           </thead>
           <tbody>
             <tr v-if="loading">
-              <td colspan="8" class="px-4 py-6 text-center text-muted-foreground">Loading...</td>
+              <td colspan="9" class="px-4 py-6 text-center text-muted-foreground">Loading...</td>
             </tr>
             <tr v-else-if="entries.length === 0">
-              <td colspan="8" class="px-4 py-6 text-center text-muted-foreground">Data kosong.</td>
+              <td colspan="9" class="px-4 py-6 text-center text-muted-foreground">Data kosong.</td>
             </tr>
             <tr
               v-for="entry in prioritizedEntries"
@@ -511,6 +513,7 @@ const showSoundBanner = computed(() => soundEnabled.value && ttsSupported && sou
               <td class="px-4 py-4 font-bold">{{ entry.driverName || '-' }}</td>
               <td class="px-4 py-4 font-semibold">{{ entry.truckNumber || '-' }}</td>
               <td class="px-3 py-4">{{ entry.containerNumber || '-' }}</td>
+              <td class="px-3 py-4">{{ entry.transporter || '-' }}</td>
               <td class="px-3 py-4 text-center font-semibold whitespace-nowrap">
                 <div class="flex flex-col items-center leading-tight">
                   <span>{{ formatGateShort(entry.gate) }}</span>

@@ -56,6 +56,7 @@ function validateQueueCreate(req, res, next) {
     customerId,
     driverName,
     truckNumber,
+    transporter,
     registerTime,
     slaWaitingMinutes,
     slaInWhProcessMinutes,
@@ -80,6 +81,9 @@ function validateQueueCreate(req, res, next) {
   }
   if (!isNonEmptyString(truckNumber)) {
     errors.push("truckNumber wajib diisi");
+  }
+  if (transporter !== undefined && transporter !== null && typeof transporter !== "string") {
+    errors.push("transporter harus string");
   }
   if (registerTime !== undefined && registerTime !== null && registerTime !== "" && !isValidDateInput(registerTime)) {
     errors.push("registerTime tidak valid");
@@ -113,6 +117,7 @@ function validateQueueUpdate(req, res, next) {
     driverName,
     truckNumber,
     containerNumber,
+    transporter,
     notes,
     registerTime,
     slaWaitingMinutes,
@@ -143,6 +148,9 @@ function validateQueueUpdate(req, res, next) {
   }
   if (containerNumber !== undefined && typeof containerNumber !== "string") {
     errors.push("containerNumber harus string");
+  }
+  if (transporter !== undefined && typeof transporter !== "string") {
+    errors.push("transporter harus string");
   }
   if (notes !== undefined && typeof notes !== "string") {
     errors.push("notes harus string");

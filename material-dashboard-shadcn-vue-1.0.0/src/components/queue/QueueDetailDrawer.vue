@@ -27,6 +27,7 @@ type QueueEntry = {
   driverName: string
   truckNumber: string
   containerNumber?: string | null
+  transporter?: string | null
   registerTime: string
   inWhTime?: string | null
   startTime?: string | null
@@ -386,6 +387,10 @@ const saveWhNotes = async () => {
           <div>
             <p class="text-muted-foreground">No Container</p>
             <p class="font-medium">{{ entry?.containerNumber || '-' }}</p>
+          </div>
+          <div>
+            <p class="text-muted-foreground">Transporter</p>
+            <p class="font-medium">{{ entry?.transporter || '-' }}</p>
           </div>
           <div>
             <p class="text-muted-foreground">Gate No</p>

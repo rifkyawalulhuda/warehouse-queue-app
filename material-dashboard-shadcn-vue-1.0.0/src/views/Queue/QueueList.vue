@@ -37,6 +37,7 @@ type QueueEntry = {
   driverName: string
   truckNumber: string
   containerNumber?: string | null
+  transporter?: string | null
   registerTime: string
   inWhTime?: string | null
   startTime?: string | null
@@ -551,6 +552,7 @@ const handleCreate = async (payload: {
   driverName: string
   truckNumber: string
   containerNumber: string
+  transporter: string
   slaWaitingMinutes?: number
   slaInWhProcessMinutes?: number
   notes: string
@@ -570,6 +572,7 @@ const handleCreate = async (payload: {
       body.slaInWhProcessMinutes = payload.slaInWhProcessMinutes
     }
     if (payload.containerNumber.trim()) body.containerNumber = payload.containerNumber.trim()
+    if (payload.transporter.trim()) body.transporter = payload.transporter.trim()
     if (payload.notes.trim()) body.notes = payload.notes.trim()
     if (payload.registerTime) body.registerTime = new Date(payload.registerTime).toISOString()
 
@@ -604,6 +607,7 @@ const handleEdit = async (payload: {
   driverName: string
   truckNumber: string
   containerNumber: string
+  transporter: string
   slaWaitingMinutes?: number
   slaInWhProcessMinutes?: number
   notes: string
@@ -619,6 +623,7 @@ const handleEdit = async (payload: {
       driverName: payload.driverName,
       truckNumber: payload.truckNumber,
       containerNumber: payload.containerNumber.trim(),
+      transporter: payload.transporter.trim(),
       notes: payload.notes.trim(),
     }
     if (typeof payload.slaWaitingMinutes === 'number') body.slaWaitingMinutes = payload.slaWaitingMinutes
