@@ -6,6 +6,7 @@ import CardHeader from '@/components/ui/CardHeader.vue'
 import CardContent from '@/components/ui/CardContent.vue'
 import Button from '@/components/ui/Button.vue'
 import Input from '@/components/ui/Input.vue'
+import Combobox from '@/components/ui/Combobox.vue'
 import QueueTable from '@/components/queue/QueueTable.vue'
 import QueueDetailDrawer from '@/components/queue/QueueDetailDrawer.vue'
 import QueueCreateModal from '@/components/queue/QueueCreateModal.vue'
@@ -40,6 +41,8 @@ type QueueEntry = {
   inWhTime?: string | null
   startTime?: string | null
   finishTime?: string | null
+  slaWaitingMinutes: number
+  slaInWhProcessMinutes: number
   status: 'MENUNGGU' | 'IN_WH' | 'PROSES' | 'SELESAI' | 'BATAL'
   notes?: string | null
   notesFromWh?: string | null
@@ -89,6 +92,21 @@ const page = ref(1)
 const limit = ref(15)
 const totalPages = ref(1)
 const totalItems = ref(0)
+const rowLimitOptions = [
+  { label: '15', value: '15' },
+  { label: '30', value: '30' },
+  { label: '50', value: '50' },
+  { label: '100', value: '100' }
+]
+const rowLimitValue = computed({
+  get: () => String(limit.value),
+  set: (value: string) => {
+    const parsed = Number(value)
+    if (Number.isFinite(parsed) && parsed > 0) {
+      limit.value = parsed
+    }
+  }
+})
 
 const exportForm = reactive({
   dateFrom: '',
@@ -209,8 +227,8 @@ const statusSequenceColorClass = (status: QueueStatusKey) => {
       }
     case 'IN_WH':
       return {
-        card: 'border-purple-200 bg-purple-50 text-purple-900',
-        bubble: 'border-purple-300 bg-purple-100 text-purple-800',
+        card: 'border-cyan-200 bg-cyan-50 text-cyan-900 dark:border-cyan-400/30 dark:bg-cyan-500/10 dark:text-cyan-100',
+        bubble: 'border-cyan-300 bg-cyan-100 text-cyan-800 dark:border-cyan-400/30 dark:bg-cyan-500/15 dark:text-cyan-100',
       }
     case 'PROSES':
       return {
@@ -533,6 +551,8 @@ const handleCreate = async (payload: {
   driverName: string
   truckNumber: string
   containerNumber: string
+  slaWaitingMinutes?: number
+  slaInWhProcessMinutes?: number
   notes: string
   registerTime: string
 }) => {
@@ -543,7 +563,11 @@ const handleCreate = async (payload: {
       category: payload.category,
       customerId: payload.customerId,
       driverName: payload.driverName,
-      truckNumber: payload.truckNumber
+      truckNumber: payload.truckNumber,
+    }
+    if (typeof payload.slaWaitingMinutes === 'number') body.slaWaitingMinutes = payload.slaWaitingMinutes
+    if (typeof payload.slaInWhProcessMinutes === 'number') {
+      body.slaInWhProcessMinutes = payload.slaInWhProcessMinutes
     }
     if (payload.containerNumber.trim()) body.containerNumber = payload.containerNumber.trim()
     if (payload.notes.trim()) body.notes = payload.notes.trim()
@@ -580,6 +604,8 @@ const handleEdit = async (payload: {
   driverName: string
   truckNumber: string
   containerNumber: string
+  slaWaitingMinutes?: number
+  slaInWhProcessMinutes?: number
   notes: string
   registerTime: string
 }) => {
@@ -594,6 +620,10 @@ const handleEdit = async (payload: {
       truckNumber: payload.truckNumber,
       containerNumber: payload.containerNumber.trim(),
       notes: payload.notes.trim(),
+    }
+    if (typeof payload.slaWaitingMinutes === 'number') body.slaWaitingMinutes = payload.slaWaitingMinutes
+    if (typeof payload.slaInWhProcessMinutes === 'number') {
+      body.slaInWhProcessMinutes = payload.slaInWhProcessMinutes
     }
     if (payload.registerTime) {
       body.registerTime = new Date(payload.registerTime).toISOString()
@@ -890,18 +920,22 @@ watch(
             />
           </div>
           <div>
-            <select v-model="filters.status" class="w-full bg-transparent border rounded-md px-2 py-2 text-sm">
-              <option v-for="opt in statusOptions" :key="opt.value" :value="opt.value">
-                {{ opt.label }}
-              </option>
-            </select>
+            <Combobox
+              v-model="filters.status"
+              :options="statusOptions"
+              placeholder="Semua status"
+              search-placeholder="Cari status..."
+              empty-text="Status tidak ditemukan"
+            />
           </div>
           <div>
-            <select v-model="filters.category" class="w-full bg-transparent border rounded-md px-2 py-2 text-sm">
-              <option v-for="opt in categoryOptions" :key="opt.value" :value="opt.value">
-                {{ opt.label }}
-              </option>
-            </select>
+            <Combobox
+              v-model="filters.category"
+              :options="categoryOptions"
+              placeholder="Semua kategori"
+              search-placeholder="Cari kategori..."
+              empty-text="Kategori tidak ditemukan"
+            />
           </div>
           <div class="relative">
             <input
@@ -958,12 +992,16 @@ watch(
         <div class="mt-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div class="flex items-center gap-2 text-sm">
             <span class="text-muted-foreground">Rows:</span>
-            <select v-model.number="limit" class="bg-transparent border rounded-md px-2 py-1 text-sm">
-              <option :value="15">15</option>
-              <option :value="30">30</option>
-              <option :value="50">50</option>
-              <option :value="100">100</option>
-            </select>
+            <div class="w-24">
+              <Combobox
+                v-model="rowLimitValue"
+                :options="rowLimitOptions"
+                :searchable="false"
+                placeholder="Rows"
+                search-placeholder="Cari jumlah rows..."
+                empty-text="Jumlah rows tidak ditemukan"
+              />
+            </div>
             <span class="text-muted-foreground">Total: {{ totalItems }}</span>
           </div>
           <div class="flex flex-wrap items-center gap-1">

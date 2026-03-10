@@ -72,11 +72,21 @@ const isNearSlaNow = (entry: PickingProgressEntry) => {
   return entry.status === 'ON_PROCESS' && remaining !== null && remaining >= 0 && remaining < 900
 }
 
+const getRowClass = (entry: PickingProgressEntry) => {
+  if (entry.status === 'BATAL') {
+    return 'bg-red-50 text-red-950 hover:bg-red-100 dark:bg-[rgba(120,24,38,0.28)] dark:text-red-50 dark:hover:bg-[rgba(136,28,43,0.34)]'
+  }
+  if (isOverSlaNow(entry)) {
+    return 'bg-red-50 text-red-950 hover:bg-red-100 dark:bg-[rgba(120,24,38,0.34)] dark:text-red-50 dark:hover:bg-[rgba(136,28,43,0.42)]'
+  }
+  if (isNearSlaNow(entry)) {
+    return 'bg-amber-50 text-amber-950 hover:bg-amber-100 dark:bg-[rgba(120,88,18,0.28)] dark:text-amber-50 dark:hover:bg-[rgba(146,104,24,0.36)]'
+  }
+  return 'hover:bg-muted/45'
+}
+
 const rowClass = (entry: PickingProgressEntry) => {
-  if (entry.status === 'BATAL') return 'bg-red-50 hover:bg-red-100'
-  if (isOverSlaNow(entry)) return 'bg-red-100 hover:bg-red-200'
-  if (isNearSlaNow(entry)) return 'bg-yellow-100 hover:bg-yellow-200'
-  return 'hover:bg-gray-50'
+  return getRowClass(entry)
 }
 
 const statusClass = (status: PickingProgressEntry['status']) => {
@@ -214,7 +224,7 @@ const sortIcon = (column: PickingSortField, sortBy: PickingSortField, sortDir: '
           <td class="px-3 py-2">{{ entry.pickerEmployee?.name || '-' }}</td>
           <td class="px-3 py-2">
             <span v-if="entry.status === 'ON_PROCESS'"
-              :class="isOverSlaNow(entry) ? 'text-red-700 font-semibold' : isNearSlaNow(entry) ? 'text-yellow-800 font-semibold' : 'text-muted-foreground'"
+              :class="isOverSlaNow(entry) ? 'font-semibold text-red-700 dark:text-red-100' : isNearSlaNow(entry) ? 'font-semibold text-amber-800 dark:text-amber-100' : 'text-muted-foreground'"
             >
               {{ formatRemaining(getCurrentRemainingSeconds(entry)) }}
             </span>

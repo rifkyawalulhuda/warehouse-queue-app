@@ -7,9 +7,12 @@ type QueueEntry = {
   id: string
   customerId?: string | null
   category: 'RECEIVING' | 'DELIVERY'
+  status?: 'MENUNGGU' | 'IN_WH' | 'PROSES' | 'SELESAI' | 'BATAL'
   driverName: string
   truckNumber: string
   containerNumber?: string | null
+  slaWaitingMinutes?: number | null
+  slaInWhProcessMinutes?: number | null
   notes?: string | null
   registerTime?: string | null
 }
@@ -20,8 +23,15 @@ type FormState = {
   driverName: string
   truckNumber: string
   containerNumber: string
+  slaWaitingMinutes?: number
+  slaInWhProcessMinutes?: number
   notes: string
   registerTime: string
+}
+
+type DraftFormState = Omit<FormState, 'slaWaitingMinutes' | 'slaInWhProcessMinutes'> & {
+  slaWaitingMinutes: string
+  slaInWhProcessMinutes: string
 }
 
 const props = defineProps<{
@@ -36,12 +46,14 @@ const emit = defineEmits<{
   (e: 'submit', payload: FormState): void
 }>()
 
-const form = reactive<FormState>({
+const form = reactive<DraftFormState>({
   customerId: '',
   category: 'RECEIVING',
   driverName: '',
   truckNumber: '',
   containerNumber: '',
+  slaWaitingMinutes: '',
+  slaInWhProcessMinutes: '',
   notes: '',
   registerTime: '',
 })
@@ -50,7 +62,17 @@ const errors = reactive({
   customerId: '',
   driverName: '',
   truckNumber: '',
+  slaWaitingMinutes: '',
+  slaInWhProcessMinutes: '',
 })
+
+const formatSlaLabel = (minutes: number) => {
+  const hours = Math.floor(minutes / 60)
+  const remainingMinutes = minutes % 60
+  if (hours > 0 && remainingMinutes > 0) return `${hours} jam ${remainingMinutes} menit`
+  if (hours > 0 && remainingMinutes === 0) return `${hours} jam`
+  return `${minutes} menit`
+}
 
 const customerOptions = computed(() =>
   props.customers.map((customer) => ({
@@ -58,6 +80,19 @@ const customerOptions = computed(() =>
     label: customer.name,
   }))
 )
+
+const slaOptions = computed(() =>
+  Array.from({ length: 96 }, (_, index) => {
+    const value = (index + 1) * 15
+    return {
+      value: String(value),
+      label: formatSlaLabel(value),
+    }
+  })
+)
+
+const canEditRegisterTime = computed(() => (props.entry?.status || 'MENUNGGU') === 'MENUNGGU')
+const canEditWaitingSla = computed(() => (props.entry?.status || 'MENUNGGU') === 'MENUNGGU')
 
 const toDatetimeLocal = (value?: string | null) => {
   if (!value) return ''
@@ -78,11 +113,15 @@ const syncFormFromEntry = () => {
   form.driverName = props.entry?.driverName || ''
   form.truckNumber = props.entry?.truckNumber || ''
   form.containerNumber = props.entry?.containerNumber || ''
+  form.slaWaitingMinutes = props.entry?.slaWaitingMinutes ? String(props.entry.slaWaitingMinutes) : ''
+  form.slaInWhProcessMinutes = props.entry?.slaInWhProcessMinutes ? String(props.entry.slaInWhProcessMinutes) : ''
   form.notes = props.entry?.notes || ''
   form.registerTime = toDatetimeLocal(props.entry?.registerTime)
   errors.customerId = ''
   errors.driverName = ''
   errors.truckNumber = ''
+  errors.slaWaitingMinutes = ''
+  errors.slaInWhProcessMinutes = ''
 }
 
 watch(
@@ -98,13 +137,49 @@ const validate = () => {
   errors.customerId = form.customerId ? '' : 'Customer wajib'
   errors.driverName = form.driverName.trim() ? '' : 'Driver Name wajib'
   errors.truckNumber = form.truckNumber.trim() ? '' : 'No Truck wajib'
-  return !errors.customerId && !errors.driverName && !errors.truckNumber
+  errors.slaWaitingMinutes = ''
+  errors.slaInWhProcessMinutes = ''
+  if (form.slaWaitingMinutes && !form.slaInWhProcessMinutes) {
+    errors.slaInWhProcessMinutes = 'SLA IN_WH + Proses wajib dipilih jika SLA Menunggu diisi'
+  }
+  return (
+    !errors.customerId &&
+    !errors.driverName &&
+    !errors.truckNumber &&
+    !errors.slaInWhProcessMinutes
+  )
 }
 
 const handleSubmit = () => {
   if (!validate()) return
-  emit('submit', { ...form })
+  const payload: FormState = {
+    customerId: form.customerId,
+    category: form.category,
+    driverName: form.driverName,
+    truckNumber: form.truckNumber,
+    containerNumber: form.containerNumber,
+    notes: form.notes,
+    registerTime: form.registerTime,
+  }
+  if (canEditWaitingSla.value && form.slaWaitingMinutes) {
+    payload.slaWaitingMinutes = Number(form.slaWaitingMinutes)
+  }
+  if (form.slaInWhProcessMinutes) {
+    payload.slaInWhProcessMinutes = Number(form.slaInWhProcessMinutes)
+  }
+  emit('submit', payload)
 }
+
+watch(
+  () => form.slaWaitingMinutes,
+  (value) => {
+    errors.slaWaitingMinutes = ''
+    if (!value) {
+      form.slaInWhProcessMinutes = ''
+      errors.slaInWhProcessMinutes = ''
+    }
+  }
+)
 </script>
 
 <template>
@@ -139,8 +214,16 @@ const handleSubmit = () => {
             <input
               v-model="form.registerTime"
               type="datetime-local"
+              :disabled="!canEditRegisterTime"
               class="mt-1 w-full bg-transparent border rounded-md px-2 py-2 text-sm"
             />
+            <p class="mt-1 text-xs text-muted-foreground">
+              {{
+                canEditRegisterTime
+                  ? 'Opsional. Jika tidak diubah, sistem akan memakai waktu register yang tersimpan.'
+                  : 'Register Time tidak bisa diubah karena transaksi sudah melewati status Menunggu.'
+              }}
+            </p>
           </div>
         </div>
 
@@ -171,6 +254,44 @@ const handleSubmit = () => {
           <div>
             <label class="text-muted-foreground">No Container</label>
             <input v-model="form.containerNumber" type="text" class="mt-1 w-full bg-transparent border rounded-md px-2 py-2 text-sm" />
+          </div>
+        </div>
+
+        <div class="grid gap-3 md:grid-cols-2">
+          <div>
+            <label class="text-muted-foreground">SLA Status Menunggu</label>
+            <div class="mt-1">
+              <Combobox
+                v-model="form.slaWaitingMinutes"
+                :options="slaOptions"
+                :disabled="!canEditWaitingSla"
+                placeholder="Pilih SLA Menunggu..."
+                search-placeholder="Cari SLA Menunggu..."
+                empty-text="Tidak ada pilihan SLA"
+              />
+            </div>
+            <p class="mt-1 text-xs text-muted-foreground">
+              {{
+                canEditWaitingSla
+                  ? 'Opsional. Jika dilewati, sistem akan memakai SLA default atau SLA lama yang tersimpan.'
+                  : 'SLA Menunggu tidak bisa diubah karena transaksi sudah melewati status Menunggu.'
+              }}
+            </p>
+          </div>
+          <div v-if="form.slaWaitingMinutes !== ''">
+            <label class="text-muted-foreground">SLA Status IN_WH + Proses</label>
+            <div class="mt-1">
+              <Combobox
+                v-model="form.slaInWhProcessMinutes"
+                :options="slaOptions"
+                placeholder="Pilih SLA IN_WH + Proses..."
+                search-placeholder="Cari SLA IN_WH + Proses..."
+                empty-text="Tidak ada pilihan SLA"
+              />
+            </div>
+            <p v-if="errors.slaInWhProcessMinutes" class="mt-1 text-xs text-red-600">
+              {{ errors.slaInWhProcessMinutes }}
+            </p>
           </div>
         </div>
 

@@ -4,6 +4,8 @@ const ALLOWED_CATEGORIES = ["RECEIVING", "DELIVERY"];
 const ALLOWED_STATUSES = ["MENUNGGU", "IN_WH", "PROSES", "SELESAI", "BATAL"];
 const ALLOWED_STORE_TYPES = ["STORE_IN", "STORE_OUT"];
 const ALLOWED_TRUCK_TYPES = ["CDD", "CDE", "FUSO", "WB", "FT20", "FT40", "OTHER"];
+const SLA_STEP_MINUTES = 15;
+const MAX_SLA_MINUTES = 24 * 60;
 
 function isNonEmptyString(value) {
   return typeof value === "string" && value.trim().length > 0;
@@ -32,9 +34,40 @@ function isValidDateInput(value) {
   return !Number.isNaN(parsed.getTime());
 }
 
+function parseSlaMinutes(value) {
+  const parsed = Number(value);
+  if (!Number.isInteger(parsed)) return null;
+  return parsed;
+}
+
+function isValidSlaMinutes(value) {
+  return (
+    Number.isInteger(value) &&
+    value >= SLA_STEP_MINUTES &&
+    value <= MAX_SLA_MINUTES &&
+    value % SLA_STEP_MINUTES === 0
+  );
+}
+
 function validateQueueCreate(req, res, next) {
   const errors = [];
-  const { category, customerId, driverName, truckNumber } = req.body;
+  const {
+    category,
+    customerId,
+    driverName,
+    truckNumber,
+    registerTime,
+    slaWaitingMinutes,
+    slaInWhProcessMinutes,
+  } = req.body;
+  const waitingSla = parseSlaMinutes(slaWaitingMinutes);
+  const inWhProcessSla = parseSlaMinutes(slaInWhProcessMinutes);
+  const hasWaitingSla =
+    slaWaitingMinutes !== undefined && slaWaitingMinutes !== null && slaWaitingMinutes !== "";
+  const hasInWhProcessSla =
+    slaInWhProcessMinutes !== undefined &&
+    slaInWhProcessMinutes !== null &&
+    slaInWhProcessMinutes !== "";
 
   if (!ALLOWED_CATEGORIES.includes(category)) {
     errors.push("category harus RECEIVING atau DELIVERY");
@@ -48,6 +81,23 @@ function validateQueueCreate(req, res, next) {
   if (!isNonEmptyString(truckNumber)) {
     errors.push("truckNumber wajib diisi");
   }
+  if (registerTime !== undefined && registerTime !== null && registerTime !== "" && !isValidDateInput(registerTime)) {
+    errors.push("registerTime tidak valid");
+  }
+  if (hasWaitingSla && !isValidSlaMinutes(waitingSla)) {
+    errors.push("slaWaitingMinutes wajib angka kelipatan 15 menit, minimal 15 dan maksimal 1440");
+  }
+  if (hasInWhProcessSla && !isValidSlaMinutes(inWhProcessSla)) {
+    errors.push(
+      "slaInWhProcessMinutes wajib angka kelipatan 15 menit, minimal 15 dan maksimal 1440"
+    );
+  }
+  if (hasWaitingSla && !hasInWhProcessSla) {
+    errors.push("slaInWhProcessMinutes wajib diisi jika slaWaitingMinutes diisi");
+  }
+  if (!hasWaitingSla && hasInWhProcessSla) {
+    errors.push("slaWaitingMinutes wajib diisi jika slaInWhProcessMinutes diisi");
+  }
 
   if (errors.length > 0) {
     return sendError(res, 400, "Validasi gagal", errors);
@@ -57,8 +107,27 @@ function validateQueueCreate(req, res, next) {
 }
 
 function validateQueueUpdate(req, res, next) {
-  const { category, customerId, driverName, truckNumber, containerNumber, notes } = req.body;
+  const {
+    category,
+    customerId,
+    driverName,
+    truckNumber,
+    containerNumber,
+    notes,
+    registerTime,
+    slaWaitingMinutes,
+    slaInWhProcessMinutes,
+  } = req.body;
   const errors = [];
+  const waitingSla = slaWaitingMinutes === undefined ? null : parseSlaMinutes(slaWaitingMinutes);
+  const inWhProcessSla =
+    slaInWhProcessMinutes === undefined ? null : parseSlaMinutes(slaInWhProcessMinutes);
+  const hasWaitingSla =
+    slaWaitingMinutes !== undefined && slaWaitingMinutes !== null && slaWaitingMinutes !== "";
+  const hasInWhProcessSla =
+    slaInWhProcessMinutes !== undefined &&
+    slaInWhProcessMinutes !== null &&
+    slaInWhProcessMinutes !== "";
 
   if (category !== undefined && !ALLOWED_CATEGORIES.includes(category)) {
     errors.push("category harus RECEIVING atau DELIVERY");
@@ -77,6 +146,21 @@ function validateQueueUpdate(req, res, next) {
   }
   if (notes !== undefined && typeof notes !== "string") {
     errors.push("notes harus string");
+  }
+  if (registerTime !== undefined && registerTime !== null && registerTime !== "" && !isValidDateInput(registerTime)) {
+    errors.push("registerTime tidak valid");
+  }
+  if (hasWaitingSla && !isValidSlaMinutes(waitingSla)) {
+    errors.push("slaWaitingMinutes harus kelipatan 15 menit, minimal 15 dan maksimal 1440");
+  }
+  if (hasInWhProcessSla && !isValidSlaMinutes(inWhProcessSla)) {
+    errors.push("slaInWhProcessMinutes harus kelipatan 15 menit, minimal 15 dan maksimal 1440");
+  }
+  if (hasWaitingSla && !hasInWhProcessSla) {
+    errors.push("slaInWhProcessMinutes wajib diisi jika slaWaitingMinutes diisi");
+  }
+  if (!hasWaitingSla && hasInWhProcessSla) {
+    errors.push("slaWaitingMinutes wajib diisi jika slaInWhProcessMinutes diisi");
   }
 
   if (errors.length > 0) {

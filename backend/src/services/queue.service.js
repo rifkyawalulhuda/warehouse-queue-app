@@ -14,6 +14,9 @@ const SORTABLE_FIELDS = new Set([
   "gateNo",
   "status",
 ]);
+const SLA_STEP_MINUTES = 15;
+const MAX_SLA_MINUTES = 24 * 60;
+const LEGACY_WAITING_SLA_MINUTES = 30;
 
 function createHttpError(status, message, details) {
   const err = new Error(message);
@@ -157,27 +160,54 @@ function buildOrderBy(sortBy, sortDir) {
   return orderBy;
 }
 
+function normalizeSlaMinutes(value) {
+  const parsed = Number(value);
+  if (!Number.isInteger(parsed)) return null;
+  if (parsed < SLA_STEP_MINUTES || parsed > MAX_SLA_MINUTES) return null;
+  if (parsed % SLA_STEP_MINUTES !== 0) return null;
+  return parsed;
+}
+
+function getLegacyInWhProcessSlaMinutes(entry) {
+  return entry.category === "RECEIVING" ? 120 : 90;
+}
+
+function getWaitingSlaMinutes(entry) {
+  return normalizeSlaMinutes(entry?.slaWaitingMinutes) ?? LEGACY_WAITING_SLA_MINUTES;
+}
+
+function getInWhProcessSlaMinutes(entry) {
+  return normalizeSlaMinutes(entry?.slaInWhProcessMinutes) ?? getLegacyInWhProcessSlaMinutes(entry);
+}
+
 function getRemainingSlaMinutes(entry) {
-  if (entry.status === "MENUNGGU" || entry.status === "IN_WH") return 30;
-  if (entry.status === "PROSES") return entry.category === "RECEIVING" ? 120 : 90;
+  if (entry.status === "MENUNGGU") return getWaitingSlaMinutes(entry);
+  if (entry.status === "IN_WH" || entry.status === "PROSES") return getInWhProcessSlaMinutes(entry);
   return null;
 }
 
 function getRemainingStartTime(entry) {
-  if (entry.status === "MENUNGGU" || entry.status === "IN_WH") return entry.registerTime;
-  if (entry.status === "PROSES") return entry.startTime;
+  if (entry.status === "MENUNGGU") return entry.registerTime;
+  if (entry.status === "IN_WH" || entry.status === "PROSES") {
+    return entry.inWhTime || entry.startTime || null;
+  }
   return null;
 }
 
-function getEntryRemainingPriority(entry, nowMs) {
+function getEntryRemainingMinutes(entry, nowMs = Date.now()) {
   const slaMinutes = getRemainingSlaMinutes(entry);
   const startTime = getRemainingStartTime(entry);
-  if (slaMinutes === null || !startTime) return 2;
+  if (slaMinutes === null || !startTime) return null;
 
   const startMs = new Date(startTime).getTime();
-  if (Number.isNaN(startMs)) return 2;
+  if (Number.isNaN(startMs)) return null;
   const elapsedMinutes = Math.floor((nowMs - startMs) / 60000);
-  const remainingMinutes = slaMinutes - elapsedMinutes;
+  return slaMinutes - elapsedMinutes;
+}
+
+function getEntryRemainingPriority(entry, nowMs) {
+  const remainingMinutes = getEntryRemainingMinutes(entry, nowMs);
+  if (remainingMinutes === null) return 2;
 
   if (remainingMinutes <= 0) return 0;
   if (remainingMinutes <= 15) return 1;
@@ -187,6 +217,10 @@ function getEntryRemainingPriority(entry, nowMs) {
 async function createQueueEntry(data, actorUser) {
   const resolvedName = actorUser?.name || "system";
   const actorUserId = actorUser?.id || null;
+  const waitingSlaMinutes =
+    normalizeSlaMinutes(data.slaWaitingMinutes) ?? LEGACY_WAITING_SLA_MINUTES;
+  const inWhProcessSlaMinutes =
+    normalizeSlaMinutes(data.slaInWhProcessMinutes) ?? getLegacyInWhProcessSlaMinutes(data);
   return prisma.queueEntry.create({
     data: {
       category: data.category,
@@ -195,6 +229,8 @@ async function createQueueEntry(data, actorUser) {
       truckNumber: data.truckNumber,
       containerNumber: data.containerNumber || null,
       registerTime: data.registerTime ? new Date(data.registerTime) : undefined,
+      slaWaitingMinutes: waitingSlaMinutes,
+      slaInWhProcessMinutes: inWhProcessSlaMinutes,
       notes: data.notes || null,
       notesFromWh: null,
       logs: {
@@ -342,7 +378,7 @@ function getTodayRange() {
 
 async function listQueueEntriesForDisplay() {
   const { from, to } = getTodayRange();
-  const entries = await prisma.queueEntry.findMany({
+  const rows = await prisma.queueEntry.findMany({
     where: {
       registerTime: {
         gte: from,
@@ -355,6 +391,11 @@ async function listQueueEntriesForDisplay() {
       gate: true,
     },
   });
+  const nowMs = Date.now();
+  const entries = rows.map((entry) => ({
+    ...entry,
+    remainingMinutes: getEntryRemainingMinutes(entry, nowMs),
+  }));
 
   const statusOrder = {
     MENUNGGU: 0,
@@ -422,6 +463,15 @@ async function updateQueueEntry(id, data, actorUser) {
 
   const resolvedName = actorUser?.name || "system";
   const actorUserId = actorUser?.id || null;
+  const waitingSlaMinutes =
+    entry.status === "MENUNGGU" && data.slaWaitingMinutes !== undefined
+      ? normalizeSlaMinutes(data.slaWaitingMinutes) ?? LEGACY_WAITING_SLA_MINUTES
+      : undefined;
+  const inWhProcessSlaMinutes =
+    data.slaInWhProcessMinutes !== undefined
+      ? normalizeSlaMinutes(data.slaInWhProcessMinutes) ??
+        getLegacyInWhProcessSlaMinutes({ category: data.category ?? entry.category })
+      : undefined;
 
   return prisma.queueEntry.update({
     where: { id },
@@ -431,6 +481,12 @@ async function updateQueueEntry(id, data, actorUser) {
       driverName: data.driverName ?? undefined,
       truckNumber: data.truckNumber ?? undefined,
       containerNumber: data.containerNumber ?? undefined,
+      registerTime:
+        entry.status === "MENUNGGU" && data.registerTime
+          ? new Date(data.registerTime)
+          : undefined,
+      slaWaitingMinutes: waitingSlaMinutes,
+      slaInWhProcessMinutes: inWhProcessSlaMinutes,
       notes: data.notes ?? undefined,
       logs: {
         create: {
@@ -567,6 +623,7 @@ module.exports = {
   listQueueEntries,
   listQueueEntriesForExport,
   listQueueEntriesForDisplay,
+  getEntryRemainingMinutes,
   getQueueEntryById,
   updateQueueEntry,
   updateQueueWhNotes,

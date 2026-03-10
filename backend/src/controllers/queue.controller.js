@@ -52,6 +52,25 @@ function formatDurationHuman(registerTime, finishTime) {
   return "kurang dari 1 menit";
 }
 
+function formatMinutesHuman(value) {
+  const totalMinutes = Number(value);
+  if (!Number.isFinite(totalMinutes) || totalMinutes <= 0) return "-";
+
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+
+  if (hours > 0 && minutes > 0) return `${hours} jam ${minutes} menit`;
+  if (hours > 0 && minutes === 0) return `${hours} jam`;
+  return `${minutes} menit`;
+}
+
+function formatTimeRemaining(entry) {
+  const remainingMinutes = queueService.getEntryRemainingMinutes(entry);
+  if (remainingMinutes === null) return "-";
+  if (remainingMinutes < 0) return `Over SLA ${Math.abs(remainingMinutes)} menit`;
+  return `${remainingMinutes} menit`;
+}
+
 function buildExportFilename(dateFrom, dateTo) {
   if (dateFrom && dateTo) {
     return `antrian_truk_${dateFrom}_sampai_${dateTo}.xlsx`;
@@ -167,6 +186,8 @@ async function exportQueue(req, res, next) {
       { header: "Start", key: "startTime", width: 20 },
       { header: "Finish", key: "finishTime", width: 20 },
       { header: "Total Waktu (Register → Finish)", key: "totalDuration", width: 28 },
+      { header: "SLA Menunggu", key: "slaWaitingMinutes", width: 18 },
+      { header: "SLA IN_WH + Proses", key: "slaInWhProcessMinutes", width: 22 },
       { header: "Time Remaining", key: "timeRemaining", width: 18 },
       { header: "Status", key: "status", width: 14 },
       { header: "Keterangan Batal", key: "cancelReason", width: 30 },
@@ -192,8 +213,10 @@ async function exportQueue(req, res, next) {
         inWhTime: formatDateTime(entry.inWhTime),
         startTime: formatDateTime(entry.startTime),
         finishTime: formatDateTime(entry.finishTime),
+        slaWaitingMinutes: formatMinutesHuman(entry.slaWaitingMinutes),
+        slaInWhProcessMinutes: formatMinutesHuman(entry.slaInWhProcessMinutes),
         totalDuration: formatDurationHuman(entry.registerTime, entry.finishTime),
-        timeRemaining: "-",
+        timeRemaining: formatTimeRemaining(entry),
         status: entry.status || "-",
         cancelReason: entry.logs?.[0]?.note || "-",
         category: mapCategory(entry.category),

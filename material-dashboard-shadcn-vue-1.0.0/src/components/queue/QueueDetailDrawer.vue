@@ -31,6 +31,8 @@ type QueueEntry = {
   inWhTime?: string | null
   startTime?: string | null
   finishTime?: string | null
+  slaWaitingMinutes: number
+  slaInWhProcessMinutes: number
   status: 'MENUNGGU' | 'IN_WH' | 'PROSES' | 'SELESAI' | 'BATAL'
   notes?: string | null
   notesFromWh?: string | null
@@ -96,6 +98,16 @@ const formatDateTime = (value?: string | null) => {
   if (!value) return '-'
   const date = new Date(value)
   return date.toLocaleString()
+}
+
+const formatMinutesHuman = (value?: number | null) => {
+  const totalMinutes = Number(value)
+  if (!Number.isFinite(totalMinutes) || totalMinutes <= 0) return '-'
+  const hours = Math.floor(totalMinutes / 60)
+  const minutes = totalMinutes % 60
+  if (hours > 0 && minutes > 0) return `${hours} jam ${minutes} menit`
+  if (hours > 0 && minutes === 0) return `${hours} jam`
+  return `${minutes} menit`
 }
 
 const formatCategoryLabel = (category?: string | null) => {
@@ -414,6 +426,14 @@ const saveWhNotes = async () => {
           <div>
             <p class="text-muted-foreground">Total Waktu (Register → Finish)</p>
             <p class="font-medium">{{ totalDurationHuman }}</p>
+          </div>
+          <div>
+            <p class="text-muted-foreground">SLA Menunggu</p>
+            <p class="font-medium">{{ formatMinutesHuman(entry?.slaWaitingMinutes) }}</p>
+          </div>
+          <div>
+            <p class="text-muted-foreground">SLA IN_WH + Proses</p>
+            <p class="font-medium">{{ formatMinutesHuman(entry?.slaInWhProcessMinutes) }}</p>
           </div>
           <div class="col-span-2">
             <p class="text-muted-foreground">Notes</p>

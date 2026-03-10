@@ -12,6 +12,9 @@ const MONTHLY_TRUCK_COLUMNS = [
   { key: "FT40", label: "40 ft" },
   { key: "OTHER", label: "Other" },
 ];
+const SLA_STEP_MINUTES = 15;
+const MAX_SLA_MINUTES = 24 * 60;
+const LEGACY_WAITING_SLA_MINUTES = 30;
 
 function createHttpError(status, message, details) {
   const err = new Error(message);
@@ -160,15 +163,37 @@ async function fetchEntries(dateQuery) {
       status: true,
       registerTime: true,
       finishTime: true,
+      slaWaitingMinutes: true,
+      slaInWhProcessMinutes: true,
     },
   });
   return { range, entries };
 }
 
-function getSlaMinutes(category) {
-  if (category === "RECEIVING") return 60;
-  if (category === "DELIVERY") return 45;
-  return null;
+function normalizeSlaMinutes(value) {
+  const parsed = Number(value);
+  if (!Number.isInteger(parsed)) return null;
+  if (parsed < SLA_STEP_MINUTES || parsed > MAX_SLA_MINUTES) return null;
+  if (parsed % SLA_STEP_MINUTES !== 0) return null;
+  return parsed;
+}
+
+function getLegacyInWhProcessSlaMinutes(entry) {
+  return entry.category === "RECEIVING" ? 120 : 90;
+}
+
+function getWaitingSlaMinutes(entry) {
+  return normalizeSlaMinutes(entry?.slaWaitingMinutes) ?? LEGACY_WAITING_SLA_MINUTES;
+}
+
+function getInWhProcessSlaMinutes(entry) {
+  return normalizeSlaMinutes(entry?.slaInWhProcessMinutes) ?? getLegacyInWhProcessSlaMinutes(entry);
+}
+
+function getApplicableSlaMinutes(entry) {
+  if (entry.status === "BATAL") return null;
+  if (entry.status === "MENUNGGU") return getWaitingSlaMinutes(entry);
+  return getWaitingSlaMinutes(entry) + getInWhProcessSlaMinutes(entry);
 }
 
 function durationMinutes(start, end) {
@@ -214,7 +239,7 @@ async function getSummary(dateQuery) {
       }
     }
 
-    const slaMinutes = getSlaMinutes(entry.category);
+    const slaMinutes = getApplicableSlaMinutes(entry);
     if (slaMinutes) {
       const end = entry.finishTime ? new Date(entry.finishTime) : now;
       const minutes = durationMinutes(new Date(entry.registerTime), end);
@@ -511,6 +536,8 @@ async function getOverSla(dateQuery) {
       status: true,
       registerTime: true,
       finishTime: true,
+      slaWaitingMinutes: true,
+      slaInWhProcessMinutes: true,
       driverName: true,
       truckNumber: true,
       customer: { select: { name: true } },
@@ -520,7 +547,7 @@ async function getOverSla(dateQuery) {
   const items = entries
     .map((entry) => {
       if (entry.status === "BATAL") return null;
-      const slaMinutes = getSlaMinutes(entry.category);
+      const slaMinutes = getApplicableSlaMinutes(entry);
       if (!slaMinutes) return null;
       const end = entry.finishTime ? new Date(entry.finishTime) : now;
       const minutes = durationMinutes(new Date(entry.registerTime), end);
@@ -617,6 +644,8 @@ async function getMonthlyReport(monthQuery) {
         status: true,
         registerTime: true,
         finishTime: true,
+        slaWaitingMinutes: true,
+        slaInWhProcessMinutes: true,
         driverName: true,
         truckNumber: true,
         customer: {
@@ -795,7 +824,7 @@ async function getMonthlyReport(monthQuery) {
       }
     }
 
-    const slaMinutes = getSlaMinutes(entry.category);
+    const slaMinutes = getApplicableSlaMinutes(entry);
     if (slaMinutes) {
       const end = entry.finishTime ? new Date(entry.finishTime) : now;
       const minutes = durationMinutes(new Date(entry.registerTime), end);

@@ -74,6 +74,8 @@ model QueueEntry {
   inWhTime        DateTime?
   startTime       DateTime?
   finishTime      DateTime?
+  slaWaitingMinutes Int
+  slaInWhProcessMinutes Int
   status          QueueStatus   @default(MENUNGGU)
   notes           String?
   notesFromWh     String?

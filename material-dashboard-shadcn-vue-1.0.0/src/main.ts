@@ -3,6 +3,7 @@ import './assets/index.css'
 import App from './App.vue'
 import router from './router'
 import { useAuth } from './composables/useAuth'
+import { useTheme } from './composables/useTheme'
 
 const app = createApp(App)
 
@@ -32,6 +33,7 @@ if (import.meta.env.DEV && !allowDevtools) {
 }
 
 useAuth().initFromStorage()
+useTheme().initTheme()
 
 app.use(router)
 app.mount('#app')

@@ -439,8 +439,10 @@ const buildMonthlyReportHtml = (report: MonthlyReportPayload) => {
           .join('')
       : '<tr><td colspan="5" class="empty">Tidak ada data</td></tr>'
 
+  const htmlClassName = escapeHtml(document.documentElement.className || '')
+
   return `<!doctype html>
-<html>
+<html class="${htmlClassName}">
   <head>
     <meta charset="UTF-8" />
     <title>Laporan Bulanan Dashboard</title>
@@ -1323,10 +1325,18 @@ onUnmounted(() => {
     margin: 10mm;
   }
 
+  html,
+  body {
+    background: #fff !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
   aside,
   nav.bg-card.border-b,
   footer,
-  .dashboard-actions {
+  .dashboard-actions,
+  .fixed.inset-0.z-50 {
     display: none !important;
   }
 
@@ -1346,6 +1356,22 @@ onUnmounted(() => {
     margin: 0 !important;
     padding: 0 !important;
     font-size: 11px;
+  }
+
+  #dashboard-print-root .overflow-hidden,
+  #dashboard-print-root .overflow-x-auto,
+  #dashboard-print-root .overflow-auto {
+    overflow: visible !important;
+  }
+
+  #dashboard-print-root .grid,
+  #dashboard-print-root .rounded-lg,
+  #dashboard-print-root .rounded-xl,
+  #dashboard-print-root .rounded-2xl,
+  #dashboard-print-root table,
+  #dashboard-print-root canvas {
+    break-inside: avoid;
+    page-break-inside: avoid;
   }
 
   #dashboard-print-root canvas {
