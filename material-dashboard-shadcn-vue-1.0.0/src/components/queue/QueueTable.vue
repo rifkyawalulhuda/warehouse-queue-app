@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { ArrowLeft, Eye, XCircle } from 'lucide-vue-next'
 import Button from '@/components/ui/Button.vue'
 import QueueStatusBadge from './QueueStatusBadge.vue'
 import { useAuth } from '@/composables/useAuth'
@@ -296,7 +297,7 @@ const sortIndicator = (column: string) => {
             <QueueStatusBadge :status="entry.status" />
           </td>
           <td class="px-3 py-2">
-            <div class="flex items-center gap-2">
+            <div class="flex items-center justify-center gap-1.5">
               <Button
                 v-if="entry.status === 'MENUNGGU'"
                 size="sm"
@@ -323,31 +324,46 @@ const sortIndicator = (column: string) => {
               </Button>
               <Button
                 v-if="entry.status === 'IN_WH'"
-                size="sm"
-                variant="ghost"
+                size="icon"
+                variant="outline"
+                class="h-9 w-9 rounded-full"
+                title="Kembali ke Menunggu"
+                aria-label="Kembali ke Menunggu"
                 @click="emit('change-status', entry, 'MENUNGGU')"
               >
-                Kembali
+                <ArrowLeft class="h-4 w-4" />
               </Button>
               <Button
                 v-if="entry.status === 'PROSES'"
-                size="sm"
-                variant="ghost"
+                size="icon"
+                variant="outline"
+                class="h-9 w-9 rounded-full"
+                title="Kembali ke IN_WH"
+                aria-label="Kembali ke IN_WH"
                 @click="emit('change-status', entry, 'IN_WH')"
               >
-                Kembali
+                <ArrowLeft class="h-4 w-4" />
               </Button>
               <Button
                 v-if="isAdmin && (entry.status === 'MENUNGGU' || entry.status === 'IN_WH')"
-                size="sm"
+                size="icon"
                 variant="outline"
-                class="border-red-200 bg-red-600 text-white hover:bg-red-700 hover:text-white"
+                class="h-9 w-9 rounded-full border-red-200 bg-red-600 text-white hover:bg-red-700 hover:text-white"
+                title="Batalkan transaksi"
+                aria-label="Batalkan transaksi"
                 @click="emit('change-status', entry, 'BATAL')"
               >
-                Batal
+                <XCircle class="h-4 w-4" />
               </Button>
-              <Button size="sm" variant="ghost" @click="emit('view-detail', entry)">
-                Detail
+              <Button
+                size="icon"
+                variant="outline"
+                class="h-9 w-9 rounded-full"
+                title="Lihat detail"
+                aria-label="Lihat detail"
+                @click="emit('view-detail', entry)"
+              >
+                <Eye class="h-4 w-4" />
               </Button>
             </div>
           </td>
