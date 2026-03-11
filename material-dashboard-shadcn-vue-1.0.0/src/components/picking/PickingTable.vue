@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, ref } from 'vue'
+import { Eye, Pencil, XCircle } from 'lucide-vue-next'
 import Button from '@/components/ui/Button.vue'
 import type { PickingProgressEntry, PickingSortField } from '@/services/pickingProgressApi'
 
@@ -194,7 +195,7 @@ const sortIcon = (column: PickingSortField, sortBy: PickingSortField, sortDir: '
               <span class="text-xs">{{ sortIcon('status', sortBy, sortDir) }}</span>
             </button>
           </th>
-          <th class="px-3 py-2 text-left font-medium">Aksi</th>
+          <th class="w-[220px] px-3 py-2 text-center font-medium">Aksi</th>
         </tr>
       </thead>
       <tbody>
@@ -235,20 +236,24 @@ const sortIcon = (column: PickingSortField, sortBy: PickingSortField, sortDir: '
               {{ entry.status }}
             </span>
           </td>
-          <td class="px-3 py-2">
-            <div class="flex flex-wrap items-center gap-2">
+          <td class="w-[220px] px-3 py-2">
+            <div class="mx-auto flex w-max items-center justify-center gap-1.5 whitespace-nowrap">
               <Button
                 v-if="canEdit && entry.status === 'MENUNGGU'"
-                size="sm"
+                size="icon"
                 variant="outline"
+                class="h-9 w-9 shrink-0 rounded-full"
+                title="Edit data"
+                aria-label="Edit data"
                 @click="emit('edit', entry)"
               >
-                Edit
+                <Pencil class="h-4 w-4" />
               </Button>
               <Button
                 v-if="entry.status === 'MENUNGGU'"
                 size="sm"
                 variant="outline"
+                class="shrink-0"
                 @click="emit('start', entry)"
               >
                 Start
@@ -257,6 +262,7 @@ const sortIcon = (column: PickingSortField, sortBy: PickingSortField, sortDir: '
                 <Button
                   size="sm"
                   variant="outline"
+                  class="shrink-0"
                   @click="emit('input-picked', entry)"
                 >
                   Input Qty
@@ -265,7 +271,7 @@ const sortIcon = (column: PickingSortField, sortBy: PickingSortField, sortDir: '
                   v-if="entry.pickedQty === entry.pickingQty"
                   size="sm"
                   variant="outline"
-                  class="border-emerald-200 bg-emerald-600 text-white hover:bg-emerald-700 hover:text-white"
+                  class="shrink-0 border-emerald-200 bg-emerald-600 text-white hover:bg-emerald-700 hover:text-white"
                   @click="emit('finish', entry)"
                 >
                   Finish
@@ -273,15 +279,24 @@ const sortIcon = (column: PickingSortField, sortBy: PickingSortField, sortDir: '
               </template>
               <Button
                 v-if="canCancel && (entry.status === 'MENUNGGU' || entry.status === 'ON_PROCESS')"
-                size="sm"
+                size="icon"
                 variant="outline"
-                class="border-red-200 bg-red-600 text-white hover:bg-red-700 hover:text-white"
+                class="h-9 w-9 shrink-0 rounded-full border-red-200 bg-red-600 text-white hover:bg-red-700 hover:text-white"
+                title="Batalkan picking progress"
+                aria-label="Batalkan picking progress"
                 @click="emit('cancel', entry)"
               >
-                Cancel
+                <XCircle class="h-4 w-4" />
               </Button>
-              <Button size="sm" variant="ghost" @click="emit('detail', entry)">
-                Detail
+              <Button
+                size="icon"
+                variant="outline"
+                class="h-9 w-9 shrink-0 rounded-full"
+                title="Lihat detail"
+                aria-label="Lihat detail"
+                @click="emit('detail', entry)"
+              >
+                <Eye class="h-4 w-4" />
               </Button>
             </div>
           </td>
