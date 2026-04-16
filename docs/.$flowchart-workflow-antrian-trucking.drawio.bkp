@@ -1,0 +1,128 @@
+<mxfile host="app.diagrams.net" modified="2026-04-16T00:00:00.000Z" agent="Codex" version="24.7.17">
+  <diagram id="workflow-antrian-trucking-swimlane" name="Workflow Antrian Trucking Swimlane">
+    <mxGraphModel dx="1800" dy="1200" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1800" pageHeight="1300" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+        <mxCell id="2" value="Workflow Antrian Trucking - Swimlane per Role" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontSize=24;fontStyle=1;fontColor=#1f2937;" vertex="1" parent="1">
+          <mxGeometry x="450" y="20" width="900" height="30" as="geometry"/>
+        </mxCell>
+        <mxCell id="3" value="Versi ringkas untuk memudahkan pembacaan alur kerja" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontSize=12;fontColor=#6b7280;" vertex="1" parent="1">
+          <mxGeometry x="580" y="52" width="640" height="20" as="geometry"/>
+        </mxCell>
+        <mxCell id="10" value="Driver" style="swimlane;html=1;rounded=0;startSize=34;horizontal=0;swimlaneFillColor=#f8fafc;fillColor=#f8fafc;strokeColor=#94a3b8;fontStyle=1;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry x="60" y="100" width="1640" height="170" as="geometry"/>
+        </mxCell>
+        <mxCell id="11" value="CS" style="swimlane;html=1;rounded=0;startSize=34;horizontal=0;swimlaneFillColor=#eff6ff;fillColor=#eff6ff;strokeColor=#60a5fa;fontStyle=1;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry x="60" y="270" width="1640" height="190" as="geometry"/>
+        </mxCell>
+        <mxCell id="12" value="Warehouse" style="swimlane;html=1;rounded=0;startSize=34;horizontal=0;swimlaneFillColor=#ecfeff;fillColor=#ecfeff;strokeColor=#22c55e;fontStyle=1;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry x="60" y="460" width="1640" height="210" as="geometry"/>
+        </mxCell>
+        <mxCell id="13" value="Admin" style="swimlane;html=1;rounded=0;startSize=34;horizontal=0;swimlaneFillColor=#fefce8;fillColor=#fefce8;strokeColor=#eab308;fontStyle=1;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry x="60" y="670" width="1640" height="170" as="geometry"/>
+        </mxCell>
+        <mxCell id="20" value="Mulai&#xa;Driver datang ke warehouse" style="ellipse;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontStyle=1;fontSize=13;" vertex="1" parent="10">
+          <mxGeometry x="110" y="55" width="220" height="70" as="geometry"/>
+        </mxCell>
+        <mxCell id="21" value="Serahkan data kendaraan&#xa;dan kebutuhan proses" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#64748b;fontSize=13;" vertex="1" parent="10">
+          <mxGeometry x="620" y="55" width="230" height="70" as="geometry"/>
+        </mxCell>
+        <mxCell id="22" value="Menuju gate / area proses&#xa;saat dipanggil" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#64748b;fontSize=13;" vertex="1" parent="10">
+          <mxGeometry x="1190" y="55" width="220" height="70" as="geometry"/>
+        </mxCell>
+        <mxCell id="23" value="Keluar area warehouse" style="ellipse;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontStyle=1;fontSize=13;" vertex="1" parent="10">
+          <mxGeometry x="1460" y="55" width="180" height="70" as="geometry"/>
+        </mxCell>
+        <mxCell id="30" value="Input data antrian&#xa;(driver, truk, customer, kategori)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#3b82f6;fontSize=13;" vertex="1" parent="11">
+          <mxGeometry x="320" y="65" width="260" height="70" as="geometry"/>
+        </mxCell>
+        <mxCell id="31" value="Data lengkap?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontStyle=1;fontSize=13;" vertex="1" parent="11">
+          <mxGeometry x="670" y="50" width="180" height="100" as="geometry"/>
+        </mxCell>
+        <mxCell id="32" value="Perbaiki / lengkapi&#xa;data antrian" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=13;" vertex="1" parent="11">
+          <mxGeometry x="930" y="65" width="220" height="70" as="geometry"/>
+        </mxCell>
+        <mxCell id="33" value="Simpan antrian&#xa;Status: MENUNGGU" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontStyle=1;fontSize=13;" vertex="1" parent="11">
+          <mxGeometry x="1190" y="65" width="230" height="70" as="geometry"/>
+        </mxCell>
+        <mxCell id="40" value="Lihat antrian menunggu&#xa;dan tentukan gate" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dcfce7;strokeColor=#16a34a;fontSize=13;" vertex="1" parent="12">
+          <mxGeometry x="320" y="80" width="240" height="70" as="geometry"/>
+        </mxCell>
+        <mxCell id="41" value="Panggil driver&#xa;dan ubah status: IN_WH" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dcfce7;strokeColor=#16a34a;fontStyle=1;fontSize=13;" vertex="1" parent="12">
+          <mxGeometry x="670" y="80" width="240" height="70" as="geometry"/>
+        </mxCell>
+        <mxCell id="42" value="Proses bongkar / muat&#xa;Status: PROSES" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#cffafe;strokeColor=#0891b2;fontStyle=1;fontSize=13;" vertex="1" parent="12">
+          <mxGeometry x="990" y="80" width="230" height="70" as="geometry"/>
+        </mxCell>
+        <mxCell id="43" value="Selesai proses?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontStyle=1;fontSize=13;" vertex="1" parent="12">
+          <mxGeometry x="1280" y="65" width="180" height="100" as="geometry"/>
+        </mxCell>
+        <mxCell id="44" value="Ubah status: SELESAI&#xa;atau BATAL" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dcfce7;strokeColor=#16a34a;fontStyle=1;fontSize=13;" vertex="1" parent="12">
+          <mxGeometry x="1490" y="80" width="130" height="70" as="geometry"/>
+        </mxCell>
+        <mxCell id="50" value="Monitoring dashboard&#xa;dan laporan operasional" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fef3c7;strokeColor=#d97706;fontSize=13;" vertex="1" parent="13">
+          <mxGeometry x="1130" y="50" width="260" height="70" as="geometry"/>
+        </mxCell>
+        <mxCell id="51" value="Data tersimpan untuk&#xa;evaluasi SLA dan laporan" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#d97706;fontSize=13;" vertex="1" parent="13">
+          <mxGeometry x="1450" y="50" width="180" height="70" as="geometry"/>
+        </mxCell>
+        <mxCell id="60" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#6b7280;" edge="1" parent="1" source="20" target="30">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="61" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#6b7280;" edge="1" parent="1" source="30" target="31">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="62" value="Tidak" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#b85450;fontSize=12;fontStyle=1;" edge="1" parent="1" source="31" target="32">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="63" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#b85450;" edge="1" parent="1" source="32" target="21">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="64" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#6b7280;" edge="1" parent="1" source="21" target="30">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="65" value="Ya" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#16a34a;fontSize=12;fontStyle=1;" edge="1" parent="1" source="31" target="33">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="66" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#6b7280;" edge="1" parent="1" source="33" target="40">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="67" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#6b7280;" edge="1" parent="1" source="40" target="41">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="68" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#6b7280;" edge="1" parent="1" source="41" target="22">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="69" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#6b7280;" edge="1" parent="1" source="22" target="42">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="70" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#6b7280;" edge="1" parent="1" source="42" target="43">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="71" value="Ya" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#16a34a;fontSize=12;fontStyle=1;" edge="1" parent="1" source="43" target="44">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="72" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#6b7280;" edge="1" parent="1" source="44" target="50">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="73" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#6b7280;" edge="1" parent="1" source="50" target="51">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="74" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#6b7280;" edge="1" parent="1" source="51" target="23">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="75" value="Tidak / Batal" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#b85450;fontSize=12;fontStyle=1;" edge="1" parent="1" source="43" target="50">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1370" y="760"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="76" value="Catatan:&#xa;- Role dipisah per lane&#xa;- Alur utama tetap sederhana&#xa;- Cocok untuk presentasi / dokumen kaizen" style="shape=note;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="80" y="870" width="250" height="110" as="geometry"/>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
