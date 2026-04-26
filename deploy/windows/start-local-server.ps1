@@ -7,6 +7,7 @@ $backendDir = Join-Path $repoRoot "backend"
 $frontendDistDir = Join-Path $repoRoot "material-dashboard-shadcn-vue-1.0.0\dist"
 $nginxDir = "C:\nginx-1.28.2"
 $backendPort = 3000
+$frontendPort = 82
 
 Write-Host ""
 Write-Host "============================================"
@@ -83,7 +84,8 @@ try {
     exit 1
   }
 
-  $nginxRunning = Get-Process -Name "nginx" -ErrorAction SilentlyContinue
+  $nginxRunning = Get-Process -Name "nginx" -ErrorAction SilentlyContinue |
+    Where-Object { $_.Path -and ((Resolve-Path $_.Path).Path -eq (Resolve-Path $nginxExe).Path) }
   if ($nginxRunning) {
     cmd /c """$nginxExe"" -s reload" | Out-Null
     if ($LASTEXITCODE -ne 0) {
@@ -94,7 +96,8 @@ try {
   } else {
     Start-Process -FilePath $nginxExe -WorkingDirectory $nginxDir -WindowStyle Hidden | Out-Null
     Start-Sleep -Milliseconds 800
-    $nginxNowRunning = Get-Process -Name "nginx" -ErrorAction SilentlyContinue
+    $nginxNowRunning = Get-Process -Name "nginx" -ErrorAction SilentlyContinue |
+      Where-Object { $_.Path -and ((Resolve-Path $_.Path).Path -eq (Resolve-Path $nginxExe).Path) }
     if (!$nginxNowRunning) {
       Write-Host "[ERROR] Gagal start Nginx."
       exit 1
@@ -107,7 +110,7 @@ try {
 
 Write-Host ""
 Write-Host "[OK   ] Semua service siap."
-Write-Host "       Akses lokal:   http://localhost/material-dashboard-shadcn-vue/"
-Write-Host "       Akses jaringan http://IP_SERVER/material-dashboard-shadcn-vue/"
+Write-Host "       Akses lokal:   http://localhost:$frontendPort/material-dashboard-shadcn-vue/"
+Write-Host "       Akses jaringan http://IP_SERVER:$frontendPort/material-dashboard-shadcn-vue/"
 Write-Host ""
 exit 0

@@ -1,6 +1,6 @@
 $ErrorActionPreference = "Stop"
 
-$nginxDir = "C:\Users\rifky\Downloads\nginx-1.28.2"
+$nginxDir = "C:\nginx-1.28.2"
 $backendPort = 3000
 
 Write-Host ""
@@ -30,7 +30,8 @@ if (!(Test-Path $nginxExe)) {
   exit 0
 }
 
-$nginxProcesses = Get-Process -Name "nginx" -ErrorAction SilentlyContinue
+$nginxProcesses = Get-Process -Name "nginx" -ErrorAction SilentlyContinue |
+  Where-Object { $_.Path -and ((Resolve-Path $_.Path).Path -eq (Resolve-Path $nginxExe).Path) }
 if ($nginxProcesses) {
   $nginxProcesses | Stop-Process -Force -ErrorAction SilentlyContinue
   Write-Host "[OK   ] Nginx stopped."
@@ -42,4 +43,3 @@ Write-Host ""
 Write-Host "[DONE ] Stop selesai."
 Write-Host ""
 exit 0
-

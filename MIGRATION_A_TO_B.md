@@ -5,7 +5,7 @@ Dokumen ini menjelaskan langkah pindah aplikasi `warehouse-queue-app` dari peran
 ## 1. Ringkasan Arsitektur
 
 1. Frontend Vue diakses melalui Nginx:
-   - URL: `http://<IP_SERVER>/material-dashboard-shadcn-vue/`
+   - URL: `http://<IP_SERVER>:82/material-dashboard-shadcn-vue/`
 2. Backend Node.js berjalan di:
    - `http://127.0.0.1:3000`
 3. API diproxy oleh Nginx:
@@ -18,8 +18,8 @@ Dokumen ini menjelaskan langkah pindah aplikasi `warehouse-queue-app` dari peran
 1. Node.js LTS terpasang (`node -v`, `npm -v`)
 2. PostgreSQL terpasang (`psql --version`)
 3. Git terpasang (`git --version`)
-4. Nginx for Windows terpasang (contoh: `C:\Users\rifky\Downloads\nginx-1.28.2`)
-5. Port `80` dibuka pada firewall Windows
+4. Nginx for Windows terpasang (contoh: `C:\nginx-1.28.2`)
+5. Port `82` dibuka pada firewall Windows
 
 ## 3. Langkah di Perangkat A (Sumber)
 
@@ -62,7 +62,7 @@ backup-db.bat D:\backup\queue_db_A_to_B.backup
    - `backend\.env`
    - `deploy\windows\start-local-server.ps1`
    - `deploy\windows\stop-local-server.ps1`
-   - `C:\Users\rifky\Downloads\nginx-1.28.2\conf\nginx.conf`
+   - `C:\nginx-1.28.2\conf\nginx.conf`
 
 ## 4. Langkah di Perangkat B (Tujuan)
 
@@ -173,7 +173,7 @@ Ubah variabel:
 ## 8. Buka Firewall di Perangkat B
 
 ```bat
-netsh advfirewall firewall add rule name="WarehouseQueue HTTP" dir=in action=allow protocol=TCP localport=80
+netsh advfirewall firewall add rule name="WarehouseQueue HTTP 82" dir=in action=allow protocol=TCP localport=82
 ```
 
 ## 9. Jalankan Aplikasi di Perangkat B
@@ -186,11 +186,11 @@ start-local-server.bat
 ## 10. Checklist Verifikasi
 
 1. Dari perangkat B:
-   - `http://localhost/material-dashboard-shadcn-vue/` harus terbuka
+   - `http://localhost:82/material-dashboard-shadcn-vue/` harus terbuka
 2. Dari perangkat B:
    - `http://localhost:3000/health` harus balas `{"ok":true}`
 3. Dari perangkat lain di jaringan:
-   - `http://<IP_PERANGKAT_B>/material-dashboard-shadcn-vue/` harus terbuka
+   - `http://<IP_PERANGKAT_B>:82/material-dashboard-shadcn-vue/` harus terbuka
 4. Login berhasil
 5. Data dashboard, antrian, schedule tampil normal
 6. Export/print/paging suara berjalan normal
@@ -206,8 +206,8 @@ start-local-server.bat
    - atau jalankan mode Docker:
      - `backup-db.bat -Mode docker`
      - `restore-db.bat -Mode docker`
-4. Port `80` tidak bisa listen:
-   - ada aplikasi lain pakai port 80, hentikan dulu
+4. Port `82` tidak bisa listen:
+   - ada aplikasi lain pakai port 82, hentikan dulu
 5. Akses LAN gagal:
    - cek firewall, IP server, dan pastikan 1 subnet
 
