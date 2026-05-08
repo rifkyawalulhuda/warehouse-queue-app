@@ -66,6 +66,8 @@ model QueueEntry {
   customer        Customer?     @relation(fields: [customerId], references: [id], onDelete: Restrict)
   gateId          String?
   gate            Gate?         @relation(fields: [gateId], references: [id], onDelete: SetNull)
+  pickerEmployeeId String?
+  pickerEmployee  Employee?     @relation(fields: [pickerEmployeeId], references: [id], onDelete: SetNull)
   category        QueueCategory
   driverName      String
   truckNumber     String
@@ -89,6 +91,7 @@ model QueueEntry {
   @@index([category, registerTime])
   @@index([customerId, registerTime])
   @@index([gateId])
+  @@index([pickerEmployeeId])
 }
 
 model QueueLog {
@@ -128,6 +131,7 @@ model Employee {
   createdAt DateTime         @default(now())
   updatedAt DateTime         @updatedAt
   pickings  PickingProgress[]
+  queueEntries QueueEntry[]
 
   @@index([name])
   @@index([position])

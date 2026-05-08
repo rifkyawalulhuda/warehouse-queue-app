@@ -138,7 +138,8 @@ async function updateQueueStatus(req, res, next) {
       req.body.newStatus,
       actorUser,
       req.body.gateId,
-      req.body.reason
+      req.body.reason,
+      req.body.pickerEmployeeId
     );
     return sendSuccess(res, entry);
   } catch (err) {
@@ -182,6 +183,7 @@ async function exportQueue(req, res, next) {
       { header: "Gate No", key: "gateNo", width: 12 },
       { header: "Gate Area", key: "gateArea", width: 20 },
       { header: "Gate Warehouse", key: "gateWarehouse", width: 18 },
+      { header: "Nama Tallyman", key: "pickerEmployeeName", width: 28 },
       { header: "Register Time", key: "registerTime", width: 20 },
       { header: "In WH - Time", key: "inWhTime", width: 20 },
       { header: "Start", key: "startTime", width: 20 },
@@ -211,6 +213,7 @@ async function exportQueue(req, res, next) {
         gateNo: entry.gate?.gateNo || "-",
         gateArea: entry.gate?.area || "-",
         gateWarehouse: entry.gate?.warehouse || "-",
+        pickerEmployeeName: entry.pickerEmployee?.name || "-",
         registerTime: formatDateTime(entry.registerTime),
         inWhTime: formatDateTime(entry.inWhTime),
         startTime: formatDateTime(entry.startTime),

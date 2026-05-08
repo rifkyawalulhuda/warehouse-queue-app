@@ -17,6 +17,9 @@ const SORTABLE_FIELDS = new Set([
 const SLA_STEP_MINUTES = 15;
 const MAX_SLA_MINUTES = 24 * 60;
 const LEGACY_WAITING_SLA_MINUTES = 30;
+const AUTO_COMPLETE_AFTER_DAYS = 3;
+const AUTO_COMPLETE_NOTE =
+  "Otomatis diselesaikan sistem karena data antrian truk lebih dari 3 hari belum mencapai status SELESAI.";
 
 function createHttpError(status, message, details) {
   const err = new Error(message);
@@ -285,6 +288,7 @@ async function listQueueEntries(query) {
     include: {
       customer: true,
       gate: true,
+      pickerEmployee: true,
     },
   });
 
@@ -354,6 +358,7 @@ async function listQueueEntriesForExport(query) {
     include: {
       customer: true,
       gate: true,
+      pickerEmployee: true,
       logs: {
         where: {
           type: "STATUS_CHANGE",
@@ -377,6 +382,10 @@ function getTodayRange() {
   return { from, to };
 }
 
+function getAutoCompleteCutoff(now = new Date()) {
+  return new Date(now.getTime() - AUTO_COMPLETE_AFTER_DAYS * 24 * 60 * 60 * 1000);
+}
+
 async function listQueueEntriesForDisplay() {
   const { from, to } = getTodayRange();
   const rows = await prisma.queueEntry.findMany({
@@ -390,6 +399,7 @@ async function listQueueEntriesForDisplay() {
     include: {
       customer: true,
       gate: true,
+      pickerEmployee: true,
     },
   });
   const nowMs = Date.now();
@@ -433,6 +443,54 @@ async function listQueueEntriesForDisplay() {
   return { entries, summary };
 }
 
+async function autoCompleteExpiredQueueEntries(now = new Date()) {
+  const finishTime = new Date(now);
+  const cutoff = getAutoCompleteCutoff(finishTime);
+
+  const staleEntries = await prisma.queueEntry.findMany({
+    where: {
+      status: {
+        in: ["MENUNGGU", "IN_WH", "PROSES"],
+      },
+      registerTime: {
+        lt: cutoff,
+      },
+    },
+    select: {
+      id: true,
+      status: true,
+    },
+  });
+
+  if (!staleEntries.length) {
+    return { updatedCount: 0 };
+  }
+
+  await prisma.$transaction(
+    staleEntries.map((entry) =>
+      prisma.queueEntry.update({
+        where: { id: entry.id },
+        data: {
+          status: "SELESAI",
+          finishTime,
+          logs: {
+            create: {
+              type: "STATUS_CHANGE",
+              fromStatus: entry.status,
+              toStatus: "SELESAI",
+              note: AUTO_COMPLETE_NOTE,
+              userName: "system",
+              actorUserId: null,
+            },
+          },
+        },
+      })
+    )
+  );
+
+  return { updatedCount: staleEntries.length };
+}
+
 async function getQueueEntryById(id) {
   const entry = await prisma.queueEntry.findUnique({
     where: { id },
@@ -447,6 +505,7 @@ async function getQueueEntryById(id) {
       },
       customer: true,
       gate: true,
+      pickerEmployee: true,
     },
   });
   if (!entry) {
@@ -550,7 +609,21 @@ function isPrevStatus(current, prev) {
   return prevIdx === idx - 1;
 }
 
-async function changeQueueStatus(id, newStatus, actorUser, gateId, cancelReason) {
+async function ensureTallymanExists(employeeId) {
+  if (!employeeId || typeof employeeId !== "string") {
+    throw createHttpError(400, "Tallyman wajib dipilih");
+  }
+  const employee = await prisma.employee.findUnique({ where: { id: employeeId } });
+  if (!employee) {
+    throw createHttpError(400, "Data Tallyman tidak ditemukan");
+  }
+  if (employee.position !== "TALLYMAN") {
+    throw createHttpError(400, "Karyawan yang dipilih harus berposisi Tallyman");
+  }
+  return employee;
+}
+
+async function changeQueueStatus(id, newStatus, actorUser, gateId, cancelReason, pickerEmployeeId) {
   const entry = await prisma.queueEntry.findUnique({ where: { id } });
   if (!entry) throw createHttpError(404, "Data tidak ditemukan");
 
@@ -576,6 +649,8 @@ async function changeQueueStatus(id, newStatus, actorUser, gateId, cancelReason)
 
   const timeUpdates = {};
   let gateUpdate = {};
+  let pickerEmployeeUpdate = {};
+  let normalizedNote = null;
   if (newStatus === "IN_WH" && entry.status === "MENUNGGU") {
     if (!gateId || typeof gateId !== "string") {
       throw createHttpError(400, "Gate wajib dipilih");
@@ -586,6 +661,14 @@ async function changeQueueStatus(id, newStatus, actorUser, gateId, cancelReason)
     }
     gateUpdate = { gateId: gate.id };
   }
+  if (newStatus === "PROSES") {
+    const pickerEmployee = await ensureTallymanExists(pickerEmployeeId);
+    pickerEmployeeUpdate = { pickerEmployeeId: pickerEmployee.id };
+    normalizedNote = `tallyman=${pickerEmployee.name} (${pickerEmployee.nik})`;
+  }
+  if (newStatus === "IN_WH" && entry.status === "PROSES") {
+    pickerEmployeeUpdate = { pickerEmployeeId: null };
+  }
   if (newStatus === "IN_WH" && !entry.inWhTime) timeUpdates.inWhTime = new Date();
   if (newStatus === "PROSES" && !entry.startTime) timeUpdates.startTime = new Date();
   if (newStatus === "SELESAI" && !entry.finishTime) timeUpdates.finishTime = new Date();
@@ -594,19 +677,21 @@ async function changeQueueStatus(id, newStatus, actorUser, gateId, cancelReason)
   const actorUserId = actorUser?.id || null;
   const normalizedCancelReason =
     newStatus === "BATAL" && typeof cancelReason === "string" ? cancelReason.trim() : null;
+  const logNote = normalizedCancelReason || normalizedNote;
 
   return prisma.queueEntry.update({
     where: { id },
     data: {
       status: newStatus,
       ...gateUpdate,
+      ...pickerEmployeeUpdate,
       ...timeUpdates,
       logs: {
         create: {
           type: "STATUS_CHANGE",
           fromStatus: currentStatus,
           toStatus: newStatus,
-          note: normalizedCancelReason,
+          note: logNote,
           userName: resolvedName,
           actorUserId,
         },
@@ -615,16 +700,19 @@ async function changeQueueStatus(id, newStatus, actorUser, gateId, cancelReason)
     include: {
       customer: true,
       gate: true,
+      pickerEmployee: true,
     },
   });
 }
 
 module.exports = {
+  AUTO_COMPLETE_AFTER_DAYS,
   getUserName,
   createQueueEntry,
   listQueueEntries,
   listQueueEntriesForExport,
   listQueueEntriesForDisplay,
+  autoCompleteExpiredQueueEntries,
   getEntryRemainingMinutes,
   getQueueEntryById,
   updateQueueEntry,

@@ -14,3 +14,10 @@ export const getMasterGates = (params?: { warehouse?: MasterGate['warehouse'] })
 export const setInWh = (id: string, gateId: string) => {
   return api.patch(`/queue/${id}/set-in-wh`, { gateId })
 }
+
+export const setProcess = (id: string, pickerEmployeeId: string) => {
+  return api.patch(`/queue/${id}/status`, {
+    newStatus: 'PROSES',
+    pickerEmployeeId,
+  })
+}

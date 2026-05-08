@@ -179,7 +179,7 @@ function validateQueueUpdate(req, res, next) {
 }
 
 function validateStatusChange(req, res, next) {
-  const { newStatus, reason } = req.body;
+  const { newStatus, reason, pickerEmployeeId } = req.body;
   if (!ALLOWED_STATUSES.includes(newStatus)) {
     return sendError(res, 400, "Validasi gagal", ["newStatus tidak valid"]);
   }
@@ -188,6 +188,9 @@ function validateStatusChange(req, res, next) {
     if (!cancelReason) {
       return sendError(res, 400, "Validasi gagal", ["reason wajib diisi saat status BATAL"]);
     }
+  }
+  if (newStatus === "PROSES" && !isNonEmptyString(pickerEmployeeId)) {
+    return sendError(res, 400, "Validasi gagal", ["pickerEmployeeId wajib diisi saat status PROSES"]);
   }
   return next();
 }

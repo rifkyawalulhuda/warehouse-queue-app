@@ -13,7 +13,8 @@ import QueueCreateModal from '@/components/queue/QueueCreateModal.vue'
 import QueueEditModal from '@/components/queue/QueueEditModal.vue'
 import { RefreshCw, Search, ChevronDown, CalendarDays } from 'lucide-vue-next'
 import api from '@/services/api'
-import { getMasterGates, setInWh, type MasterGate } from '@/services/queueApi'
+import { listEmployees, type Employee } from '@/services/employeeApi'
+import { getMasterGates, setInWh, setProcess, type MasterGate } from '@/services/queueApi'
 import { useAuth } from '@/composables/useAuth'
 
 type QueueLog = {
@@ -34,6 +35,7 @@ type QueueEntry = {
   customer?: { id: string; name: string } | null
   gateId?: string | null
   gate?: MasterGate | null
+  pickerEmployee?: Employee | null
   driverName: string
   truckNumber: string
   containerNumber?: string | null
@@ -57,6 +59,7 @@ type Customer = {
 
 const entries = ref<QueueEntry[]>([])
 const customers = ref<Customer[]>([])
+const employees = ref<Employee[]>([])
 const loading = ref(false)
 const error = ref<string | null>(null)
 const { user } = useAuth()
@@ -85,6 +88,15 @@ const gateError = ref<string | null>(null)
 const setInWhSubmitting = ref(false)
 const gateDropdownOpen = ref(false)
 const gateDropdownRef = ref<HTMLElement | null>(null)
+const startProcessOpen = ref(false)
+const startProcessEntry = ref<QueueEntry | null>(null)
+const selectedTallymanId = ref('')
+const tallymanSearchQuery = ref('')
+const tallymanLoading = ref(false)
+const tallymanError = ref<string | null>(null)
+const startProcessSubmitting = ref(false)
+const tallymanDropdownOpen = ref(false)
+const tallymanDropdownRef = ref<HTMLElement | null>(null)
 const success = ref<string | null>(null)
 const exportOpen = ref(false)
 const exporting = ref(false)
@@ -380,8 +392,25 @@ const fetchMasterGates = async () => {
   }
 }
 
+const fetchEmployees = async () => {
+  tallymanLoading.value = true
+  tallymanError.value = null
+  try {
+    const response = await listEmployees()
+    employees.value = response.data?.data || []
+  } catch (err: any) {
+    tallymanError.value = getErrorMessage(err, 'Gagal memuat Master Karyawan')
+  } finally {
+    tallymanLoading.value = false
+  }
+}
+
 const gateLabel = (gate: MasterGate) => {
   return `${gate.gateNo} - ${gate.area} (${gate.warehouse})`
+}
+
+const tallymanLabel = (employee: Employee) => {
+  return `${employee.name} (${employee.nik})`
 }
 
 const filteredGates = computed(() => {
@@ -392,6 +421,22 @@ const filteredGates = computed(() => {
       gate.gateNo.toLowerCase().includes(q) ||
       gate.area.toLowerCase().includes(q) ||
       gate.warehouse.toLowerCase().includes(q)
+    )
+  })
+})
+
+const tallymanEmployees = computed(() =>
+  employees.value.filter((employee) => employee.position === 'TALLYMAN')
+)
+
+const filteredTallymen = computed(() => {
+  const q = tallymanSearchQuery.value.trim().toLowerCase()
+  const list = tallymanEmployees.value
+  if (!q) return list
+  return list.filter((employee) => {
+    return (
+      employee.name.toLowerCase().includes(q) ||
+      employee.nik.toLowerCase().includes(q)
     )
   })
 })
@@ -428,6 +473,18 @@ const handleChangeStatus = async (entry: QueueEntry, newStatus: QueueEntry['stat
     }
     return
   }
+  if (newStatus === 'PROSES' && entry.status === 'IN_WH') {
+    startProcessEntry.value = entry
+    selectedTallymanId.value = ''
+    tallymanSearchQuery.value = ''
+    tallymanError.value = null
+    tallymanDropdownOpen.value = false
+    startProcessOpen.value = true
+    if (employees.value.length === 0) {
+      await fetchEmployees()
+    }
+    return
+  }
   confirmEntry.value = entry
   confirmNextStatus.value = newStatus
   cancelReason.value = ''
@@ -458,6 +515,15 @@ const closeSetInWh = () => {
   gateDropdownOpen.value = false
 }
 
+const closeStartProcess = () => {
+  startProcessOpen.value = false
+  startProcessEntry.value = null
+  selectedTallymanId.value = ''
+  tallymanSearchQuery.value = ''
+  tallymanError.value = null
+  tallymanDropdownOpen.value = false
+}
+
 const submitSetInWh = async () => {
   if (!setInWhEntry.value || !selectedGateId.value) return
   setInWhSubmitting.value = true
@@ -477,10 +543,35 @@ const submitSetInWh = async () => {
   }
 }
 
+const submitStartProcess = async () => {
+  if (!startProcessEntry.value || !selectedTallymanId.value) return
+  startProcessSubmitting.value = true
+  error.value = null
+  try {
+    await setProcess(startProcessEntry.value.id, selectedTallymanId.value)
+    await fetchList()
+    if (drawerOpen.value && selectedEntry.value?.id === startProcessEntry.value.id) {
+      await fetchDetail(startProcessEntry.value.id)
+    }
+    closeStartProcess()
+    showSuccess('Status berhasil diubah ke PROSES')
+  } catch (err: any) {
+    tallymanError.value = getErrorMessage(err, 'Gagal update status ke PROSES')
+  } finally {
+    startProcessSubmitting.value = false
+  }
+}
+
 const selectGate = (gate: MasterGate) => {
   selectedGateId.value = gate.id
   gateSearchQuery.value = gateLabel(gate)
   gateDropdownOpen.value = false
+}
+
+const selectTallyman = (employee: Employee) => {
+  selectedTallymanId.value = employee.id
+  tallymanSearchQuery.value = tallymanLabel(employee)
+  tallymanDropdownOpen.value = false
 }
 
 const handleGateSearchInput = () => {
@@ -496,9 +587,27 @@ const handleGateSearchInput = () => {
   }
 }
 
+const handleTallymanSearchInput = () => {
+  tallymanDropdownOpen.value = true
+  if (!selectedTallymanId.value) return
+  const selected = employees.value.find((employee) => employee.id === selectedTallymanId.value)
+  if (!selected) {
+    selectedTallymanId.value = ''
+    return
+  }
+  if (tallymanSearchQuery.value.trim() !== tallymanLabel(selected)) {
+    selectedTallymanId.value = ''
+  }
+}
+
 const openGateDropdown = () => {
   if (gateLoading.value || masterGates.value.length === 0) return
   gateDropdownOpen.value = true
+}
+
+const openTallymanDropdown = () => {
+  if (tallymanLoading.value || tallymanEmployees.value.length === 0) return
+  tallymanDropdownOpen.value = true
 }
 
 const handleGateOutsideClick = (event: MouseEvent) => {
@@ -507,6 +616,15 @@ const handleGateOutsideClick = (event: MouseEvent) => {
   if (!target || !gateDropdownRef.value) return
   if (!gateDropdownRef.value.contains(target)) {
     gateDropdownOpen.value = false
+  }
+}
+
+const handleTallymanOutsideClick = (event: MouseEvent) => {
+  if (!tallymanDropdownOpen.value) return
+  const target = event.target as Node | null
+  if (!target || !tallymanDropdownRef.value) return
+  if (!tallymanDropdownRef.value.contains(target)) {
+    tallymanDropdownOpen.value = false
   }
 }
 
@@ -825,10 +943,12 @@ onUnmounted(() => {
 
 onMounted(() => {
   document.addEventListener('click', handleGateOutsideClick)
+  document.addEventListener('click', handleTallymanOutsideClick)
 })
 
 onUnmounted(() => {
   document.removeEventListener('click', handleGateOutsideClick)
+  document.removeEventListener('click', handleTallymanOutsideClick)
 })
 
 watch(
@@ -1123,6 +1243,77 @@ watch(
           <Button variant="ghost" @click="closeSetInWh">Batal</Button>
           <Button :disabled="setInWhSubmitting || !selectedGateId || masterGates.length === 0" @click="submitSetInWh">
             {{ setInWhSubmitting ? 'Menyimpan...' : 'Konfirmasi' }}
+          </Button>
+        </div>
+      </div>
+    </div>
+
+    <div v-if="startProcessOpen" class="fixed inset-0 z-50">
+      <div class="absolute inset-0 bg-black/40" @click="closeStartProcess"></div>
+      <div class="absolute left-1/2 top-1/2 w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-lg bg-card shadow-xl border">
+        <div class="p-4 border-b">
+          <h3 class="text-lg font-semibold">Konfirmasi Mulai PROSES</h3>
+        </div>
+        <div class="p-4 space-y-3 text-sm">
+          <p class="text-muted-foreground">Pilih Tallyman untuk transaksi ini sebelum melanjutkan.</p>
+          <div ref="tallymanDropdownRef" class="relative">
+            <label class="text-sm text-muted-foreground">Tallyman</label>
+            <div class="relative mt-1">
+              <input
+                v-model="tallymanSearchQuery"
+                type="text"
+                placeholder="Cari / pilih tallyman..."
+                class="w-full bg-transparent border rounded-md pl-2 pr-9 py-2 text-sm"
+                :disabled="tallymanLoading || filteredTallymen.length === 0"
+                @focus="openTallymanDropdown"
+                @click="openTallymanDropdown"
+                @input="handleTallymanSearchInput"
+              />
+              <button
+                type="button"
+                class="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                :disabled="tallymanLoading || filteredTallymen.length === 0"
+                @click="openTallymanDropdown"
+                aria-label="Toggle tallyman list"
+              >
+                <ChevronDown class="h-4 w-4" />
+              </button>
+            </div>
+            <div
+              v-if="tallymanDropdownOpen"
+              class="absolute z-10 mt-1 max-h-44 w-full overflow-auto rounded-md border bg-card shadow-sm"
+            >
+              <div v-if="tallymanLoading" class="px-3 py-2 text-xs text-muted-foreground">Memuat Master Karyawan...</div>
+              <div v-else-if="tallymanEmployees.length === 0" class="px-3 py-2 text-xs text-muted-foreground">
+                Master Karyawan Tallyman masih kosong. Silakan isi Master Karyawan terlebih dahulu.
+              </div>
+              <div v-else-if="filteredTallymen.length === 0" class="px-3 py-2 text-xs text-muted-foreground">
+                Tidak ada tallyman yang cocok
+              </div>
+              <button
+                v-for="employee in filteredTallymen"
+                :key="employee.id"
+                type="button"
+                class="w-full px-3 py-2 text-left text-sm hover:bg-accent"
+                :class="selectedTallymanId === employee.id ? 'bg-accent' : ''"
+                @mousedown.prevent="selectTallyman(employee)"
+              >
+                {{ tallymanLabel(employee) }}
+              </button>
+            </div>
+          </div>
+          <div v-if="tallymanError" class="text-xs text-red-600">{{ tallymanError }}</div>
+          <div
+            v-else-if="!selectedTallymanId && tallymanSearchQuery.trim() && !tallymanLoading && tallymanEmployees.length > 0"
+            class="text-xs text-red-600"
+          >
+            Tallyman wajib dipilih
+          </div>
+        </div>
+        <div class="p-4 border-t flex items-center justify-end gap-2">
+          <Button variant="ghost" @click="closeStartProcess">Batal</Button>
+          <Button :disabled="startProcessSubmitting || !selectedTallymanId || tallymanEmployees.length === 0" @click="submitStartProcess">
+            {{ startProcessSubmitting ? 'Menyimpan...' : 'Konfirmasi' }}
           </Button>
         </div>
       </div>

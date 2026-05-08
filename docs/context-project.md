@@ -214,7 +214,7 @@ TruckType: CDD, CDE, FUSO, WB, FT20, FT40, OTHER
 
 Model utama:
 
-- `QueueEntry`: data antrian truk, status, gate, customer, SLA, timestamp masuk/proses/selesai, catatan WH.
+- `QueueEntry`: data antrian truk, status, gate, customer, Tallyman saat mulai proses, SLA, timestamp masuk/proses/selesai, catatan WH.
 - `QueueLog`: audit log perubahan antrian dan status.
 - `Customer`: master customer dan relasi ke antrian, schedule, picking.
 - `Employee`: master karyawan/picker.
@@ -250,6 +250,15 @@ PATCH /api/queue/:id/wh-notes
 PATCH /api/queue/:id/status
 PATCH /api/queue/:id/set-in-wh
 ```
+
+Aturan otomatis antrian:
+
+- Data `QueueEntry` yang umur `registerTime`-nya sudah lebih dari 3 hari dan statusnya masih `MENUNGGU`, `IN_WH`, atau `PROSES` akan otomatis diubah menjadi `SELESAI` oleh sistem.
+- Proses ini dijalankan di backend saat server start dan diulang otomatis setiap 1 jam.
+- Perubahan otomatis tetap membuat `QueueLog` bertipe `STATUS_CHANGE` dengan `userName: system`.
+- Saat status antrian berubah dari `IN_WH` ke `PROSES`, user wajib memilih `Tallyman` dari `Master Karyawan` dengan posisi `TALLYMAN`.
+- Nama Tallyman tidak ditampilkan di Table View antrian, tetapi ditampilkan di Detail Antrian drawer.
+- Hasil export Excel `Antrian Truk` juga menyertakan kolom `Nama Tallyman`.
 
 Customers:
 
@@ -442,6 +451,27 @@ cd D:\Github\warehouse-queue-app\material-dashboard-shadcn-vue-1.0.0
 npm ci
 npm run dev
 ```
+
+Menjalankan backend + frontend development sekaligus:
+
+```bat
+cd D:\Github\warehouse-queue-app\deploy\windows
+start-dev-fullstack.bat
+```
+
+Menghentikan backend + frontend development repo ini:
+
+```bat
+cd D:\Github\warehouse-queue-app\deploy\windows
+stop-dev-fullstack.bat
+```
+
+Catatan:
+
+- Script akan berhenti jika port backend `3000` sudah dipakai proses lain.
+- Untuk frontend, script akan mencoba port `5000`, lalu fallback otomatis ke `5001` sampai `5010`.
+- Jika lolos pengecekan port, script membuka 2 window `cmd` terpisah untuk backend dan frontend.
+- Script stop hanya menghentikan proses Node yang command line-nya terdeteksi berasal dari folder repo ini.
 
 URL development frontend:
 
@@ -738,6 +768,8 @@ Jika frontend dev API gagal:
 - Port production warehouse adalah `82`, bukan `80`.
 - Backend port adalah `3000`.
 - Frontend dev port adalah `5000`.
+- Gunakan `deploy\windows\start-dev-fullstack.bat` jika ingin menyalakan backend dan frontend dev sekaligus dalam dua window terpisah.
+- Gunakan `deploy\windows\stop-dev-fullstack.bat` jika ingin menghentikan backend dan frontend dev repo ini tanpa mencari PID manual.
 - Base path frontend adalah `/material-dashboard-shadcn-vue/`; jangan ubah tanpa menyesuaikan router, Vite base, dan Nginx alias.
 - Setelah mengubah route backend, pastikan frontend service wrapper dan role guard tetap sinkron.
 - Setelah mengubah schema Prisma, jalankan migrasi/generate yang sesuai.

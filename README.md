@@ -2,6 +2,8 @@
 
 File:
 - `start-local-server.bat`
+- `start-dev-fullstack.bat`
+- `stop-dev-fullstack.bat`
 - `stop-local-server.bat`
 - `start-local-server.ps1`
 - `stop-local-server.ps1`
@@ -27,6 +29,29 @@ Untuk stop:
 cd D:\Github\warehouse-queue-app\deploy\windows
 stop-local-server.bat
 ```
+
+Menjalankan backend + frontend development sekaligus:
+
+```bat
+cd D:\Github\warehouse-queue-app\deploy\windows
+start-dev-fullstack.bat
+```
+
+Menghentikan backend + frontend development repo ini:
+
+```bat
+cd D:\Github\warehouse-queue-app\deploy\windows
+stop-dev-fullstack.bat
+```
+
+Catatan:
+- Script ini membuka 2 window `cmd` terpisah.
+- Backend menjalankan `npm run dev` di folder `backend`.
+- Frontend menjalankan `npm run dev -- --port <port>` di folder `material-dashboard-shadcn-vue-1.0.0`.
+- Backend tetap wajib kosong di port `3000`.
+- Frontend akan mencoba port `5000`, lalu fallback otomatis ke `5001` sampai `5010` jika port sebelumnya sedang dipakai.
+- URL frontend dev mengikuti port yang dipilih script.
+- Script stop hanya menghentikan proses Node yang command line-nya mengarah ke folder repo ini.
 
 Panduan pindah perangkat (A -> B):
 - Lihat: `deploy/windows/MIGRATION_A_TO_B.md`

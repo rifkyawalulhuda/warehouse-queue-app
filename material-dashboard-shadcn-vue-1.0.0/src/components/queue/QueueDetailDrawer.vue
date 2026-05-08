@@ -5,6 +5,7 @@ import Button from '@/components/ui/Button.vue'
 import { useAuth } from '@/composables/useAuth'
 import { useTtsQueue } from '@/composables/useTtsQueue'
 import api from '@/services/api'
+import type { Employee } from '@/services/employeeApi'
 
 type QueueLog = {
   id: string
@@ -24,6 +25,7 @@ type QueueEntry = {
   customer?: { id: string; name: string } | null
   gateId?: string | null
   gate?: { id: string; gateNo: string; area: string; warehouse: 'WH1' | 'WH2' | 'DG' } | null
+  pickerEmployee?: Employee | null
   driverName: string
   truckNumber: string
   containerNumber?: string | null
@@ -403,6 +405,12 @@ const saveWhNotes = async () => {
           <div>
             <p class="text-muted-foreground">Warehouse</p>
             <p class="font-medium">{{ entry?.gate?.warehouse || '-' }}</p>
+          </div>
+          <div>
+            <p class="text-muted-foreground">Nama Tallyman</p>
+            <p class="font-medium">
+              {{ entry?.pickerEmployee ? `${entry.pickerEmployee.name} (${entry.pickerEmployee.nik})` : '-' }}
+            </p>
           </div>
           <div>
             <p class="text-muted-foreground">Category</p>
