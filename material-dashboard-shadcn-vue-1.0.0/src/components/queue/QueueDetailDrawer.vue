@@ -307,7 +307,7 @@ const saveWhNotes = async () => {
 <template>
   <div v-if="open" class="fixed inset-0 z-50">
     <div class="absolute inset-0 bg-black/40" @click="emit('close')"></div>
-    <aside class="absolute right-0 top-0 h-full w-full max-w-lg bg-card shadow-xl border-l overflow-y-auto">
+    <aside class="absolute right-0 top-0 h-full w-full max-w-full bg-card shadow-xl border-l overflow-y-auto sm:max-w-lg">
       <div class="p-4 border-b flex items-center justify-between">
         <div>
           <h3 class="text-lg font-semibold">Detail Antrian</h3>

@@ -419,6 +419,7 @@ Authenticated routes:
 /material-dashboard-shadcn-vue/master-admin          ADMIN
 /material-dashboard-shadcn-vue/master-karyawan       ADMIN
 /material-dashboard-shadcn-vue/antrian-truk          ADMIN/WAREHOUSE/CS
+/material-dashboard-shadcn-vue/antrian-truk/mobile    ADMIN/WAREHOUSE/CS
 /material-dashboard-shadcn-vue/picking-progress      ADMIN/WAREHOUSE/CS
 /material-dashboard-shadcn-vue/schedule-pengiriman   ADMIN/WAREHOUSE/CS
 ```
@@ -770,6 +771,7 @@ Jika frontend dev API gagal:
 - Frontend dev port adalah `5000`.
 - Gunakan `deploy\windows\start-dev-fullstack.bat` jika ingin menyalakan backend dan frontend dev sekaligus dalam dua window terpisah.
 - Gunakan `deploy\windows\stop-dev-fullstack.bat` jika ingin menghentikan backend dan frontend dev repo ini tanpa mencari PID manual.
+- Route `antrian-truk` akan auto-redirect ke `antrian-truk/mobile` pada layar kecil.
 - Base path frontend adalah `/material-dashboard-shadcn-vue/`; jangan ubah tanpa menyesuaikan router, Vite base, dan Nginx alias.
 - Setelah mengubah route backend, pastikan frontend service wrapper dan role guard tetap sinkron.
 - Setelah mengubah schema Prisma, jalankan migrasi/generate yang sesuai.

@@ -8,6 +8,7 @@ import Button from '@/components/ui/Button.vue'
 import Input from '@/components/ui/Input.vue'
 import Combobox from '@/components/ui/Combobox.vue'
 import QueueTable from '@/components/queue/QueueTable.vue'
+import QueueMobileCardList from '@/components/queue/QueueMobileCardList.vue'
 import QueueDetailDrawer from '@/components/queue/QueueDetailDrawer.vue'
 import QueueCreateModal from '@/components/queue/QueueCreateModal.vue'
 import QueueEditModal from '@/components/queue/QueueEditModal.vue'
@@ -65,6 +66,7 @@ const error = ref<string | null>(null)
 const { user } = useAuth()
 const route = useRoute()
 const router = useRouter()
+const isMobileQueueView = computed(() => route.meta.queueViewMode === 'mobile')
 
 const selectedEntry = ref<QueueEntry | null>(null)
 const drawerOpen = ref(false)
@@ -120,6 +122,7 @@ const rowLimitValue = computed({
     }
   }
 })
+const mobileFiltersOpen = ref(true)
 
 const exportForm = reactive({
   dateFrom: '',
@@ -452,6 +455,13 @@ const fetchDetail = async (id: string) => {
 
 const handleViewDetail = async (entry: QueueEntry) => {
   drawerOpen.value = true
+  router.replace({
+    path: route.path,
+    query: {
+      ...route.query,
+      detailId: entry.id,
+    },
+  })
   await fetchDetail(entry.id)
 }
 
@@ -770,6 +780,9 @@ const handleEdit = async (payload: {
 const closeDrawer = () => {
   drawerOpen.value = false
   selectedEntry.value = null
+  const nextQuery = { ...route.query }
+  delete nextQuery.detailId
+  router.replace({ path: route.path, query: nextQuery })
 }
 
 const handleWhNotesSaved = async (entryId: string) => {
@@ -974,6 +987,7 @@ watch(
 
 <template>
   <div class="space-y-6">
+    <template v-if="!isMobileQueueView">
     <div class="flex items-center justify-between">
       <div>
         <h1 class="text-xl font-bold tracking-tight">Antrian Truk</h1>
@@ -1151,6 +1165,153 @@ watch(
         </div>
       </CardContent>
     </Card>
+    </template>
+
+    <template v-else>
+      <div class="space-y-4">
+        <div class="flex items-start justify-between gap-3">
+          <div>
+            <h1 class="text-xl font-bold tracking-tight">Antrian Truk Mobile</h1>
+            <p class="text-sm text-muted-foreground">Tampilan phone-friendly untuk update status antrian</p>
+          </div>
+          <Button size="sm" variant="outline" @click="fetchList">
+            <RefreshCw class="mr-2 h-4 w-4" />
+            Refresh
+          </Button>
+        </div>
+
+        <div class="grid grid-cols-2 gap-2">
+          <button
+            v-for="item in statusSequenceItems"
+            :key="`mobile-${item.key}`"
+            type="button"
+            class="rounded-2xl border px-4 py-3 text-left transition"
+            :class="[
+              getSequenceCardClass(item.key),
+              isSequenceStatusActive(item.key) ? 'ring-2 ring-primary/40 border-primary' : '',
+            ]"
+            @click="toggleSequenceStatus(item.key)"
+          >
+            <div class="flex items-center justify-between gap-2">
+              <span class="text-sm font-semibold">{{ item.label }}</span>
+              <span
+                class="inline-flex min-w-8 items-center justify-center rounded-full border px-2 py-0.5 text-xs font-semibold"
+                :class="getSequenceBubbleClass(item.key)"
+              >
+                {{ statusCounts[item.key] }}
+              </span>
+            </div>
+          </button>
+        </div>
+
+        <Card>
+          <CardHeader class="space-y-3">
+            <div class="flex items-center justify-between gap-3">
+              <div>
+                <h2 class="text-sm font-semibold">Filter</h2>
+                <p class="text-xs text-muted-foreground">Search dan saring data antrian untuk phone</p>
+              </div>
+              <Button size="sm" variant="outline" @click="mobileFiltersOpen = !mobileFiltersOpen">
+                {{ mobileFiltersOpen ? 'Sembunyikan' : 'Tampilkan' }}
+              </Button>
+            </div>
+            <div class="relative">
+              <Search class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                v-model="filters.search"
+                type="text"
+                placeholder="Cari customer / driver / truck / container"
+                class="pl-9"
+              />
+            </div>
+            <div v-if="mobileFiltersOpen" class="grid gap-3">
+              <div>
+                <Combobox
+                  v-model="filters.status"
+                  :options="statusOptions"
+                  placeholder="Semua status"
+                  search-placeholder="Cari status..."
+                  empty-text="Status tidak ditemukan"
+                />
+              </div>
+              <div>
+                <Combobox
+                  v-model="filters.category"
+                  :options="categoryOptions"
+                  placeholder="Semua kategori"
+                  search-placeholder="Cari kategori..."
+                  empty-text="Kategori tidak ditemukan"
+                />
+              </div>
+              <div class="relative">
+                <input
+                  ref="filterDateFromInputRef"
+                  v-model="filters.dateFrom"
+                  type="date"
+                  class="w-full appearance-none bg-transparent border rounded-md px-2 py-2 pr-10 text-sm"
+                  @click="openDatePicker(filterDateFromInputRef)"
+                />
+                <button
+                  type="button"
+                  class="absolute inset-y-0 right-0 inline-flex items-center px-3 text-muted-foreground hover:text-foreground"
+                  aria-label="Pilih tanggal dari"
+                  @click="openDatePicker(filterDateFromInputRef)"
+                >
+                  <CalendarDays class="h-4 w-4" />
+                </button>
+              </div>
+              <div class="relative">
+                <input
+                  ref="filterDateToInputRef"
+                  v-model="filters.dateTo"
+                  type="date"
+                  class="w-full appearance-none bg-transparent border rounded-md px-2 py-2 pr-10 text-sm"
+                  @click="openDatePicker(filterDateToInputRef)"
+                />
+                <button
+                  type="button"
+                  class="absolute inset-y-0 right-0 inline-flex items-center px-3 text-muted-foreground hover:text-foreground"
+                  aria-label="Pilih tanggal sampai"
+                  @click="openDatePicker(filterDateToInputRef)"
+                >
+                  <CalendarDays class="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+          </CardHeader>
+        </Card>
+
+        <div v-if="error" class="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+          {{ error }}
+        </div>
+        <div v-if="success" class="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
+          {{ success }}
+        </div>
+
+        <QueueMobileCardList
+          :entries="entries"
+          :loading="loading"
+          @view-detail="handleViewDetail"
+          @change-status="handleChangeStatus"
+        />
+
+        <Card>
+          <CardContent class="space-y-3 pt-6">
+            <div class="text-sm text-muted-foreground">
+              Total data: {{ totalItems }} • Halaman {{ page }} dari {{ totalPages }}
+            </div>
+            <div class="grid grid-cols-2 gap-2">
+              <Button variant="outline" :disabled="page === 1" @click="goToPage(page - 1)">
+                Prev
+              </Button>
+              <Button variant="outline" :disabled="page === totalPages" @click="goToPage(page + 1)">
+                Next
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </template>
 
     <QueueDetailDrawer
       :open="drawerOpen"

@@ -59,7 +59,13 @@ const router = createRouter({
           path: 'antrian-truk',
           name: 'Antrian Truk',
           component: () => import('@/views/Queue/QueueList.vue'),
-          meta: { roles: ['ADMIN', 'WAREHOUSE', 'CS'] }
+          meta: { roles: ['ADMIN', 'WAREHOUSE', 'CS'], queueViewMode: 'desktop' }
+        },
+        {
+          path: 'antrian-truk/mobile',
+          name: 'Antrian Truk Mobile',
+          component: () => import('@/views/Queue/QueueList.vue'),
+          meta: { roles: ['ADMIN', 'WAREHOUSE', 'CS'], queueViewMode: 'mobile' }
         },
         {
           path: 'picking-progress',
@@ -99,6 +105,17 @@ router.beforeEach((to) => {
   const roles = to.meta.roles as string[] | undefined
   if (roles && !roles.includes(user.value.role)) {
     return user.value.role === 'WAREHOUSE' || user.value.role === 'CS' ? '/antrian-truk' : '/dashboard'
+  }
+
+  const isMobileQueueEntry =
+    to.path === '/antrian-truk' &&
+    typeof window !== 'undefined' &&
+    window.innerWidth < 768
+  if (isMobileQueueEntry) {
+    return {
+      path: '/antrian-truk/mobile',
+      query: to.query,
+    }
   }
 
   return true
