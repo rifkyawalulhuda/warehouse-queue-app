@@ -122,7 +122,7 @@ const rowLimitValue = computed({
     }
   }
 })
-const mobileFiltersOpen = ref(true)
+const mobileFiltersOpen = ref(false)
 
 const exportForm = reactive({
   dateFrom: '',
@@ -1425,7 +1425,7 @@ watch(
                 type="text"
                 placeholder="Cari / pilih tallyman..."
                 class="w-full bg-transparent border rounded-md pl-2 pr-9 py-2 text-sm"
-                :disabled="tallymanLoading || filteredTallymen.length === 0"
+                :disabled="tallymanLoading || tallymanEmployees.length === 0"
                 @focus="openTallymanDropdown"
                 @click="openTallymanDropdown"
                 @input="handleTallymanSearchInput"
@@ -1433,7 +1433,7 @@ watch(
               <button
                 type="button"
                 class="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                :disabled="tallymanLoading || filteredTallymen.length === 0"
+                :disabled="tallymanLoading || tallymanEmployees.length === 0"
                 @click="openTallymanDropdown"
                 aria-label="Toggle tallyman list"
               >

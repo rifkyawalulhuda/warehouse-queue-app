@@ -223,9 +223,10 @@ watch(
         <div class="mx-auto w-full max-w-[1600px] p-4 md:p-8">
           <RouterView />
         </div>
+        <Footer class="lg:hidden" />
       </main>
 
-      <Footer />
+      <Footer class="hidden lg:block" />
     </div>
   </div>
 </template>
