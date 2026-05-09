@@ -17,6 +17,7 @@ npm run migrate:deploy (backend)
 npx prisma generate (backend)
 npm install (jika ada perubahan dependency) (Backend)
 npm run dev (front end)
+npm run build (front end) wajib jika terjadi perubahan script di production
 
 Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned
 
