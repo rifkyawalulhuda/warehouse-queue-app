@@ -623,6 +623,13 @@ async function ensureTallymanExists(employeeId) {
   return employee;
 }
 
+async function getOptionalTallyman(employeeId) {
+  if (!employeeId || typeof employeeId !== "string" || !employeeId.trim()) {
+    return null;
+  }
+  return ensureTallymanExists(employeeId);
+}
+
 async function changeQueueStatus(id, newStatus, actorUser, gateId, cancelReason, pickerEmployeeId) {
   const entry = await prisma.queueEntry.findUnique({ where: { id } });
   if (!entry) throw createHttpError(404, "Data tidak ditemukan");
@@ -662,9 +669,11 @@ async function changeQueueStatus(id, newStatus, actorUser, gateId, cancelReason,
     gateUpdate = { gateId: gate.id };
   }
   if (newStatus === "PROSES") {
-    const pickerEmployee = await ensureTallymanExists(pickerEmployeeId);
-    pickerEmployeeUpdate = { pickerEmployeeId: pickerEmployee.id };
-    normalizedNote = `tallyman=${pickerEmployee.name} (${pickerEmployee.nik})`;
+    const pickerEmployee = await getOptionalTallyman(pickerEmployeeId);
+    if (pickerEmployee) {
+      pickerEmployeeUpdate = { pickerEmployeeId: pickerEmployee.id };
+      normalizedNote = `tallyman=${pickerEmployee.name} (${pickerEmployee.nik})`;
+    }
   }
   if (newStatus === "IN_WH" && entry.status === "PROSES") {
     pickerEmployeeUpdate = { pickerEmployeeId: null };

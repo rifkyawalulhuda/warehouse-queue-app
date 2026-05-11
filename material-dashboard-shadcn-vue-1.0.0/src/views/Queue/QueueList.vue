@@ -554,11 +554,11 @@ const submitSetInWh = async () => {
 }
 
 const submitStartProcess = async () => {
-  if (!startProcessEntry.value || !selectedTallymanId.value) return
+  if (!startProcessEntry.value) return
   startProcessSubmitting.value = true
   error.value = null
   try {
-    await setProcess(startProcessEntry.value.id, selectedTallymanId.value)
+    await setProcess(startProcessEntry.value.id, selectedTallymanId.value || undefined)
     await fetchList()
     if (drawerOpen.value && selectedEntry.value?.id === startProcessEntry.value.id) {
       await fetchDetail(startProcessEntry.value.id)
@@ -1416,7 +1416,7 @@ watch(
           <h3 class="text-lg font-semibold">Konfirmasi Mulai PROSES</h3>
         </div>
         <div class="p-4 space-y-3 text-sm">
-          <p class="text-muted-foreground">Pilih Tallyman untuk transaksi ini sebelum melanjutkan.</p>
+          <p class="text-muted-foreground">Tallyman opsional. Anda tetap bisa melanjutkan tanpa memilih nama.</p>
           <div ref="tallymanDropdownRef" class="relative">
             <label class="text-sm text-muted-foreground">Tallyman</label>
             <div class="relative mt-1">
@@ -1464,16 +1464,10 @@ watch(
             </div>
           </div>
           <div v-if="tallymanError" class="text-xs text-red-600">{{ tallymanError }}</div>
-          <div
-            v-else-if="!selectedTallymanId && tallymanSearchQuery.trim() && !tallymanLoading && tallymanEmployees.length > 0"
-            class="text-xs text-red-600"
-          >
-            Tallyman wajib dipilih
-          </div>
         </div>
         <div class="p-4 border-t flex items-center justify-end gap-2">
           <Button variant="ghost" @click="closeStartProcess">Batal</Button>
-          <Button :disabled="startProcessSubmitting || !selectedTallymanId || tallymanEmployees.length === 0" @click="submitStartProcess">
+          <Button :disabled="startProcessSubmitting" @click="submitStartProcess">
             {{ startProcessSubmitting ? 'Menyimpan...' : 'Konfirmasi' }}
           </Button>
         </div>

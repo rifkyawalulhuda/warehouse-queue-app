@@ -189,9 +189,6 @@ function validateStatusChange(req, res, next) {
       return sendError(res, 400, "Validasi gagal", ["reason wajib diisi saat status BATAL"]);
     }
   }
-  if (newStatus === "PROSES" && !isNonEmptyString(pickerEmployeeId)) {
-    return sendError(res, 400, "Validasi gagal", ["pickerEmployeeId wajib diisi saat status PROSES"]);
-  }
   return next();
 }
 

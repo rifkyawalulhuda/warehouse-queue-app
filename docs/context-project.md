@@ -256,7 +256,7 @@ Aturan otomatis antrian:
 - Data `QueueEntry` yang umur `registerTime`-nya sudah lebih dari 3 hari dan statusnya masih `MENUNGGU`, `IN_WH`, atau `PROSES` akan otomatis diubah menjadi `SELESAI` oleh sistem.
 - Proses ini dijalankan di backend saat server start dan diulang otomatis setiap 1 jam.
 - Perubahan otomatis tetap membuat `QueueLog` bertipe `STATUS_CHANGE` dengan `userName: system`.
-- Saat status antrian berubah dari `IN_WH` ke `PROSES`, user wajib memilih `Tallyman` dari `Master Karyawan` dengan posisi `TALLYMAN`.
+- Saat status antrian berubah dari `IN_WH` ke `PROSES`, input `Tallyman` bersifat opsional. Jika diisi, nilainya harus berasal dari `Master Karyawan` dengan posisi `TALLYMAN`.
 - Nama Tallyman tidak ditampilkan di Table View antrian, tetapi ditampilkan di Detail Antrian drawer.
 - Hasil export Excel `Antrian Truk` juga menyertakan kolom `Nama Tallyman`.
 
