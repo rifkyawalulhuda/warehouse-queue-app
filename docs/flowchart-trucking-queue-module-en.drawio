@@ -1,0 +1,167 @@
+<mxfile host="Electron">
+  <diagram id="qkA_07SItOfcFSYs0mjr" name="Page-1">
+    <mxGraphModel dx="983" dy="704" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="title" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=16;fontStyle=1;" value="Business Flow – Trucking Queue Module (End User)" vertex="1">
+          <mxGeometry height="40" width="970" x="100" y="20" as="geometry" />
+        </mxCell>
+        <mxCell id="lane1_bg" parent="1" style="rounded=0;whiteSpace=wrap;html=1;opacity=40;shadow=0;strokeWidth=1;dashed=1;" value="" vertex="1">
+          <mxGeometry height="170" width="970" x="100" y="70" as="geometry" />
+        </mxCell>
+        <mxCell id="lane1_lbl" parent="1" style="text;html=1;fontStyle=1;fontSize=11;align=center;verticalAlign=middle;shadow=0;strokeWidth=1;strokeColor=default;" value="Admin / CS" vertex="1">
+          <mxGeometry height="170" width="140" x="100" y="70" as="geometry" />
+        </mxCell>
+        <mxCell id="lane2_bg" parent="1" style="rounded=0;whiteSpace=wrap;html=1;opacity=40;shadow=0;strokeWidth=1;dashed=1;" value="" vertex="1">
+          <mxGeometry height="150" width="970" x="100" y="240" as="geometry" />
+        </mxCell>
+        <mxCell id="lane2_lbl" parent="1" style="text;html=1;fontStyle=1;fontSize=11;align=center;verticalAlign=middle;shadow=0;strokeWidth=1;strokeColor=default;" value="Truck Driver" vertex="1">
+          <mxGeometry height="150" width="140" x="100" y="240" as="geometry" />
+        </mxCell>
+        <mxCell id="lane3_bg" parent="1" style="rounded=0;whiteSpace=wrap;html=1;opacity=40;shadow=0;strokeWidth=1;strokeColor=default;dashed=1;" value="" vertex="1">
+          <mxGeometry height="190" width="970" x="100" y="390" as="geometry" />
+        </mxCell>
+        <mxCell id="lane3_lbl" parent="1" style="text;html=1;fontStyle=1;fontSize=11;align=center;verticalAlign=middle;shadow=0;strokeWidth=1;strokeColor=default;" value="Warehouse Staff" vertex="1">
+          <mxGeometry height="190" width="140" x="100" y="390" as="geometry" />
+        </mxCell>
+        <mxCell id="lane4_bg" parent="1" style="rounded=0;whiteSpace=wrap;html=1;opacity=40;shadow=0;strokeWidth=1;dashed=1;" value="" vertex="1">
+          <mxGeometry height="150" width="970" x="100" y="580" as="geometry" />
+        </mxCell>
+        <mxCell id="lane4_lbl" parent="1" style="text;html=1;fontStyle=1;fontSize=11;align=center;verticalAlign=middle;shadow=0;strokeWidth=1;strokeColor=default;" value="Queue Display&#xa;(Monitor)" vertex="1">
+          <mxGeometry height="150" width="140" x="100" y="580" as="geometry" />
+        </mxCell>
+        <mxCell id="n_start" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontStyle=1;fontSize=11;shadow=0;strokeWidth=1;fillColor=#d5e8d4;strokeColor=#82b366;" value="START" vertex="1">
+          <mxGeometry height="40" width="80" x="260" y="130" as="geometry" />
+        </mxCell>
+        <mxCell id="n_register" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;shadow=0;strokeWidth=1;" value="Register Truck Queue&#xa;(Driver Name, Truck No.,&#xa;Category, Container No.,&#xa;Transporter, SLA)" vertex="1">
+          <mxGeometry height="70" width="160" x="380" y="115" as="geometry" />
+        </mxCell>
+        <mxCell id="n_menunggu" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;fontStyle=1;shadow=0;strokeWidth=1;fillColor=#fff2cc;strokeColor=#d6b656;" value="Status: WAITING" vertex="1">
+          <mxGeometry height="40" width="150" x="590" y="130" as="geometry" />
+        </mxCell>
+        <mxCell id="n_batal_dec" parent="1" style="rhombus;whiteSpace=wrap;html=1;fontSize=10;shadow=0;strokeWidth=1;" value="Cancel?" vertex="1">
+          <mxGeometry height="60" width="90" x="790" y="120" as="geometry" />
+        </mxCell>
+        <mxCell id="n_batal" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;fontStyle=1;shadow=0;strokeWidth=1;fillColor=#f8cecc;strokeColor=#b85450;" value="Status: CANCELLED&#xa;(End)" vertex="1">
+          <mxGeometry height="50" width="120" x="930" y="125" as="geometry" />
+        </mxCell>
+        <mxCell id="n_tiba" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;shadow=0;strokeWidth=1;" value="Truck Arrives at&#xa;Warehouse Gate" vertex="1">
+          <mxGeometry height="55" width="150" x="380" y="275" as="geometry" />
+        </mxCell>
+        <mxCell id="n_display_check" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;shadow=0;strokeWidth=1;" value="Check Queue Display&#xa;(Verify Queue Number&#xa;&amp; Assigned Gate)" vertex="1">
+          <mxGeometry height="65" width="150" x="580" y="270" as="geometry" />
+        </mxCell>
+        <mxCell id="n_masuk_gate" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;shadow=0;strokeWidth=1;" value="Truck Enters Gate&#xa;(Per Instructions)" vertex="1">
+          <mxGeometry height="55" width="140" x="780" y="275" as="geometry" />
+        </mxCell>
+        <mxCell id="n_inwh" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;shadow=0;strokeWidth=1;fillColor=#b0e3e6;strokeColor=#0e8088;" value="Confirm Truck&#xa;Entered Warehouse&#xa;+ Assign Gate&#xa;→ Status: IN_WH" vertex="1">
+          <mxGeometry height="70" width="145" x="380" y="415" as="geometry" />
+        </mxCell>
+        <mxCell id="n_proses" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;shadow=0;strokeWidth=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="Start Loading/Unloading&#xa;Assign Tallyman (Picker)&#xa;→ Status: IN PROCESS" vertex="1">
+          <mxGeometry height="70" width="155" x="575" y="415" as="geometry" />
+        </mxCell>
+        <mxCell id="n_selesai_dec" parent="1" style="rhombus;whiteSpace=wrap;html=1;fontSize=10;shadow=0;strokeWidth=1;" value="Process&#xa;Done?" vertex="1">
+          <mxGeometry height="60" width="80" x="785" y="420" as="geometry" />
+        </mxCell>
+        <mxCell id="n_selesai" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;fontStyle=1;shadow=0;strokeWidth=1;fillColor=#d5e8d4;strokeColor=#82b366;" value="Status: DONE&#xa;Truck Exits Warehouse" vertex="1">
+          <mxGeometry height="50" width="120" x="930" y="425" as="geometry" />
+        </mxCell>
+        <mxCell id="n_monitor" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;shadow=0;strokeWidth=1;" value="Real-time Display Update&lt;br&gt;Status + SLA Countdown Timer" vertex="1">
+          <mxGeometry height="65" width="210" x="370" y="618" as="geometry" />
+        </mxCell>
+        <mxCell id="n_end" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontStyle=1;fontSize=11;shadow=0;strokeWidth=1;fillColor=#d5e8d4;strokeColor=#82b366;" value="END" vertex="1">
+          <mxGeometry height="40" width="80" x="950" y="630.5" as="geometry" />
+        </mxCell>
+        <mxCell id="e1" edge="1" parent="1" source="n_start" style="edgeStyle=orthogonalEdgeStyle;shadow=0;strokeWidth=1;" target="n_register">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e2" edge="1" parent="1" source="n_register" style="edgeStyle=orthogonalEdgeStyle;shadow=0;strokeWidth=1;" target="n_menunggu">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e3" edge="1" parent="1" source="n_menunggu" style="edgeStyle=orthogonalEdgeStyle;shadow=0;strokeWidth=1;" target="n_batal_dec">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e4" edge="1" parent="1" source="n_batal_dec" style="edgeStyle=orthogonalEdgeStyle;shadow=0;strokeWidth=1;" target="n_batal" value="Yes">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e5" edge="1" parent="1" source="n_batal_dec" style="edgeStyle=orthogonalEdgeStyle;exitX=0.5;exitY=1;entryX=0.5;entryY=0;shadow=0;strokeWidth=1;" target="n_tiba" value="No&#xa;(Truck Arrives)">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e6" edge="1" parent="1" source="n_tiba" style="edgeStyle=orthogonalEdgeStyle;shadow=0;strokeWidth=1;" target="n_display_check">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e7" edge="1" parent="1" source="n_display_check" style="edgeStyle=orthogonalEdgeStyle;shadow=0;strokeWidth=1;" target="n_masuk_gate">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e8" edge="1" parent="1" source="n_masuk_gate" style="edgeStyle=orthogonalEdgeStyle;exitX=0.5;exitY=1;entryX=0.5;entryY=0;shadow=0;strokeWidth=1;" target="n_inwh" value="Truck Enters&#xa;Warehouse">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e9" edge="1" parent="1" source="n_inwh" style="edgeStyle=orthogonalEdgeStyle;shadow=0;strokeWidth=1;" target="n_proses">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e10" edge="1" parent="1" source="n_proses" style="edgeStyle=orthogonalEdgeStyle;shadow=0;strokeWidth=1;" target="n_selesai_dec">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e11" edge="1" parent="1" source="n_selesai_dec" style="edgeStyle=orthogonalEdgeStyle;shadow=0;strokeWidth=1;" target="n_selesai" value="Yes">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e12" edge="1" parent="1" source="n_selesai_dec" style="edgeStyle=orthogonalEdgeStyle;exitX=0.5;exitY=1;entryX=0.5;entryY=1;entryDx=0;entryDy=0;shadow=0;strokeWidth=1;" target="n_proses" value="No">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="825.04" y="520" />
+              <mxPoint x="652.52" y="520" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e13" edge="1" parent="1" source="n_proses" style="edgeStyle=orthogonalEdgeStyle;exitX=0.5;exitY=1;entryX=1;entryY=0.5;entryDx=0;entryDy=0;shadow=0;strokeWidth=1;dashed=1;dashPattern=8 8;" target="n_monitor" value="Status Update">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e14" edge="1" parent="1" source="n_inwh" style="edgeStyle=orthogonalEdgeStyle;exitX=0;exitY=0.5;entryX=0;entryY=0.5;exitDx=0;exitDy=0;entryDx=0;entryDy=0;shadow=0;strokeWidth=1;dashed=1;dashPattern=8 8;" target="n_monitor" value="IN_WH Update">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="350" y="450" />
+              <mxPoint x="350" y="650.52" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e15" edge="1" parent="1" source="n_selesai" style="edgeStyle=orthogonalEdgeStyle;exitX=0.5;exitY=1;entryX=0.5;entryY=0;shadow=0;strokeWidth=1;" target="n_end" value="Done">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="leg_title" parent="1" style="text;html=1;fontStyle=1;fontSize=10;" value="STATUS LIFECYCLE" vertex="1">
+          <mxGeometry height="20" width="160" x="100" y="750" as="geometry" />
+        </mxCell>
+        <mxCell id="leg_s1" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF9C4;strokeColor=#F9A825;fontSize=9;fontStyle=1;" value="WAITING" vertex="1">
+          <mxGeometry height="28" width="100" x="100" y="775" as="geometry" />
+        </mxCell>
+        <mxCell id="leg_arr1" edge="1" parent="1" source="leg_s1" style="edgeStyle=orthogonalEdgeStyle;" target="leg_s2" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="leg_s2" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e0f7fa;strokeColor=#00838F;fontSize=9;fontStyle=1;" value="IN_WH" vertex="1">
+          <mxGeometry height="28" width="90" x="230" y="775" as="geometry" />
+        </mxCell>
+        <mxCell id="leg_arr2" edge="1" parent="1" source="leg_s2" style="edgeStyle=orthogonalEdgeStyle;" target="leg_s3" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="leg_s3" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;fontStyle=1;" value="IN PROCESS" vertex="1">
+          <mxGeometry height="28" width="90" x="350" y="775" as="geometry" />
+        </mxCell>
+        <mxCell id="leg_arr3" edge="1" parent="1" source="leg_s3" style="edgeStyle=orthogonalEdgeStyle;" target="leg_s4" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="leg_s4" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=9;fontStyle=1;" value="DONE" vertex="1">
+          <mxGeometry height="28" width="90" x="470" y="775" as="geometry" />
+        </mxCell>
+        <mxCell id="leg_or" parent="1" style="text;html=1;fontSize=9;align=center;" value="or" vertex="1">
+          <mxGeometry height="16" width="30" x="595" y="781" as="geometry" />
+        </mxCell>
+        <mxCell id="leg_s5" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=9;fontStyle=1;" value="CANCELLED" vertex="1">
+          <mxGeometry height="28" width="90" x="635" y="775" as="geometry" />
+        </mxCell>
+        <mxCell id="sla_note" parent="1" style="text;html=1;fontSize=9;align=left;fontStyle=2;" value="SLA: Waiting Time (from registerTime) and In-WH Process Time (from inWhTime) — displayed on the real-time monitor with a live countdown timer." vertex="1">
+          <mxGeometry height="18" width="750" x="100" y="812" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
