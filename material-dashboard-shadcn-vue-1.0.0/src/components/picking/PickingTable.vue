@@ -3,6 +3,7 @@ import { onMounted, onUnmounted, ref } from 'vue'
 import { Eye, Pencil, XCircle } from 'lucide-vue-next'
 import Button from '@/components/ui/Button.vue'
 import type { PickingProgressEntry, PickingSortField } from '@/services/pickingProgressApi'
+import { formatDateTimeId } from '@/lib/datetime'
 
 defineProps<{
   entries: PickingProgressEntry[]
@@ -38,12 +39,7 @@ onUnmounted(() => {
   if (tickTimer) window.clearInterval(tickTimer)
 })
 
-const formatTime = (value?: string | null) => {
-  if (!value) return '-'
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return '-'
-  return date.toLocaleString()
-}
+const formatTime = (value?: string | null) => formatDateTimeId(value)
 
 const getCurrentRemainingSeconds = (entry: PickingProgressEntry) => {
   if (entry.status !== 'ON_PROCESS') return null

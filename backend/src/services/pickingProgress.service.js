@@ -472,7 +472,7 @@ async function ensureEmployeeExists(employeeId) {
   return employee;
 }
 
-async function createPickingProgress(data, actorUserId) {
+async function createPickingProgress(data, actorUser) {
   await ensureCustomerExists(data.customerId);
   const transactionDate = resolveTransactionDate(data.date);
   const doNumber = normalizeText(data.doNumber);
@@ -495,13 +495,13 @@ async function createPickingProgress(data, actorUserId) {
       pickingQty: data.pickingQty,
       pickedQty: 0,
       status: "MENUNGGU",
-      createdById: actorUserId || null,
-      updatedById: actorUserId || null,
+      createdById: actorUser?.id || null,
+      updatedById: actorUser?.id || null,
       logs: {
         create: {
           action: "CREATE",
           toStatus: "MENUNGGU",
-          userId: actorUserId || null,
+          userId: actorUser?.id || null,
         },
       },
     },
@@ -516,7 +516,7 @@ async function createPickingProgress(data, actorUserId) {
   return computeSlaFields(created);
 }
 
-async function updatePickingProgress(id, data, actorUserId) {
+async function updatePickingProgress(id, data, actorUser) {
   const existing = await prisma.pickingProgress.findUnique({
     where: { id },
     include: {
@@ -530,7 +530,7 @@ async function updatePickingProgress(id, data, actorUserId) {
   if (!existing) {
     throw createHttpError(404, "Data picking progress tidak ditemukan");
   }
-  if (existing.status !== "MENUNGGU") {
+  if (existing.status !== "MENUNGGU" && actorUser?.role !== "ADMIN") {
     throw createHttpError(400, "Edit hanya bisa dilakukan saat status MENUNGGU");
   }
 
@@ -568,14 +568,14 @@ async function updatePickingProgress(id, data, actorUserId) {
       volumeCbm,
       plTimeRelease,
       pickingQty: nextPickingQty,
-      updatedById: actorUserId || null,
+      updatedById: actorUser?.id || null,
       logs: {
         create: {
           action: "UPDATE",
           note,
           fromStatus: existing.status,
           toStatus: existing.status,
-          userId: actorUserId || null,
+          userId: actorUser?.id || null,
         },
       },
     },
@@ -872,7 +872,7 @@ async function listPickingProgressForPrint(query) {
   return { summary, items };
 }
 
-async function importPickingProgressFromExcel(rows, actorUserId) {
+async function importPickingProgressFromExcel(rows, actorUser) {
   if (!Array.isArray(rows)) {
     throw createHttpError(400, "Data Excel tidak valid");
   }
@@ -1005,14 +1005,14 @@ async function importPickingProgressFromExcel(rows, actorUserId) {
           pickingQty: row.pickingQty,
           pickedQty: 0,
           status: "MENUNGGU",
-          createdById: actorUserId || null,
-          updatedById: actorUserId || null,
+          createdById: actorUser?.id || null,
+          updatedById: actorUser?.id || null,
           logs: {
             create: {
               action: "CREATE",
               note: "CREATE via import excel",
               toStatus: "MENUNGGU",
-              userId: actorUserId || null,
+              userId: actorUser?.id || null,
             },
           },
         },
@@ -1031,7 +1031,7 @@ async function importPickingProgressFromExcel(rows, actorUserId) {
   };
 }
 
-async function startPickingProgress(id, actorUserId, pickerEmployeeId) {
+async function startPickingProgress(id, actorUser, pickerEmployeeId) {
   const pickerEmployee = await ensureEmployeeExists(pickerEmployeeId);
   const now = new Date();
   const result = await prisma.$transaction(async (tx) => {
@@ -1050,14 +1050,14 @@ async function startPickingProgress(id, actorUserId, pickerEmployeeId) {
         startTime: now,
         plTimeRelease: entry.plTimeRelease || now,
         pickerEmployeeId: pickerEmployee.id,
-        updatedById: actorUserId || null,
+        updatedById: actorUser?.id || null,
         logs: {
           create: {
             action: "START",
             note: `picker=${pickerEmployee.name} (${pickerEmployee.nik})`,
             fromStatus: "MENUNGGU",
             toStatus: "ON_PROCESS",
-            userId: actorUserId || null,
+            userId: actorUser?.id || null,
           },
         },
       },
@@ -1071,7 +1071,7 @@ async function startPickingProgress(id, actorUserId, pickerEmployeeId) {
   return computeSlaFields(result);
 }
 
-async function updatePickedQty(id, delta, actorUserId) {
+async function updatePickedQty(id, delta, actorUser) {
   const result = await prisma.$transaction(async (tx) => {
     const entry = await tx.pickingProgress.findUnique({ where: { id } });
     if (!entry) {
@@ -1090,14 +1090,14 @@ async function updatePickedQty(id, delta, actorUserId) {
       where: { id },
       data: {
         pickedQty: next,
-        updatedById: actorUserId || null,
+        updatedById: actorUser?.id || null,
         logs: {
           create: {
             action: "UPDATE_PICKED_QTY",
             note,
             fromStatus: "ON_PROCESS",
             toStatus: "ON_PROCESS",
-            userId: actorUserId || null,
+            userId: actorUser?.id || null,
           },
         },
       },
@@ -1111,7 +1111,7 @@ async function updatePickedQty(id, delta, actorUserId) {
   return computeSlaFields(result);
 }
 
-async function finishPickingProgress(id, actorUserId) {
+async function finishPickingProgress(id, actorUser) {
   const now = new Date();
   const result = await prisma.$transaction(async (tx) => {
     const entry = await tx.pickingProgress.findUnique({ where: { id } });
@@ -1130,13 +1130,13 @@ async function finishPickingProgress(id, actorUserId) {
       data: {
         status: "SELESAI",
         finishTime: now,
-        updatedById: actorUserId || null,
+        updatedById: actorUser?.id || null,
         logs: {
           create: {
             action: "FINISH",
             fromStatus: "ON_PROCESS",
             toStatus: "SELESAI",
-            userId: actorUserId || null,
+            userId: actorUser?.id || null,
           },
         },
       },
@@ -1150,7 +1150,7 @@ async function finishPickingProgress(id, actorUserId) {
   return computeSlaFields(result);
 }
 
-async function cancelPickingProgress(id, actorUserId, cancelReason) {
+async function cancelPickingProgress(id, actorUser, cancelReason) {
   const reason = typeof cancelReason === "string" ? cancelReason.trim() : "";
   if (!reason) {
     throw createHttpError(400, "Alasan cancel wajib diisi");
@@ -1162,7 +1162,10 @@ async function cancelPickingProgress(id, actorUserId, cancelReason) {
     if (!entry) {
       throw createHttpError(404, "Data picking progress tidak ditemukan");
     }
-    if (entry.status === "SELESAI" || entry.status === "BATAL") {
+    if (
+      (entry.status === "SELESAI" || entry.status === "BATAL") &&
+      actorUser?.role !== "ADMIN"
+    ) {
       throw createHttpError(400, "Status sudah final dan tidak bisa dibatalkan");
     }
 
@@ -1171,14 +1174,14 @@ async function cancelPickingProgress(id, actorUserId, cancelReason) {
       data: {
         status: "BATAL",
         finishTime: entry.finishTime || now,
-        updatedById: actorUserId || null,
+        updatedById: actorUser?.id || null,
         logs: {
           create: {
             action: "CANCEL",
             note: reason,
             fromStatus: entry.status,
             toStatus: "BATAL",
-            userId: actorUserId || null,
+            userId: actorUser?.id || null,
           },
         },
       },
@@ -1192,12 +1195,15 @@ async function cancelPickingProgress(id, actorUserId, cancelReason) {
   return computeSlaFields(result);
 }
 
-async function updatePickingProgressWhNotes(id, notesFromWh, actorUserId) {
+async function updatePickingProgressWhNotes(id, notesFromWh, actorUser) {
   const entry = await prisma.pickingProgress.findUnique({ where: { id } });
   if (!entry) {
     throw createHttpError(404, "Data picking progress tidak ditemukan");
   }
-  if (entry.status === "SELESAI" || entry.status === "BATAL") {
+  if (
+    (entry.status === "SELESAI" || entry.status === "BATAL") &&
+    actorUser?.role !== "ADMIN"
+  ) {
     throw createHttpError(400, "Notes from WH tidak bisa diubah saat status SELESAI atau BATAL");
   }
 
@@ -1206,14 +1212,14 @@ async function updatePickingProgressWhNotes(id, notesFromWh, actorUserId) {
     where: { id },
     data: {
       notesFromWh: normalizedNotes || null,
-      updatedById: actorUserId || null,
+      updatedById: actorUser?.id || null,
       logs: {
         create: {
           action: "WH_NOTES",
           note: normalizedNotes || null,
           fromStatus: entry.status,
           toStatus: entry.status,
-          userId: actorUserId || null,
+          userId: actorUser?.id || null,
         },
       },
     },

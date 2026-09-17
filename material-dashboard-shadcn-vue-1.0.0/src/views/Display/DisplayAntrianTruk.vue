@@ -2,6 +2,7 @@
 import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import api from '@/services/api'
 import { useTtsQueue } from '@/composables/useTtsQueue'
+import { formatTimeId, formatWeekdayId } from '@/lib/datetime'
 
 type DisplayEntry = {
   id: string
@@ -129,11 +130,7 @@ const rowHighlightClass = (entry: DisplayEntry) => {
   return ''
 }
 
-const formatTime = (value?: string | null) => {
-  if (!value) return '-'
-  const date = new Date(value)
-  return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-}
+const formatTime = (value?: string | null) => formatTimeId(value)
 
 const formatGateShort = (gate?: DisplayEntry['gate'] | null) => {
   if (!gate?.gateNo) return '-'
@@ -222,12 +219,11 @@ const formatStatusTime = (value?: string | null) => {
   if (Number.isNaN(date.getTime())) return '-'
   const sameDay = date.toDateString() === now.value.toDateString()
   if (sameDay) {
-    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    return formatTimeId(date)
   }
   const day = String(date.getDate()).padStart(2, '0')
   const month = String(date.getMonth() + 1).padStart(2, '0')
-  const time = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-  return `${day}/${month} ${time}`
+  return `${day}/${month} ${formatTimeId(date)}`
 }
 
 const getStatusTime = (entry: DisplayEntry) => {
@@ -321,15 +317,12 @@ const prioritizedEntries = computed(() => {
 })
 
 const formatDisplayDateTime = (date: Date) => {
-  const weekday = new Intl.DateTimeFormat('id-ID', { weekday: 'long' }).format(date)
+  const weekday = formatWeekdayId(date)
   const day = String(date.getDate()).padStart(2, '0')
   const month = String(date.getMonth() + 1).padStart(2, '0')
   const year = date.getFullYear()
   const datePart = `${day}-${month}-${year}`
-  const hh = String(date.getHours()).padStart(2, '0')
-  const mm = String(date.getMinutes()).padStart(2, '0')
-  const ss = String(date.getSeconds()).padStart(2, '0')
-  const timePart = `${hh}:${mm}:${ss}`
+  const timePart = formatTimeId(date)
   return `${weekday}, ${datePart} ${timePart}`
 }
 

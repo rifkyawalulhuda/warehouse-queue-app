@@ -25,6 +25,7 @@ import {
   getOverSla,
   getTopCustomers
 } from '@/services/dashboardApi'
+import { formatDateTimeId, formatMonthYearId } from '@/lib/datetime'
 
 type Summary = {
   date: string
@@ -272,7 +273,7 @@ const formatMonthLabel = (value: string) => {
   const match = /^(\d{4})-(\d{2})$/.exec(value)
   if (!match) return value
   const date = new Date(Number(match[1]), Number(match[2]) - 1, 1)
-  return date.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' })
+  return formatMonthYearId(date)
 }
 
 const formatNumber = (value: number) => new Intl.NumberFormat('id-ID').format(value || 0)
@@ -331,8 +332,8 @@ const openDatePicker = (input: HTMLInputElement | null) => {
 const buildMonthlyReportHtml = (report: MonthlyReportPayload) => {
   const monthLabel = formatMonthLabel(report.month || monthlyReportMonth.value)
   const generatedAt = report.generatedAt
-    ? new Date(report.generatedAt).toLocaleString('id-ID')
-    : new Date().toLocaleString('id-ID')
+    ? formatDateTimeId(report.generatedAt)
+    : formatDateTimeId(new Date())
 
   const queueStatusRows =
     report.queueStatusItems?.length > 0

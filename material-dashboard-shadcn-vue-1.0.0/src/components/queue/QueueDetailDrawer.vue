@@ -6,6 +6,7 @@ import { useAuth } from '@/composables/useAuth'
 import { useTtsQueue } from '@/composables/useTtsQueue'
 import api from '@/services/api'
 import type { Employee } from '@/services/employeeApi'
+import { formatDateTimeId } from '@/lib/datetime'
 
 type QueueLog = {
   id: string
@@ -97,11 +98,7 @@ const totalDurationHuman = computed(() => {
   return formatDurationHuman(finish.getTime() - start.getTime())
 })
 
-const formatDateTime = (value?: string | null) => {
-  if (!value) return '-'
-  const date = new Date(value)
-  return date.toLocaleString()
-}
+const formatDateTime = (value?: string | null) => formatDateTimeId(value)
 
 const formatMinutesHuman = (value?: number | null) => {
   const totalMinutes = Number(value)

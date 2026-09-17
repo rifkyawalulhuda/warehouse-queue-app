@@ -10,6 +10,7 @@ import Combobox from '@/components/ui/Combobox.vue'
 import Input from '@/components/ui/Input.vue'
 import { CalendarDays, RefreshCw, Search } from 'lucide-vue-next'
 import api from '@/services/api'
+import { formatDateId, formatDateTimeId } from '@/lib/datetime'
 
 type StoreType = 'STORE_IN' | 'STORE_OUT'
 type TruckType = 'CDD' | 'CDE' | 'FUSO' | 'WB' | 'FT20' | 'FT40' | 'OTHER'
@@ -216,16 +217,10 @@ const formatDate = (value?: string | null) => {
   if (!value) return '-'
   const raw = toDateInput(value)
   if (!raw) return '-'
-  const [y, m, d] = raw.split('-')
-  return `${d}/${m}/${y}`
+  return formatDateId(raw)
 }
 
-const formatDateTime = (value?: string | null) => {
-  if (!value) return '-'
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return '-'
-  return date.toLocaleString()
-}
+const formatDateTime = (value?: string | null) => formatDateTimeId(value)
 
 const storeTypeLabel = (value?: string | null) => {
   if (value === 'STORE_IN') return 'Store In'

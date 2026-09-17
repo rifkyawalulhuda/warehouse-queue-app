@@ -3,6 +3,7 @@ import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import Button from '@/components/ui/Button.vue'
 import { useAuth } from '@/composables/useAuth'
 import { updatePickingWhNotes, type PickingProgressEntry } from '@/services/pickingProgressApi'
+import { formatDateTimeId } from '@/lib/datetime'
 
 const props = defineProps<{
   open: boolean
@@ -33,12 +34,7 @@ onUnmounted(() => {
   if (tickTimer) window.clearInterval(tickTimer)
 })
 
-const formatDateTime = (value?: string | Date | null) => {
-  if (!value) return '-'
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return '-'
-  return date.toLocaleString()
-}
+const formatDateTime = (value?: string | Date | null) => formatDateTimeId(value)
 
 const formatMinutes = (value?: number | null) => {
   if (value === null || value === undefined) return '-'

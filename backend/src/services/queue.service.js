@@ -515,7 +515,10 @@ async function getQueueEntryById(id) {
 async function updateQueueEntry(id, data, actorUser) {
   const entry = await prisma.queueEntry.findUnique({ where: { id } });
   if (!entry) throw createHttpError(404, "Data tidak ditemukan");
-  if (entry.status === "SELESAI" || entry.status === "BATAL") {
+  if (
+    (entry.status === "SELESAI" || entry.status === "BATAL") &&
+    actorUser?.role !== "ADMIN"
+  ) {
     throw createHttpError(400, "Data tidak bisa diubah karena status sudah final");
   }
 
@@ -565,7 +568,10 @@ async function updateQueueEntry(id, data, actorUser) {
 async function updateQueueWhNotes(id, notesFromWh, actorUser) {
   const entry = await prisma.queueEntry.findUnique({ where: { id } });
   if (!entry) throw createHttpError(404, "Data tidak ditemukan");
-  if (entry.status === "SELESAI" || entry.status === "BATAL") {
+  if (
+    (entry.status === "SELESAI" || entry.status === "BATAL") &&
+    actorUser?.role !== "ADMIN"
+  ) {
     throw createHttpError(400, "Notes from WH tidak bisa diubah saat status SELESAI atau BATAL");
   }
 

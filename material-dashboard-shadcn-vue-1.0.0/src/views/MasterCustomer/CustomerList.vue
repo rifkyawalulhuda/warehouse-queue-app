@@ -6,6 +6,7 @@ import CardContent from '@/components/ui/CardContent.vue'
 import Button from '@/components/ui/Button.vue'
 import Input from '@/components/ui/Input.vue'
 import api from '@/services/api'
+import { formatDateTimeId } from '@/lib/datetime'
 
 type Customer = {
   id: string
@@ -299,7 +300,7 @@ onMounted(() => {
               <tr v-for="(cust, index) in filteredCustomers" :key="cust.id" class="border-t">
                 <td class="px-3 py-2">{{ index + 1 }}</td>
                 <td class="px-3 py-2">{{ cust.name }}</td>
-                <td class="px-3 py-2">{{ new Date(cust.createdAt).toLocaleString() }}</td>
+                <td class="px-3 py-2">{{ formatDateTimeId(cust.createdAt) }}</td>
                 <td class="px-3 py-2">
                   <div class="flex items-center gap-2">
                     <Button size="sm" variant="outline" @click="openEdit(cust)">Edit</Button>

@@ -112,17 +112,17 @@ function ensurePickingImportHeader(rows) {
   };
 }
 
-async function resolveActorUserId(req) {
+async function resolveActorUser(req) {
   const actorId = req.user?.sub;
   if (!actorId) return null;
   const actor = await adminUserService.getAdminUserById(actorId);
-  return actor.id;
+  return actor;
 }
 
 async function createPickingProgress(req, res, next) {
   try {
-    const actorUserId = await resolveActorUserId(req);
-    const entry = await pickingProgressService.createPickingProgress(req.body, actorUserId);
+    const actorUser = await resolveActorUser(req);
+    const entry = await pickingProgressService.createPickingProgress(req.body, actorUser);
     return sendSuccess(res, entry);
   } catch (err) {
     return next(err);
@@ -131,11 +131,11 @@ async function createPickingProgress(req, res, next) {
 
 async function updatePickingProgress(req, res, next) {
   try {
-    const actorUserId = await resolveActorUserId(req);
+    const actorUser = await resolveActorUser(req);
     const entry = await pickingProgressService.updatePickingProgress(
       req.params.id,
       req.body,
-      actorUserId
+      actorUser
     );
     return sendSuccess(res, entry);
   } catch (err) {
@@ -329,8 +329,8 @@ async function importPickingProgress(req, res, next) {
       pickingQty: row[headerIndex.pickingQtyIdx],
     }));
 
-    const actorUserId = await resolveActorUserId(req);
-    const result = await pickingProgressService.importPickingProgressFromExcel(dataRows, actorUserId);
+    const actorUser = await resolveActorUser(req);
+    const result = await pickingProgressService.importPickingProgressFromExcel(dataRows, actorUser);
     return sendSuccess(res, result);
   } catch (err) {
     return next(err);
@@ -348,10 +348,10 @@ async function getPickingProgressById(req, res, next) {
 
 async function startPickingProgress(req, res, next) {
   try {
-    const actorUserId = await resolveActorUserId(req);
+    const actorUser = await resolveActorUser(req);
     const entry = await pickingProgressService.startPickingProgress(
       req.params.id,
-      actorUserId,
+      actorUser,
       req.body?.pickerEmployeeId
     );
     return sendSuccess(res, entry);
@@ -362,11 +362,11 @@ async function startPickingProgress(req, res, next) {
 
 async function updatePickedQty(req, res, next) {
   try {
-    const actorUserId = await resolveActorUserId(req);
+    const actorUser = await resolveActorUser(req);
     const entry = await pickingProgressService.updatePickedQty(
       req.params.id,
       Number(req.body.delta),
-      actorUserId
+      actorUser
     );
     return sendSuccess(res, entry);
   } catch (err) {
@@ -376,8 +376,8 @@ async function updatePickedQty(req, res, next) {
 
 async function finishPickingProgress(req, res, next) {
   try {
-    const actorUserId = await resolveActorUserId(req);
-    const entry = await pickingProgressService.finishPickingProgress(req.params.id, actorUserId);
+    const actorUser = await resolveActorUser(req);
+    const entry = await pickingProgressService.finishPickingProgress(req.params.id, actorUser);
     return sendSuccess(res, entry);
   } catch (err) {
     return next(err);
@@ -386,10 +386,10 @@ async function finishPickingProgress(req, res, next) {
 
 async function cancelPickingProgress(req, res, next) {
   try {
-    const actorUserId = await resolveActorUserId(req);
+    const actorUser = await resolveActorUser(req);
     const entry = await pickingProgressService.cancelPickingProgress(
       req.params.id,
-      actorUserId,
+      actorUser,
       req.body?.reason
     );
     return sendSuccess(res, entry);
@@ -400,11 +400,11 @@ async function cancelPickingProgress(req, res, next) {
 
 async function updatePickingWhNotes(req, res, next) {
   try {
-    const actorUserId = await resolveActorUserId(req);
+    const actorUser = await resolveActorUser(req);
     const entry = await pickingProgressService.updatePickingProgressWhNotes(
       req.params.id,
       req.body?.notesFromWh,
-      actorUserId
+      actorUser
     );
     return sendSuccess(res, entry);
   } catch (err) {

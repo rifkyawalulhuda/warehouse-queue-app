@@ -158,17 +158,12 @@ function validateQueueUpdate(req, res, next) {
   if (registerTime !== undefined && registerTime !== null && registerTime !== "" && !isValidDateInput(registerTime)) {
     errors.push("registerTime tidak valid");
   }
+  // Update parsial: SLA boleh dikirim salah satu saja.
   if (hasWaitingSla && !isValidSlaMinutes(waitingSla)) {
     errors.push("slaWaitingMinutes harus kelipatan 15 menit, minimal 15 dan maksimal 1440");
   }
   if (hasInWhProcessSla && !isValidSlaMinutes(inWhProcessSla)) {
     errors.push("slaInWhProcessMinutes harus kelipatan 15 menit, minimal 15 dan maksimal 1440");
-  }
-  if (hasWaitingSla && !hasInWhProcessSla) {
-    errors.push("slaInWhProcessMinutes wajib diisi jika slaWaitingMinutes diisi");
-  }
-  if (!hasWaitingSla && hasInWhProcessSla) {
-    errors.push("slaWaitingMinutes wajib diisi jika slaInWhProcessMinutes diisi");
   }
 
   if (errors.length > 0) {

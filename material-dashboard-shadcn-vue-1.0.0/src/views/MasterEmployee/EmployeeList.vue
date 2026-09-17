@@ -16,6 +16,7 @@ import {
   type Employee,
   type EmployeePosition
 } from '@/services/employeeApi'
+import { formatDateTimeId } from '@/lib/datetime'
 
 const employees = ref<Employee[]>([])
 const loading = ref(false)
@@ -385,7 +386,7 @@ onMounted(() => {
                 <td class="px-3 py-2">{{ item.nik }}</td>
                 <td class="px-3 py-2">{{ item.name }}</td>
                 <td class="px-3 py-2">{{ getPositionLabel(item.position) }}</td>
-                <td class="px-3 py-2">{{ new Date(item.createdAt).toLocaleString() }}</td>
+                <td class="px-3 py-2">{{ formatDateTimeId(item.createdAt) }}</td>
                 <td class="px-3 py-2">
                   <div class="flex items-center gap-2">
                     <Button size="sm" variant="outline" @click="openEdit(item)">Edit</Button>

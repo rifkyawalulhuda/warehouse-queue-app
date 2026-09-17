@@ -4,6 +4,7 @@ import { Eye } from 'lucide-vue-next'
 import Button from '@/components/ui/Button.vue'
 import QueueStatusBadge from './QueueStatusBadge.vue'
 import { useAuth } from '@/composables/useAuth'
+import { formatTimeId } from '@/lib/datetime'
 
 type QueueEntry = {
   id: string
@@ -49,11 +50,7 @@ onUnmounted(() => {
   if (tickTimer) window.clearInterval(tickTimer)
 })
 
-const formatTime = (value?: string | null) => {
-  if (!value) return '-'
-  const date = new Date(value)
-  return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-}
+const formatTime = (value?: string | null) => formatTimeId(value)
 
 const formatCategory = (category?: string | null) => {
   if (category === 'RECEIVING') return 'Receiving'

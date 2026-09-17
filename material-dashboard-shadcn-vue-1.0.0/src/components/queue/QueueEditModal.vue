@@ -168,9 +168,9 @@ const handleSubmit = () => {
   }
   if (canEditWaitingSla.value && form.slaWaitingMinutes) {
     payload.slaWaitingMinutes = Number(form.slaWaitingMinutes)
-  }
-  if (form.slaInWhProcessMinutes) {
-    payload.slaInWhProcessMinutes = Number(form.slaInWhProcessMinutes)
+    if (form.slaInWhProcessMinutes) {
+      payload.slaInWhProcessMinutes = Number(form.slaInWhProcessMinutes)
+    }
   }
   emit('submit', payload)
 }

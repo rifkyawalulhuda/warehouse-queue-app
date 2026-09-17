@@ -6,6 +6,7 @@ import CardContent from '@/components/ui/CardContent.vue'
 import Button from '@/components/ui/Button.vue'
 import Input from '@/components/ui/Input.vue'
 import api from '@/services/api'
+import { formatDateTimeId } from '@/lib/datetime'
 
 type AdminUser = {
   id: string
@@ -312,7 +313,7 @@ onMounted(() => {
                 <td class="px-3 py-2">{{ admin.phone }}</td>
                 <td class="px-3 py-2">{{ formatRole(admin.role) }}</td>
                 <td class="px-3 py-2">{{ admin.username }}</td>
-                <td class="px-3 py-2">{{ new Date(admin.createdAt).toLocaleString() }}</td>
+                <td class="px-3 py-2">{{ formatDateTimeId(admin.createdAt) }}</td>
                 <td class="px-3 py-2">
                   <div class="flex items-center gap-2">
                     <Button size="sm" variant="outline" @click="openEdit(admin)">Edit</Button>

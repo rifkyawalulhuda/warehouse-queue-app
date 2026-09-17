@@ -32,6 +32,7 @@ import {
   type PickingSortField,
   type PickingProgressEntry,
 } from '@/services/pickingProgressApi'
+import { formatDateId, formatDateTimeId } from '@/lib/datetime'
 
 type Customer = {
   id: string
@@ -229,28 +230,9 @@ const formatPercent = (value: unknown) => {
   return `${num.toFixed(2).replace(/\.?0+$/, '')}%`
 }
 
-const formatDateForPrint = (value?: string | null) => {
-  if (!value) return '-'
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return '-'
-  const dd = String(date.getDate()).padStart(2, '0')
-  const mm = String(date.getMonth() + 1).padStart(2, '0')
-  const yyyy = String(date.getFullYear())
-  return `${dd}/${mm}/${yyyy}`
-}
+const formatDateForPrint = (value?: string | null) => formatDateId(value)
 
-const formatDateTimeForPrint = (value?: string | null) => {
-  if (!value) return '-'
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return '-'
-  const dd = String(date.getDate()).padStart(2, '0')
-  const mm = String(date.getMonth() + 1).padStart(2, '0')
-  const yyyy = String(date.getFullYear())
-  const hh = String(date.getHours()).padStart(2, '0')
-  const mi = String(date.getMinutes()).padStart(2, '0')
-  const ss = String(date.getSeconds()).padStart(2, '0')
-  return `${dd}/${mm}/${yyyy} ${hh}:${mi}:${ss}`
-}
+const formatDateTimeForPrint = (value?: string | null) => formatDateTimeId(value)
 
 const formatTimeRemainingForPrint = (seconds?: number | null, status?: string) => {
   if (status !== 'ON_PROCESS' || seconds === null || seconds === undefined) return '-'
