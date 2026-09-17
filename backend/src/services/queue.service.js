@@ -1,6 +1,4 @@
-const { PrismaClient } = require("@prisma/client");
-
-const prisma = new PrismaClient();
+const prisma = require("../utils/prisma");
 
 const STATUS_FLOW = ["MENUNGGU", "IN_WH", "PROSES", "SELESAI"];
 const SORTABLE_FIELDS = new Set([

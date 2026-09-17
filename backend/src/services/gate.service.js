@@ -1,6 +1,4 @@
-const { PrismaClient } = require("@prisma/client");
-
-const prisma = new PrismaClient();
+const prisma = require("../utils/prisma");
 
 const WAREHOUSE_VALUES = new Set(["WH1", "WH2", "DG"]);
 const SORTABLE_FIELDS = new Set(["gateNo", "area", "warehouse", "createdAt", "updatedAt"]);

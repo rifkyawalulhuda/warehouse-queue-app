@@ -1,6 +1,4 @@
-const { PrismaClient } = require("@prisma/client");
-
-const prisma = new PrismaClient();
+const prisma = require("../utils/prisma");
 
 const STATUS_ORDER = ["MENUNGGU", "IN_WH", "PROSES", "SELESAI", "BATAL"];
 const MONTHLY_TRUCK_COLUMNS = [

@@ -1,6 +1,4 @@
-const { PrismaClient } = require("@prisma/client");
-
-const prisma = new PrismaClient();
+const prisma = require("../utils/prisma");
 
 const POSITION_VALUES = new Set(["FOREMAN", "TALLYMAN", "OPR_FORKLIFT"]);
 

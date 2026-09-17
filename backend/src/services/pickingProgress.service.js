@@ -1,6 +1,4 @@
-const { PrismaClient } = require("@prisma/client");
-
-const prisma = new PrismaClient();
+const prisma = require("../utils/prisma");
 
 const ALLOWED_LIMITS = new Set([15, 30, 50, 100]);
 const ALLOWED_SORT_FIELDS = new Set([
