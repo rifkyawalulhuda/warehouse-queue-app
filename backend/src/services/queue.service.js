@@ -1,4 +1,8 @@
 const prisma = require("../utils/prisma");
+const {
+  SYSTEM_LOADING_TYPE,
+  isAllowedLoadingType,
+} = require("../utils/loadingType");
 
 const STATUS_FLOW = ["MENUNGGU", "IN_WH", "PROSES", "SELESAI"];
 const SORTABLE_FIELDS = new Set([
@@ -471,6 +475,7 @@ async function autoCompleteExpiredQueueEntries(now = new Date()) {
         data: {
           status: "SELESAI",
           finishTime,
+          loadingType: SYSTEM_LOADING_TYPE,
           logs: {
             create: {
               type: "STATUS_CHANGE",
@@ -534,6 +539,24 @@ async function updateQueueEntry(id, data, actorUser) {
         getLegacyInWhProcessSlaMinutes({ category: data.category ?? entry.category })
       : undefined;
 
+  // Loading Type hanya boleh diubah oleh ADMIN.
+  let loadingTypeUpdate;
+  if (data.loadingType !== undefined) {
+    if (actorUser?.role !== "ADMIN") {
+      throw createHttpError(400, "Hanya Admin yang bisa mengubah Loading Type");
+    }
+    const nextLoadingType =
+      typeof data.loadingType === "string" ? data.loadingType.trim() : "";
+    const finalStatus = entry.status;
+    if (!nextLoadingType && (finalStatus === "SELESAI" || finalStatus === "BATAL")) {
+      throw createHttpError(400, "Loading Type wajib diisi");
+    }
+    if (nextLoadingType && !isAllowedLoadingType(nextLoadingType)) {
+      throw createHttpError(400, "Loading Type tidak valid");
+    }
+    loadingTypeUpdate = nextLoadingType || null;
+  }
+
   return prisma.queueEntry.update({
     where: { id },
     data: {
@@ -549,6 +572,7 @@ async function updateQueueEntry(id, data, actorUser) {
           : undefined,
       slaWaitingMinutes: waitingSlaMinutes,
       slaInWhProcessMinutes: inWhProcessSlaMinutes,
+      loadingType: loadingTypeUpdate,
       notes: data.notes ?? undefined,
       logs: {
         create: {
@@ -634,7 +658,15 @@ async function getOptionalTallyman(employeeId) {
   return ensureTallymanExists(employeeId);
 }
 
-async function changeQueueStatus(id, newStatus, actorUser, gateId, cancelReason, pickerEmployeeId) {
+async function changeQueueStatus(
+  id,
+  newStatus,
+  actorUser,
+  gateId,
+  cancelReason,
+  pickerEmployeeId,
+  loadingType
+) {
   const entry = await prisma.queueEntry.findUnique({ where: { id } });
   if (!entry) throw createHttpError(404, "Data tidak ditemukan");
 
@@ -686,6 +718,14 @@ async function changeQueueStatus(id, newStatus, actorUser, gateId, cancelReason,
   if (newStatus === "PROSES" && !entry.startTime) timeUpdates.startTime = new Date();
   if (newStatus === "SELESAI" && !entry.finishTime) timeUpdates.finishTime = new Date();
 
+  let loadingTypeUpdate = {};
+  if (newStatus === "SELESAI") {
+    if (!isAllowedLoadingType(loadingType)) {
+      throw createHttpError(400, "Loading Type wajib diisi");
+    }
+    loadingTypeUpdate = { loadingType };
+  }
+
   const resolvedName = actorUser?.name || "system";
   const actorUserId = actorUser?.id || null;
   const normalizedCancelReason =
@@ -699,6 +739,7 @@ async function changeQueueStatus(id, newStatus, actorUser, gateId, cancelReason,
       ...gateUpdate,
       ...pickerEmployeeUpdate,
       ...timeUpdates,
+      ...loadingTypeUpdate,
       logs: {
         create: {
           type: "STATUS_CHANGE",

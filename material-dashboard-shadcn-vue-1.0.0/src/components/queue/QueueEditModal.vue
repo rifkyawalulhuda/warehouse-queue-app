@@ -2,6 +2,8 @@
 import { computed, reactive, watch } from 'vue'
 import Button from '@/components/ui/Button.vue'
 import Combobox from '@/components/ui/Combobox.vue'
+import { useAuth } from '@/composables/useAuth'
+import { LOADING_TYPE_OPTIONS } from '@/lib/loadingType'
 
 type QueueEntry = {
   id: string
@@ -14,6 +16,7 @@ type QueueEntry = {
   transporter?: string | null
   slaWaitingMinutes?: number | null
   slaInWhProcessMinutes?: number | null
+  loadingType?: string | null
   notes?: string | null
   registerTime?: string | null
 }
@@ -27,6 +30,7 @@ type FormState = {
   transporter: string
   slaWaitingMinutes?: number
   slaInWhProcessMinutes?: number
+  loadingType?: string
   notes: string
   registerTime: string
 }
@@ -57,9 +61,17 @@ const form = reactive<DraftFormState>({
   transporter: '',
   slaWaitingMinutes: '',
   slaInWhProcessMinutes: '',
+  loadingType: '',
   notes: '',
   registerTime: '',
 })
+
+const { user } = useAuth()
+const isAdmin = computed(() => user.value?.role === 'ADMIN')
+const isFinishedStatus = computed(
+  () => props.entry?.status === 'SELESAI' || props.entry?.status === 'BATAL'
+)
+const showLoadingType = computed(() => isAdmin.value && isFinishedStatus.value)
 
 const errors = reactive({
   customerId: '',
@@ -67,6 +79,7 @@ const errors = reactive({
   truckNumber: '',
   slaWaitingMinutes: '',
   slaInWhProcessMinutes: '',
+  loadingType: '',
 })
 
 const formatSlaLabel = (minutes: number) => {
@@ -119,6 +132,7 @@ const syncFormFromEntry = () => {
   form.transporter = props.entry?.transporter || ''
   form.slaWaitingMinutes = props.entry?.slaWaitingMinutes ? String(props.entry.slaWaitingMinutes) : ''
   form.slaInWhProcessMinutes = props.entry?.slaInWhProcessMinutes ? String(props.entry.slaInWhProcessMinutes) : ''
+  form.loadingType = props.entry?.loadingType || ''
   form.notes = props.entry?.notes || ''
   form.registerTime = toDatetimeLocal(props.entry?.registerTime)
   errors.customerId = ''
@@ -126,6 +140,7 @@ const syncFormFromEntry = () => {
   errors.truckNumber = ''
   errors.slaWaitingMinutes = ''
   errors.slaInWhProcessMinutes = ''
+  errors.loadingType = ''
 }
 
 watch(
@@ -143,14 +158,19 @@ const validate = () => {
   errors.truckNumber = form.truckNumber.trim() ? '' : 'No Truck wajib'
   errors.slaWaitingMinutes = ''
   errors.slaInWhProcessMinutes = ''
+  errors.loadingType = ''
   if (form.slaWaitingMinutes && !form.slaInWhProcessMinutes) {
     errors.slaInWhProcessMinutes = 'SLA IN_WH + Proses wajib dipilih jika SLA Menunggu diisi'
+  }
+  if (showLoadingType.value && !form.loadingType) {
+    errors.loadingType = 'Loading Type wajib diisi'
   }
   return (
     !errors.customerId &&
     !errors.driverName &&
     !errors.truckNumber &&
-    !errors.slaInWhProcessMinutes
+    !errors.slaInWhProcessMinutes &&
+    !errors.loadingType
   )
 }
 
@@ -171,6 +191,9 @@ const handleSubmit = () => {
     if (form.slaInWhProcessMinutes) {
       payload.slaInWhProcessMinutes = Number(form.slaInWhProcessMinutes)
     }
+  }
+  if (showLoadingType.value) {
+    payload.loadingType = form.loadingType
   }
   emit('submit', payload)
 }
@@ -302,6 +325,20 @@ watch(
               {{ errors.slaInWhProcessMinutes }}
             </p>
           </div>
+        </div>
+
+        <div v-if="showLoadingType">
+          <label class="text-muted-foreground">Loading Type <span class="text-red-600">*</span></label>
+          <select
+            v-model="form.loadingType"
+            class="mt-1 w-full bg-transparent border rounded-md px-2 py-2 text-sm"
+          >
+            <option value="">Pilih Loading Type...</option>
+            <option v-for="opt in LOADING_TYPE_OPTIONS" :key="opt.value" :value="opt.value">
+              {{ opt.label }}
+            </option>
+          </select>
+          <p v-if="errors.loadingType" class="mt-1 text-xs text-red-600">{{ errors.loadingType }}</p>
         </div>
 
         <div>

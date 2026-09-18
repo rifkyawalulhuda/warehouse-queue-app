@@ -1,4 +1,5 @@
 const { sendError } = require("../utils/response");
+const { LOADING_TYPES, isAllowedLoadingType } = require("../utils/loadingType");
 
 const ALLOWED_CATEGORIES = ["RECEIVING", "DELIVERY"];
 const ALLOWED_STATUSES = ["MENUNGGU", "IN_WH", "PROSES", "SELESAI", "BATAL"];
@@ -122,6 +123,7 @@ function validateQueueUpdate(req, res, next) {
     registerTime,
     slaWaitingMinutes,
     slaInWhProcessMinutes,
+    loadingType,
   } = req.body;
   const errors = [];
   const waitingSla = slaWaitingMinutes === undefined ? null : parseSlaMinutes(slaWaitingMinutes);
@@ -155,6 +157,9 @@ function validateQueueUpdate(req, res, next) {
   if (notes !== undefined && typeof notes !== "string") {
     errors.push("notes harus string");
   }
+  if (loadingType !== undefined && loadingType !== null && !isAllowedLoadingType(loadingType)) {
+    errors.push(`loadingType harus salah satu dari: ${LOADING_TYPES.join(", ")}`);
+  }
   if (registerTime !== undefined && registerTime !== null && registerTime !== "" && !isValidDateInput(registerTime)) {
     errors.push("registerTime tidak valid");
   }
@@ -174,7 +179,7 @@ function validateQueueUpdate(req, res, next) {
 }
 
 function validateStatusChange(req, res, next) {
-  const { newStatus, reason, pickerEmployeeId } = req.body;
+  const { newStatus, reason, pickerEmployeeId, loadingType } = req.body;
   if (!ALLOWED_STATUSES.includes(newStatus)) {
     return sendError(res, 400, "Validasi gagal", ["newStatus tidak valid"]);
   }
@@ -183,6 +188,15 @@ function validateStatusChange(req, res, next) {
     if (!cancelReason) {
       return sendError(res, 400, "Validasi gagal", ["reason wajib diisi saat status BATAL"]);
     }
+  }
+  if (newStatus === "SELESAI") {
+    if (!isAllowedLoadingType(loadingType)) {
+      return sendError(res, 400, "Validasi gagal", [
+        `loadingType wajib diisi saat status SELESAI (${LOADING_TYPES.join(", ")})`,
+      ]);
+    }
+  } else if (loadingType !== undefined && loadingType !== null && !isAllowedLoadingType(loadingType)) {
+    return sendError(res, 400, "Validasi gagal", ["loadingType tidak valid"]);
   }
   return next();
 }

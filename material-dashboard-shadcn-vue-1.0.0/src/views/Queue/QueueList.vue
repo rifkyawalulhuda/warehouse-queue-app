@@ -17,6 +17,7 @@ import api from '@/services/api'
 import { listEmployees, type Employee } from '@/services/employeeApi'
 import { getMasterGates, setInWh, setProcess, type MasterGate } from '@/services/queueApi'
 import { useAuth } from '@/composables/useAuth'
+import { LOADING_TYPE_OPTIONS } from '@/lib/loadingType'
 
 type QueueLog = {
   id: string
@@ -48,6 +49,7 @@ type QueueEntry = {
   slaWaitingMinutes: number
   slaInWhProcessMinutes: number
   status: 'MENUNGGU' | 'IN_WH' | 'PROSES' | 'SELESAI' | 'BATAL'
+  loadingType?: string | null
   notes?: string | null
   notesFromWh?: string | null
   logs?: QueueLog[]
@@ -99,6 +101,11 @@ const tallymanError = ref<string | null>(null)
 const startProcessSubmitting = ref(false)
 const tallymanDropdownOpen = ref(false)
 const tallymanDropdownRef = ref<HTMLElement | null>(null)
+const finishOpen = ref(false)
+const finishEntry = ref<QueueEntry | null>(null)
+const selectedLoadingType = ref('')
+const loadingTypeError = ref<string | null>(null)
+const finishSubmitting = ref(false)
 const success = ref<string | null>(null)
 const exportOpen = ref(false)
 const exporting = ref(false)
@@ -495,6 +502,13 @@ const handleChangeStatus = async (entry: QueueEntry, newStatus: QueueEntry['stat
     }
     return
   }
+  if (newStatus === 'SELESAI' && entry.status === 'PROSES') {
+    finishEntry.value = entry
+    selectedLoadingType.value = ''
+    loadingTypeError.value = null
+    finishOpen.value = true
+    return
+  }
   confirmEntry.value = entry
   confirmNextStatus.value = newStatus
   cancelReason.value = ''
@@ -532,6 +546,41 @@ const closeStartProcess = () => {
   tallymanSearchQuery.value = ''
   tallymanError.value = null
   tallymanDropdownOpen.value = false
+}
+
+const closeFinish = () => {
+  finishOpen.value = false
+  finishEntry.value = null
+  selectedLoadingType.value = ''
+  loadingTypeError.value = null
+}
+
+const submitFinish = async () => {
+  if (!finishEntry.value) return
+  if (!selectedLoadingType.value) {
+    loadingTypeError.value = 'Loading Type wajib dipilih'
+    return
+  }
+  finishSubmitting.value = true
+  loadingTypeError.value = null
+  try {
+    await api.patch(
+      `/queue/${finishEntry.value.id}/status`,
+      { newStatus: 'SELESAI', loadingType: selectedLoadingType.value },
+      { headers: { 'x-user-name': 'admin' } }
+    )
+    const targetId = finishEntry.value.id
+    await fetchList()
+    if (drawerOpen.value && selectedEntry.value?.id === targetId) {
+      await fetchDetail(targetId)
+    }
+    closeFinish()
+    showSuccess('Status berhasil diubah ke SELESAI')
+  } catch (err: any) {
+    loadingTypeError.value = getErrorMessage(err, 'Gagal update status ke SELESAI')
+  } finally {
+    finishSubmitting.value = false
+  }
 }
 
 const submitSetInWh = async () => {
@@ -738,6 +787,7 @@ const handleEdit = async (payload: {
   transporter: string
   slaWaitingMinutes?: number
   slaInWhProcessMinutes?: number
+  loadingType?: string
   notes: string
   registerTime: string
 }) => {
@@ -757,6 +807,9 @@ const handleEdit = async (payload: {
     if (typeof payload.slaWaitingMinutes === 'number') body.slaWaitingMinutes = payload.slaWaitingMinutes
     if (typeof payload.slaInWhProcessMinutes === 'number') {
       body.slaInWhProcessMinutes = payload.slaInWhProcessMinutes
+    }
+    if (typeof payload.loadingType === 'string') {
+      body.loadingType = payload.loadingType
     }
     if (payload.registerTime) {
       body.registerTime = new Date(payload.registerTime).toISOString()
@@ -1469,6 +1522,41 @@ watch(
           <Button variant="ghost" @click="closeStartProcess">Batal</Button>
           <Button :disabled="startProcessSubmitting" @click="submitStartProcess">
             {{ startProcessSubmitting ? 'Menyimpan...' : 'Konfirmasi' }}
+          </Button>
+        </div>
+      </div>
+    </div>
+
+    <div v-if="finishOpen" class="fixed inset-0 z-50">
+      <div class="absolute inset-0 bg-black/40" @click="closeFinish"></div>
+      <div class="absolute left-1/2 top-1/2 w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-lg bg-card shadow-xl border">
+        <div class="p-4 border-b">
+          <h3 class="text-lg font-semibold">Selesaikan Transaksi</h3>
+        </div>
+        <div class="p-4 space-y-3 text-sm">
+          <p>
+            Selesaikan transaksi
+            <span class="font-semibold">{{ finishEntry?.truckNumber }}</span>
+            ?
+          </p>
+          <div>
+            <label class="text-sm text-muted-foreground">Loading Type <span class="text-red-600">*</span></label>
+            <select
+              v-model="selectedLoadingType"
+              class="mt-1 w-full bg-transparent border rounded-md px-2 py-2 text-sm"
+            >
+              <option value="">Pilih Loading Type...</option>
+              <option v-for="opt in LOADING_TYPE_OPTIONS" :key="opt.value" :value="opt.value">
+                {{ opt.label }}
+              </option>
+            </select>
+            <p v-if="loadingTypeError" class="mt-1 text-xs text-red-600">{{ loadingTypeError }}</p>
+          </div>
+        </div>
+        <div class="p-4 border-t flex items-center justify-end gap-2">
+          <Button variant="ghost" @click="closeFinish">Batal</Button>
+          <Button :disabled="!selectedLoadingType || finishSubmitting" @click="submitFinish">
+            {{ finishSubmitting ? 'Menyimpan...' : 'Ya, Selesaikan' }}
           </Button>
         </div>
       </div>

@@ -80,6 +80,7 @@ model QueueEntry {
   slaWaitingMinutes Int
   slaInWhProcessMinutes Int
   status          QueueStatus   @default(MENUNGGU)
+  loadingType     String?
   notes           String?
   notesFromWh     String?
   createdAt       DateTime      @default(now())

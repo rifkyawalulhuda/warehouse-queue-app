@@ -7,6 +7,7 @@ import { useTtsQueue } from '@/composables/useTtsQueue'
 import api from '@/services/api'
 import type { Employee } from '@/services/employeeApi'
 import { formatDateTimeId } from '@/lib/datetime'
+import { formatLoadingTypeLabel } from '@/lib/loadingType'
 
 type QueueLog = {
   id: string
@@ -38,6 +39,7 @@ type QueueEntry = {
   slaWaitingMinutes: number
   slaInWhProcessMinutes: number
   status: 'MENUNGGU' | 'IN_WH' | 'PROSES' | 'SELESAI' | 'BATAL'
+  loadingType?: string | null
   notes?: string | null
   notesFromWh?: string | null
   logs?: QueueLog[]
@@ -432,6 +434,10 @@ const saveWhNotes = async () => {
           <div>
             <p class="text-muted-foreground">Finish Time</p>
             <p class="font-medium">{{ formatDateTime(entry?.finishTime) }}</p>
+          </div>
+          <div>
+            <p class="text-muted-foreground">Loading Type</p>
+            <p class="font-medium">{{ formatLoadingTypeLabel(entry?.loadingType) }}</p>
           </div>
           <div>
             <p class="text-muted-foreground">Total Waktu (Register → Finish)</p>

@@ -2,6 +2,7 @@ const ExcelJS = require("exceljs");
 const queueService = require("../services/queue.service");
 const adminUserService = require("../services/adminUser.service");
 const { sendSuccess } = require("../utils/response");
+const { formatLoadingTypeLabel } = require("../utils/loadingType");
 
 function formatDateTime(value) {
   if (!value) return "-";
@@ -138,7 +139,8 @@ async function updateQueueStatus(req, res, next) {
       actorUser,
       req.body.gateId,
       req.body.reason,
-      req.body.pickerEmployeeId
+      req.body.pickerEmployeeId,
+      req.body.loadingType
     );
     return sendSuccess(res, entry);
   } catch (err) {
@@ -192,6 +194,7 @@ async function exportQueue(req, res, next) {
       { header: "SLA IN_WH + Proses", key: "slaInWhProcessMinutes", width: 22 },
       { header: "Time Remaining", key: "timeRemaining", width: 18 },
       { header: "Status", key: "status", width: 14 },
+      { header: "Loading Type", key: "loadingType", width: 18 },
       { header: "Keterangan Batal", key: "cancelReason", width: 30 },
       { header: "Category", key: "category", width: 14 },
     ];
@@ -222,6 +225,7 @@ async function exportQueue(req, res, next) {
         totalDuration: formatDurationHuman(entry.registerTime, entry.finishTime),
         timeRemaining: formatTimeRemaining(entry),
         status: entry.status || "-",
+        loadingType: formatLoadingTypeLabel(entry.loadingType),
         cancelReason: entry.logs?.[0]?.note || "-",
         category: mapCategory(entry.category),
       });
