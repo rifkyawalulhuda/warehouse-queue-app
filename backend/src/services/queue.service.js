@@ -231,6 +231,7 @@ async function createQueueEntry(data, actorUser) {
       category: data.category,
       customerId: data.customerId,
       driverName: data.driverName,
+      driverPhone: data.driverPhone || null,
       truckNumber: data.truckNumber,
       containerNumber: data.containerNumber || null,
       transporter: data.transporter || null,
@@ -273,6 +274,7 @@ async function listQueueEntries(query) {
     baseWhere.OR = [
       { customer: { name: { contains: search, mode: "insensitive" } } },
       { driverName: { contains: search, mode: "insensitive" } },
+      { driverPhone: { contains: search, mode: "insensitive" } },
       { truckNumber: { contains: search, mode: "insensitive" } },
       { containerNumber: { contains: search, mode: "insensitive" } },
     ];
@@ -563,6 +565,7 @@ async function updateQueueEntry(id, data, actorUser) {
       category: data.category ?? undefined,
       customerId: data.customerId ?? undefined,
       driverName: data.driverName ?? undefined,
+      driverPhone: data.driverPhone !== undefined ? (data.driverPhone || null) : undefined,
       truckNumber: data.truckNumber ?? undefined,
       containerNumber: data.containerNumber ?? undefined,
       transporter: data.transporter ?? undefined,

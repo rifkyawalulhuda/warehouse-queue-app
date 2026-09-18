@@ -40,6 +40,7 @@ type QueueEntry = {
   slaInWhProcessMinutes: number
   status: 'MENUNGGU' | 'IN_WH' | 'PROSES' | 'SELESAI' | 'BATAL'
   loadingType?: string | null
+  driverPhone?: string | null
   notes?: string | null
   notesFromWh?: string | null
   logs?: QueueLog[]
@@ -380,6 +381,10 @@ const saveWhNotes = async () => {
           <div>
             <p class="text-muted-foreground">Driver Name</p>
             <p class="font-medium">{{ entry?.driverName || '-' }}</p>
+          </div>
+          <div>
+            <p class="text-muted-foreground">Driver Phone</p>
+            <p class="font-medium">{{ entry?.driverPhone || '-' }}</p>
           </div>
           <div>
             <p class="text-muted-foreground">No Truck</p>

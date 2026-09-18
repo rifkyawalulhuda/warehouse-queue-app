@@ -50,6 +50,7 @@ type QueueEntry = {
   slaInWhProcessMinutes: number
   status: 'MENUNGGU' | 'IN_WH' | 'PROSES' | 'SELESAI' | 'BATAL'
   loadingType?: string | null
+  driverPhone?: string | null
   notes?: string | null
   notesFromWh?: string | null
   logs?: QueueLog[]
@@ -727,6 +728,7 @@ const handleCreate = async (payload: {
   customerId: string
   category: 'RECEIVING' | 'DELIVERY'
   driverName: string
+  driverPhone?: string
   truckNumber: string
   containerNumber: string
   transporter: string
@@ -743,6 +745,9 @@ const handleCreate = async (payload: {
       customerId: payload.customerId,
       driverName: payload.driverName,
       truckNumber: payload.truckNumber,
+    }
+    if (payload.driverPhone && payload.driverPhone.trim()) {
+      body.driverPhone = payload.driverPhone.trim()
     }
     if (typeof payload.slaWaitingMinutes === 'number') body.slaWaitingMinutes = payload.slaWaitingMinutes
     if (typeof payload.slaInWhProcessMinutes === 'number') {
@@ -782,6 +787,7 @@ const handleEdit = async (payload: {
   customerId: string
   category: 'RECEIVING' | 'DELIVERY'
   driverName: string
+  driverPhone?: string
   truckNumber: string
   containerNumber: string
   transporter: string
@@ -799,6 +805,7 @@ const handleEdit = async (payload: {
       category: payload.category,
       customerId: payload.customerId,
       driverName: payload.driverName,
+      driverPhone: (payload.driverPhone || '').trim(),
       truckNumber: payload.truckNumber,
       containerNumber: payload.containerNumber.trim(),
       transporter: payload.transporter.trim(),

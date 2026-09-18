@@ -1,5 +1,6 @@
 const { sendError } = require("../utils/response");
 const { LOADING_TYPES, isAllowedLoadingType } = require("../utils/loadingType");
+const { isValidOptionalPhone, MIN_PHONE_DIGITS, MAX_PHONE_DIGITS } = require("../utils/phone");
 
 const ALLOWED_CATEGORIES = ["RECEIVING", "DELIVERY"];
 const ALLOWED_STATUSES = ["MENUNGGU", "IN_WH", "PROSES", "SELESAI", "BATAL"];
@@ -56,6 +57,7 @@ function validateQueueCreate(req, res, next) {
     category,
     customerId,
     driverName,
+    driverPhone,
     truckNumber,
     transporter,
     registerTime,
@@ -79,6 +81,11 @@ function validateQueueCreate(req, res, next) {
   }
   if (!isNonEmptyString(driverName)) {
     errors.push("driverName wajib diisi");
+  }
+  if (!isValidOptionalPhone(driverPhone)) {
+    errors.push(
+      `driverPhone hanya boleh angka, +, -, spasi; jumlah digit ${MIN_PHONE_DIGITS}-${MAX_PHONE_DIGITS}`
+    );
   }
   if (!isNonEmptyString(truckNumber)) {
     errors.push("truckNumber wajib diisi");
@@ -116,6 +123,7 @@ function validateQueueUpdate(req, res, next) {
     category,
     customerId,
     driverName,
+    driverPhone,
     truckNumber,
     containerNumber,
     transporter,
@@ -144,6 +152,11 @@ function validateQueueUpdate(req, res, next) {
   }
   if (driverName !== undefined && !isNonEmptyString(driverName)) {
     errors.push("driverName tidak boleh kosong");
+  }
+  if (!isValidOptionalPhone(driverPhone)) {
+    errors.push(
+      `driverPhone hanya boleh angka, +, -, spasi; jumlah digit ${MIN_PHONE_DIGITS}-${MAX_PHONE_DIGITS}`
+    );
   }
   if (truckNumber !== undefined && !isNonEmptyString(truckNumber)) {
     errors.push("truckNumber tidak boleh kosong");

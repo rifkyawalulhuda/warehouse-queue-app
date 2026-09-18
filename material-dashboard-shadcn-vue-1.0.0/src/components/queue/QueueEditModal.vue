@@ -4,6 +4,7 @@ import Button from '@/components/ui/Button.vue'
 import Combobox from '@/components/ui/Combobox.vue'
 import { useAuth } from '@/composables/useAuth'
 import { LOADING_TYPE_OPTIONS } from '@/lib/loadingType'
+import { isValidOptionalPhone, sanitizePhoneInput, MIN_PHONE_DIGITS, MAX_PHONE_DIGITS } from '@/lib/phone'
 
 type QueueEntry = {
   id: string
@@ -11,6 +12,7 @@ type QueueEntry = {
   category: 'RECEIVING' | 'DELIVERY'
   status?: 'MENUNGGU' | 'IN_WH' | 'PROSES' | 'SELESAI' | 'BATAL'
   driverName: string
+  driverPhone?: string | null
   truckNumber: string
   containerNumber?: string | null
   transporter?: string | null
@@ -25,6 +27,7 @@ type FormState = {
   customerId: string
   category: 'RECEIVING' | 'DELIVERY'
   driverName: string
+  driverPhone: string
   truckNumber: string
   containerNumber: string
   transporter: string
@@ -56,6 +59,7 @@ const form = reactive<DraftFormState>({
   customerId: '',
   category: 'RECEIVING',
   driverName: '',
+  driverPhone: '',
   truckNumber: '',
   containerNumber: '',
   transporter: '',
@@ -76,6 +80,7 @@ const showLoadingType = computed(() => isAdmin.value && isFinishedStatus.value)
 const errors = reactive({
   customerId: '',
   driverName: '',
+  driverPhone: '',
   truckNumber: '',
   slaWaitingMinutes: '',
   slaInWhProcessMinutes: '',
@@ -127,6 +132,7 @@ const syncFormFromEntry = () => {
   form.customerId = props.entry?.customerId || ''
   form.category = props.entry?.category || 'RECEIVING'
   form.driverName = props.entry?.driverName || ''
+  form.driverPhone = props.entry?.driverPhone || ''
   form.truckNumber = props.entry?.truckNumber || ''
   form.containerNumber = props.entry?.containerNumber || ''
   form.transporter = props.entry?.transporter || ''
@@ -137,6 +143,7 @@ const syncFormFromEntry = () => {
   form.registerTime = toDatetimeLocal(props.entry?.registerTime)
   errors.customerId = ''
   errors.driverName = ''
+  errors.driverPhone = ''
   errors.truckNumber = ''
   errors.slaWaitingMinutes = ''
   errors.slaInWhProcessMinutes = ''
@@ -155,6 +162,9 @@ watch(
 const validate = () => {
   errors.customerId = form.customerId ? '' : 'Customer wajib'
   errors.driverName = form.driverName.trim() ? '' : 'Driver Name wajib'
+  errors.driverPhone = isValidOptionalPhone(form.driverPhone)
+    ? ''
+    : `Driver Phone hanya angka, +, -, spasi; jumlah digit ${MIN_PHONE_DIGITS}-${MAX_PHONE_DIGITS}`
   errors.truckNumber = form.truckNumber.trim() ? '' : 'No Truck wajib'
   errors.slaWaitingMinutes = ''
   errors.slaInWhProcessMinutes = ''
@@ -168,10 +178,18 @@ const validate = () => {
   return (
     !errors.customerId &&
     !errors.driverName &&
+    !errors.driverPhone &&
     !errors.truckNumber &&
     !errors.slaInWhProcessMinutes &&
     !errors.loadingType
   )
+}
+
+const handleDriverPhoneInput = (event: Event) => {
+  const target = event.target as HTMLInputElement
+  const sanitized = sanitizePhoneInput(target.value)
+  form.driverPhone = sanitized
+  target.value = sanitized
 }
 
 const handleSubmit = () => {
@@ -180,6 +198,7 @@ const handleSubmit = () => {
     customerId: form.customerId,
     category: form.category,
     driverName: form.driverName,
+    driverPhone: form.driverPhone.trim(),
     truckNumber: form.truckNumber,
     containerNumber: form.containerNumber,
     transporter: form.transporter,
@@ -273,6 +292,18 @@ watch(
             <label class="text-muted-foreground">Driver Name</label>
             <input v-model="form.driverName" type="text" class="mt-1 w-full bg-transparent border rounded-md px-2 py-2 text-sm" />
             <p v-if="errors.driverName" class="mt-1 text-xs text-red-600">{{ errors.driverName }}</p>
+          </div>
+          <div>
+            <label class="text-muted-foreground">Driver Phone (opsional)</label>
+            <input
+              :value="form.driverPhone"
+              type="tel"
+              inputmode="tel"
+              placeholder="08xxxxxxxxxx"
+              class="mt-1 w-full bg-transparent border rounded-md px-2 py-2 text-sm"
+              @input="handleDriverPhoneInput"
+            />
+            <p v-if="errors.driverPhone" class="mt-1 text-xs text-red-600">{{ errors.driverPhone }}</p>
           </div>
           <div>
             <label class="text-muted-foreground">No Truck</label>

@@ -2,11 +2,13 @@
 import { computed, reactive, watch } from 'vue'
 import Button from '@/components/ui/Button.vue'
 import Combobox from '@/components/ui/Combobox.vue'
+import { isValidOptionalPhone, sanitizePhoneInput, MIN_PHONE_DIGITS, MAX_PHONE_DIGITS } from '@/lib/phone'
 
 type FormState = {
   customerId: string
   category: 'RECEIVING' | 'DELIVERY'
   driverName: string
+  driverPhone: string
   truckNumber: string
   containerNumber: string
   transporter: string
@@ -36,6 +38,7 @@ const form = reactive<DraftFormState>({
   customerId: '',
   category: 'RECEIVING',
   driverName: '',
+  driverPhone: '',
   truckNumber: '',
   containerNumber: '',
   transporter: '',
@@ -48,6 +51,7 @@ const form = reactive<DraftFormState>({
 const errors = reactive({
   customerId: '',
   driverName: '',
+  driverPhone: '',
   truckNumber: '',
   slaWaitingMinutes: '',
   slaInWhProcessMinutes: ''
@@ -82,6 +86,7 @@ const resetForm = () => {
   form.customerId = ''
   form.category = 'RECEIVING'
   form.driverName = ''
+  form.driverPhone = ''
   form.truckNumber = ''
   form.containerNumber = ''
   form.transporter = ''
@@ -91,6 +96,7 @@ const resetForm = () => {
   form.registerTime = ''
   errors.customerId = ''
   errors.driverName = ''
+  errors.driverPhone = ''
   errors.truckNumber = ''
   errors.slaWaitingMinutes = ''
   errors.slaInWhProcessMinutes = ''
@@ -99,6 +105,9 @@ const resetForm = () => {
 const validate = () => {
   errors.customerId = form.customerId ? '' : 'Customer wajib'
   errors.driverName = form.driverName.trim() ? '' : 'Driver Name wajib'
+  errors.driverPhone = isValidOptionalPhone(form.driverPhone)
+    ? ''
+    : `Driver Phone hanya angka, +, -, spasi; jumlah digit ${MIN_PHONE_DIGITS}-${MAX_PHONE_DIGITS}`
   errors.truckNumber = form.truckNumber.trim() ? '' : 'No Truck wajib'
   errors.slaWaitingMinutes = ''
   errors.slaInWhProcessMinutes = ''
@@ -108,9 +117,17 @@ const validate = () => {
   return (
     !errors.customerId &&
     !errors.driverName &&
+    !errors.driverPhone &&
     !errors.truckNumber &&
     !errors.slaInWhProcessMinutes
   )
+}
+
+const handleDriverPhoneInput = (event: Event) => {
+  const target = event.target as HTMLInputElement
+  const sanitized = sanitizePhoneInput(target.value)
+  form.driverPhone = sanitized
+  target.value = sanitized
 }
 
 const handleSubmit = () => {
@@ -119,6 +136,7 @@ const handleSubmit = () => {
     customerId: form.customerId,
     category: form.category,
     driverName: form.driverName,
+    driverPhone: form.driverPhone.trim(),
     truckNumber: form.truckNumber,
     containerNumber: form.containerNumber,
     transporter: form.transporter,
@@ -202,6 +220,18 @@ watch(
             <label class="text-muted-foreground">Driver Name</label>
             <input v-model="form.driverName" type="text" class="mt-1 w-full bg-transparent border rounded-md px-2 py-2 text-sm" />
             <p v-if="errors.driverName" class="mt-1 text-xs text-red-600">{{ errors.driverName }}</p>
+          </div>
+          <div>
+            <label class="text-muted-foreground">Driver Phone (opsional)</label>
+            <input
+              :value="form.driverPhone"
+              type="tel"
+              inputmode="tel"
+              placeholder="08xxxxxxxxxx"
+              class="mt-1 w-full bg-transparent border rounded-md px-2 py-2 text-sm"
+              @input="handleDriverPhoneInput"
+            />
+            <p v-if="errors.driverPhone" class="mt-1 text-xs text-red-600">{{ errors.driverPhone }}</p>
           </div>
           <div>
             <label class="text-muted-foreground">No Truck</label>
