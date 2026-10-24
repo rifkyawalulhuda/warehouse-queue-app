@@ -1,6 +1,6 @@
 # Context Project - Warehouse Queue App
 
-Terakhir diperbarui: 2026-09-18
+Terakhir diperbarui: 2026-10-25 (modul Transaksi Pekerjaan + laporan turunan + export Excel transaksi)
 
 ## Ringkasan
 
@@ -14,6 +14,8 @@ Fitur utama:
 - Master customer, gate, admin/user, dan karyawan.
 - Schedule pengiriman.
 - Picking progress, termasuk import/export Excel dan print summary.
+- Transaksi Pekerjaan: pencatatan pekerjaan manpower (receiving/delivery per tipe truk), picking, dan stuffing dengan Start/Finish manual serta alur DRAFT -> PROSES -> SELESAI.
+- Daily Job Activity: laporan harian yang **terbentuk otomatis** dari Transaksi Pekerjaan (sheet preview, print A4 landscape, export Excel berformat). Laporan bersifat read-only.
 - Loading Type wajib saat Proses ke Selesai (PALETIZE / COMBINE / LOOSE).
 - Driver Phone opsional pada transaksi antrian truk.
 - Backup/restore database untuk pindah perangkat A ke B.
@@ -260,6 +262,10 @@ Model utama:
 - `ShipmentScheduleItem`: detail qty truck type per schedule.
 - `PickingProgress`: progres picking per DO/customer/destination.
 - `PickingProgressLog`: audit log picking progress.
+- `DailyJobActivity`: header laporan per tanggal (`@@unique([activityDate])`). Hanya menyimpan tanggal, `notes`, dan audit. Seluruh angka laporan **tidak** disimpan di sini, melainkan dihitung dari `JobTransaction`.
+- `JobTransaction`: sumber kebenaran modul ini. Satu baris = satu pekerjaan: `activityType` (RECEIVING/DELIVERY/PICKING/STUFFING), `jobRole` (TALLY/OPERATOR), `employeeId` (wajib untuk manpower), `truckType` + `truckTypeOther` + `qty` (manpower), `totalDo` + `totalMember` (picking/stuffing), `startAt` + `finishAt` (DateTime manual), `status` (DRAFT/PROSES/SELESAI/BATAL), `confirmation`, `cancelReason`.
+- `JobTransactionLog`: audit log CREATE/START/FINISH/REOPEN/CANCEL/UPDATE/DELETE per transaksi. `jobTransactionId` nullable + `onDelete: SetNull` agar jejak hapus tetap tersimpan.
+- `DailyJobActivityLog`: audit log perubahan header laporan (mis. `NOTES`).
 
 ## Backend API
 
@@ -405,6 +411,57 @@ PATCH /api/picking-progress/:id/finish
 PATCH /api/picking-progress/:id/cancel
 ```
 
+Job Transactions (sumber data modul laporan harian):
+
+```text
+GET    /api/job-transactions                  Daftar transaksi (date/dateFrom/dateTo/status/activityType/search + pagination)
+GET    /api/job-transactions/export           Export Excel semua baris sesuai filter yang sama (maks 5000 baris)
+POST   /api/job-transactions                  Buat transaksi (startAt terisi -> PROSES, startAt+finishAt -> SELESAI, tanpa startAt -> DRAFT)
+GET    /api/job-transactions/:id
+PUT    /api/job-transactions/:id
+PATCH  /api/job-transactions/:id/start        DRAFT -> PROSES (startAt wajib)
+PATCH  /api/job-transactions/:id/finish       PROSES -> SELESAI (finishAt wajib, > startAt)
+PATCH  /api/job-transactions/:id/reopen       Turun satu langkah, ADMIN only
+PATCH  /api/job-transactions/:id/cancel       BATAL + alasan wajib, ADMIN only
+DELETE /api/job-transactions/:id
+```
+
+Daily Job Activity (laporan turunan, read-only):
+
+```text
+GET    /api/daily-job-activities              Daftar laporan per tanggal (date/dateFrom/dateTo + pagination)
+GET    /api/daily-job-activities?date=YYYY-MM-DD  Laporan tanggal tersebut (selalu ada, status KOSONG bila belum ada transaksi)
+GET    /api/daily-job-activities/:id
+PATCH  /api/daily-job-activities/:id/notes    Satu-satunya field yang bisa diubah manual
+GET    /api/daily-job-activities/:id/export-excel
+```
+
+Aturan Job Transaction:
+
+- Akses `ADMIN`, `WAREHOUSE`, `CS` setara untuk create/update/start/finish. `reopen`, `cancel`, dan delete transaksi `SELESAI` hanya ADMIN.
+- Status: `DRAFT` (belum ada `startAt`) -> `PROSES` (Confirm) -> `SELESAI` (Finish), plus `BATAL`. `SELESAI` dan `BATAL` mengunci edit untuk WAREHOUSE/CS.
+- Satu transaksi = satu pekerjaan. Manpower (`RECEIVING`/`DELIVERY`) wajib punya `employeeId` dari Master Karyawan dengan posisi yang cocok (`TALLYMAN` untuk TALLY, `OPR_FORKLIFT` untuk OPERATOR), `truckType`, dan `qty` minimal 1. Picking/Stuffing wajib punya `totalDo` atau `totalMember`.
+- `activityType` menentukan `jobRole` di server: RECEIVING -> TALLY, DELIVERY -> OPERATOR. Klien tidak boleh mengirim `jobRole`.
+- `truckType` memakai enum `CDD | CDE | FUSO | WB | FT20 | FT40 | OTHER`; `OTHER` wajib disertai `truckTypeOther`.
+- **Waktu disimpan sebagai wall-clock UTC.** Input `2026-10-26T13:00` disimpan menjadi `2026-10-26T13:00:00.000Z`, sehingga jam yang dibaca selalu sama dengan yang diketik, tanpa pergeseran timezone server. Jangan memakai `new Date(localString)` saat membandingkan; gunakan parser wall-clock.
+- `transactionDate` diturunkan dari `startAt` dan dipakai untuk mengelompokkan transaksi ke laporan harian. Header `DailyJobActivity` dibuat otomatis saat transaksi pertama pada tanggal itu dibuat.
+- Transaksi `PROSES` milik karyawan yang sama tidak boleh beririsan waktu. Pelanggaran dibalas `422` dengan `details.code = "EMPLOYEE_OVERLAP"`.
+- `finish` hanya boleh dari `PROSES`; `finishAt` wajib dan harus lebih besar dari `startAt`.
+- Export Excel Transaksi Pekerjaan memakai filter aktif di halaman (tanggal, status, pekerjaan, pencarian) dan mengabaikan pagination, jadi yang terunduh selalu seluruh baris yang cocok. Batas keras 5000 baris; bila terlewati, file diberi baris peringatan di atas tabel.
+
+Aturan Daily Job Activity (turunan):
+
+- **Tidak ada input angka di laporan.** Semua angka dihitung ulang dari `JobTransaction` setiap kali laporan dibuka.
+- Ringkasan unit: `CDD`/`CDE` -> CDD / CDE, `WB`/`FUSO`/`OTHER` -> WINGBOX, `FT20`/`FT40` -> CONTAINER; dipisah RECEIVING dan DELIVERY. Nilai 0 ditampilkan kosong.
+- Status laporan diturunkan: tidak ada transaksi aktif -> `KOSONG`; ada `PROSES` -> `BERJALAN`; semua `SELESAI` -> `SELESAI`; semua `BATAL` -> `BATAL`. Tidak ada status manual, sehingga laporan tidak bisa bertentangan dengan transaksinya.
+- Hanya transaksi `PROSES` dan `SELESAI` yang masuk lembar. `DRAFT` belum punya `startAt` sehingga tidak bisa ditempatkan di timeline; `BATAL` berarti pekerjaan tidak terjadi.
+- Sesi manpower = gabungan transaksi satu karyawan pada satu tanggal. `timeStart` = `startAt` paling awal, `timeFinish` = `finishAt` paling akhir (kosong bila masih ada yang berjalan), `isFinish` = semua transaksinya SELESAI.
+- Pasangan TALLY+OPERATOR dibentuk otomatis: urutkan sesi tally dan operator menurut `startAt`, lalu untuk tiap tally pilih operator yang waktunya beririsan (paling awal). Bila tidak ada yang beririsan, pakai operator berikutnya yang belum terpakai; bila habis, baris pasangan dibiarkan kosong.
+- Picking/Stuffing menjadi satu baris per transaksi sesi, ditampilkan `"N DO"` dari `totalDo`.
+- Filter tanggal memakai ekuivalen UTC-midnight karena `activityDate` bertipe `@db.Date`. Jangan memakai `getStartOfDay` lokal untuk kolom ini.
+- Export Excel: satu sheet, header `#B4C6E7` / `#FFFF00` / `#33CC33`, border tipis, merge cell, baris spacer antar grup, dan sel angka ditulis sebagai number bila isinya murni digit.
+- Export Excel: satu sheet, header `#B4C6E7` / `#FFFF00` / `#33CC33`, border tipis, merge cell, baris spacer antar grup, dan sel angka ditulis sebagai number bila isinya murni digit.
+
 ## Auth dan Role
 
 Role aplikasi:
@@ -478,6 +535,9 @@ Authenticated routes:
 /material-dashboard-shadcn-vue/antrian-truk          ADMIN/WAREHOUSE/CS
 /material-dashboard-shadcn-vue/antrian-truk/mobile    ADMIN/WAREHOUSE/CS
 /material-dashboard-shadcn-vue/picking-progress      ADMIN/WAREHOUSE/CS
+/material-dashboard-shadcn-vue/transaksi-pekerjaan        ADMIN/WAREHOUSE/CS  (input + tabel transaksi)
+/material-dashboard-shadcn-vue/daily-job-activity         ADMIN/WAREHOUSE/CS  (daftar laporan turunan)
+/material-dashboard-shadcn-vue/daily-job-activity/:id     ADMIN/WAREHOUSE/CS  (lembar read-only, print, Excel)
 /material-dashboard-shadcn-vue/schedule-pengiriman   ADMIN/WAREHOUSE/CS
 ```
 
@@ -881,6 +941,18 @@ Jika frontend dev API gagal:
 - Cek Vite proxy di `vite.config.ts`.
 - Frontend Axios memakai `baseURL: '/api'`, jadi proxy/Nginx yang menentukan backend target.
 
+Jika `prisma migrate dev` minta reset database:
+
+Gejala: `We need to reset the "public" schema` karena beberapa migrasi lama "was modified after it was applied" (checksum di tabel `_prisma_migrations` tidak cocok dengan file `migration.sql` di repo).
+
+- **JANGAN** menjalankan `prisma migrate reset`. Database dev berisi hasil restore production.
+- Migrasi baru bisa dibuat tanpa reset:
+  1. `npx prisma migrate diff --from-schema-datasource prisma/schema.prisma --to-schema-datamodel prisma/schema.prisma --script`
+  2. Buang statement yang tidak terkait (misalnya drift `PickingProgress.volumeCbm`), simpan ke `prisma/migrations/<timestamp>_<nama>/migration.sql` tanpa BOM UTF-8.
+  3. `npx prisma db execute --file <file.sql> --schema prisma/schema.prisma`
+  4. `npx prisma migrate resolve --applied <timestamp>_<nama>`
+- `prisma generate` gagal dengan `EPERM ... query_engine-windows.dll.node` bila backend sedang berjalan. Hentikan proses `node src/server.js` dulu, generate, lalu jalankan ulang.
+
 ## Catatan Untuk Codex / Agent Berikutnya
 
 - Ikuti instruksi RTK lokal: shell command sebaiknya diprefix `rtk`.
@@ -899,5 +971,18 @@ Jika frontend dev API gagal:
 - Format tanggal/jam UI memakai helper `src/lib/datetime.ts` (Indonesia, 24 jam, tanpa detik).
 - Setelah mengubah route backend, pastikan frontend service wrapper dan role guard tetap sinkron.
 - Setelah mengubah schema Prisma, jalankan migrasi/generate yang sesuai.
+- Modul Daily Job Activity **tidak menyimpan angka**. Semua nilai dihitung dari `JobTransaction`; kalau angka laporan salah, betulkan transaksinya, jangan menambah field angka di header.
+- Waktu transaksi disimpan sebagai wall-clock UTC (input `13:00` disimpan `13:00Z`). Saat membandingkan atau menghitung durasi di frontend, pakai parser wall-clock (`wallClockToMs`), jangan `new Date(localString)`.
+- Jangan menambahkan kembali input angka atau tombol auto-fill ke halaman laporan. Laporan bersifat read-only kecuali `notes`.
+- Print Daily Job Activity memakai `window.open` + `document.write` dengan `print-color-adjust: exact` agar warna `#B4C6E7`, `#FFFF00`, dan `#33CC33` ikut tercetak.
+- Laporan `BATAL` tetap bisa di-print dan di-export, dengan pita merah BATAL + alasan di sheet/print dan prefix `BATAL_` pada nama file Excel.
+- Halaman `/transaksi-pekerjaan` adalah tempat input dan tabel transaksi berstatus. Halaman `/daily-job-activity` hanya membaca laporan turunan; detailnya menampilkan lembar kertas, print, dan Excel.
+- Query `?date=YYYY-MM-DD` pada `/transaksi-pekerjaan` memfilter satu tanggal; tombol "Transaksi" di halaman laporan memakai mekanisme ini.
+- Tampilan modul memakai bahasa visual "dokumen operasional": lembar laporan dirender sebagai kertas putih (selalu putih, termasuk dark mode) dengan angka tabular monospace, dan status ditampilkan sebagai stempel tinta (BERJALAN biru, SELESAI hijau, BATAL merah).
+- Daftar laporan memakai chip status berisi hitungan (Semua/Berjalan/Selesai/Kosong/Batal). Hitungan berasal dari `meta.counts`.
+- Aksi status transaksi (Proses/Finish/Kembali/Batal/Hapus) ada di tabel Transaksi Pekerjaan, baik baris desktop maupun kartu mobile. Halaman laporan tidak punya aksi status.
+- Form transaksi memakai modal: pilih jenis pekerjaan (Receiving/Delivery/Picking/Stuffing), lalu karyawan dari Master Karyawan, tipe truk, qty, dan waktu mulai manual (`datetime-local`). Tombol "Confirm" membuat transaksi berstatus PROSES; "Simpan Draft" menyimpan tanpa waktu mulai.
+- Modal Finish hanya meminta tanggal & waktu selesai manual (plus confirmation opsional); validasi `finishAt > startAt` dilakukan di klien dan server.
+- Di layar < 1280px lembar kertas diperkecil (zoom 0.62) agar muat tanpa scroll horizontal, dengan tombol Perbesar/Perkecil.
 - Setelah mengubah frontend production, jalankan `npm run build` agar `dist/` diperbarui untuk Nginx.
 - Setelah perubahan operasional besar, update file ini dan/atau `docs/MIGRATION_A_TO_B.md`.

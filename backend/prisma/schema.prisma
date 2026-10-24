@@ -61,32 +61,32 @@ enum TruckType {
 }
 
 model QueueEntry {
-  id              String        @id @default(uuid())
-  customerId      String?
-  customer        Customer?     @relation(fields: [customerId], references: [id], onDelete: Restrict)
-  gateId          String?
-  gate            Gate?         @relation(fields: [gateId], references: [id], onDelete: SetNull)
-  pickerEmployeeId String?
-  pickerEmployee  Employee?     @relation(fields: [pickerEmployeeId], references: [id], onDelete: SetNull)
-  category        QueueCategory
-  driverName      String
-  driverPhone     String?
-  truckNumber     String
-  containerNumber String?
-  transporter     String?
-  registerTime    DateTime      @default(now())
-  inWhTime        DateTime?
-  startTime       DateTime?
-  finishTime      DateTime?
-  slaWaitingMinutes Int
+  id                    String        @id @default(uuid())
+  customerId            String?
+  customer              Customer?     @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  gateId                String?
+  gate                  Gate?         @relation(fields: [gateId], references: [id], onDelete: SetNull)
+  pickerEmployeeId      String?
+  pickerEmployee        Employee?     @relation(fields: [pickerEmployeeId], references: [id], onDelete: SetNull)
+  category              QueueCategory
+  driverName            String
+  driverPhone           String?
+  truckNumber           String
+  containerNumber       String?
+  transporter           String?
+  registerTime          DateTime      @default(now())
+  inWhTime              DateTime?
+  startTime             DateTime?
+  finishTime            DateTime?
+  slaWaitingMinutes     Int
   slaInWhProcessMinutes Int
-  status          QueueStatus   @default(MENUNGGU)
-  loadingType     String?
-  notes           String?
-  notesFromWh     String?
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
-  logs            QueueLog[]
+  status                QueueStatus   @default(MENUNGGU)
+  loadingType           String?
+  notes                 String?
+  notesFromWh           String?
+  createdAt             DateTime      @default(now())
+  updatedAt             DateTime      @updatedAt
+  logs                  QueueLog[]
 
   @@index([status, registerTime])
   @@index([truckNumber, registerTime])
@@ -126,46 +126,53 @@ model Customer {
 }
 
 model Employee {
-  id        String           @id @default(uuid())
-  nik       String           @unique @db.VarChar(10)
-  name      String
-  position  EmployeePosition
-  createdAt DateTime         @default(now())
-  updatedAt DateTime         @updatedAt
-  pickings  PickingProgress[]
-  queueEntries QueueEntry[]
+  id              String            @id @default(uuid())
+  nik             String            @unique @db.VarChar(10)
+  name            String
+  position        EmployeePosition
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  pickings        PickingProgress[]
+  queueEntries    QueueEntry[]
+  jobTransactions JobTransaction[]
 
   @@index([name])
   @@index([position])
 }
 
 model AdminUser {
-  id                String             @id @default(uuid())
-  name              String
-  position          String
-  phone             String
-  role              AdminRole
-  username          String             @unique
-  passwordHash      String
-  createdAt         DateTime           @default(now())
-  updatedAt         DateTime           @updatedAt
-  logs              QueueLog[]
-  shipmentSchedules ShipmentSchedule[]
-  createdPickings   PickingProgress[]  @relation("PickingCreatedBy")
-  updatedPickings   PickingProgress[]  @relation("PickingUpdatedBy")
-  pickingLogs       PickingProgressLog[]
+  id                     String                @id @default(uuid())
+  name                   String
+  position               String
+  phone                  String
+  role                   AdminRole
+  username               String                @unique
+  passwordHash           String
+  createdAt              DateTime              @default(now())
+  updatedAt              DateTime              @updatedAt
+  logs                   QueueLog[]
+  shipmentSchedules      ShipmentSchedule[]
+  createdPickings        PickingProgress[]     @relation("PickingCreatedBy")
+  updatedPickings        PickingProgress[]     @relation("PickingUpdatedBy")
+  pickingLogs            PickingProgressLog[]
+  createdDailyJobs       DailyJobActivity[]    @relation("DailyJobCreatedBy")
+  updatedDailyJobs       DailyJobActivity[]    @relation("DailyJobUpdatedBy")
+  dailyJobLogs           DailyJobActivityLog[]
+  createdJobTransactions JobTransaction[]      @relation("JobTransactionCreatedBy")
+  updatedJobTransactions JobTransaction[]      @relation("JobTransactionUpdatedBy")
+  jobTransactionLogs     JobTransactionLog[]
 
   @@index([role])
   @@index([username])
 }
 
 model Gate {
-  id        String         @id @default(uuid())
+  id        String        @id @default(uuid())
   gateNo    String
   area      String
   warehouse WarehouseGate
-  createdAt DateTime       @default(now())
-  updatedAt DateTime       @updatedAt
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
   entries   QueueEntry[]
 
   @@unique([gateNo, warehouse])
@@ -235,7 +242,7 @@ model PickingProgress {
 }
 
 model PickingProgressLog {
-  id         String         @id @default(uuid())
+  id         String          @id @default(uuid())
   pickingId  String
   picking    PickingProgress @relation(fields: [pickingId], references: [id], onDelete: Cascade)
   action     String
@@ -243,9 +250,101 @@ model PickingProgressLog {
   fromStatus PickingStatus?
   toStatus   PickingStatus?
   userId     String?
-  user       AdminUser?     @relation(fields: [userId], references: [id], onDelete: SetNull)
-  createdAt  DateTime       @default(now())
+  user       AdminUser?      @relation(fields: [userId], references: [id], onDelete: SetNull)
+  createdAt  DateTime        @default(now())
 
   @@index([pickingId])
   @@index([createdAt])
+}
+
+model DailyJobActivity {
+  id           String   @id @default(uuid())
+  activityDate DateTime @db.Date
+  notes        String?
+
+  createdById String?
+  createdBy   AdminUser? @relation("DailyJobCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  updatedById String?
+  updatedBy   AdminUser? @relation("DailyJobUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  transactions JobTransaction[]
+  logs         DailyJobActivityLog[]
+
+  @@unique([activityDate])
+}
+
+model JobTransaction {
+  id                 String           @id @default(uuid())
+  dailyJobActivityId String
+  dailyJobActivity   DailyJobActivity @relation(fields: [dailyJobActivityId], references: [id], onDelete: Cascade)
+  transactionDate    DateTime         @db.Date
+
+  activityType String
+  jobRole      String?
+
+  employeeId   String?
+  employee     Employee? @relation(fields: [employeeId], references: [id], onDelete: SetNull)
+  employeeName String
+
+  truckType      String?
+  truckTypeOther String?
+  qty            Int     @default(1)
+
+  totalDo     Int?
+  totalMember Int?
+
+  startAt  DateTime?
+  finishAt DateTime?
+
+  status       String  @default("DRAFT")
+  confirmation String?
+  cancelReason String?
+
+  createdById String?
+  createdBy   AdminUser? @relation("JobTransactionCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  updatedById String?
+  updatedBy   AdminUser? @relation("JobTransactionUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  logs JobTransactionLog[]
+
+  @@index([dailyJobActivityId, startAt])
+  @@index([transactionDate, status])
+  @@index([transactionDate, activityType])
+  @@index([employeeId])
+}
+
+model JobTransactionLog {
+  id               String          @id @default(uuid())
+  jobTransactionId String?
+  jobTransaction   JobTransaction? @relation(fields: [jobTransactionId], references: [id], onDelete: SetNull)
+  action           String
+  note             String?
+  fromStatus       String?
+  toStatus         String?
+  userId           String?
+  user             AdminUser?      @relation(fields: [userId], references: [id], onDelete: SetNull)
+  createdAt        DateTime        @default(now())
+
+  @@index([jobTransactionId, createdAt])
+  @@index([userId])
+}
+
+model DailyJobActivityLog {
+  id                 String            @id @default(uuid())
+  dailyJobActivityId String?
+  dailyJobActivity   DailyJobActivity? @relation(fields: [dailyJobActivityId], references: [id], onDelete: SetNull)
+  action             String
+  note               String?
+  userId             String?
+  user               AdminUser?        @relation(fields: [userId], references: [id], onDelete: SetNull)
+  createdAt          DateTime          @default(now())
+
+  @@index([dailyJobActivityId, createdAt])
+  @@index([userId])
 }

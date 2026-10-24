@@ -74,6 +74,24 @@ const router = createRouter({
           meta: { roles: ['ADMIN', 'WAREHOUSE', 'CS'] }
         },
         {
+          path: 'transaksi-pekerjaan',
+          name: 'Transaksi Pekerjaan',
+          component: () => import('@/views/JobTransaction/JobTransactionList.vue'),
+          meta: { roles: ['ADMIN', 'WAREHOUSE', 'CS'] }
+        },
+        {
+          path: 'daily-job-activity',
+          name: 'Daily Job Activity',
+          component: () => import('@/views/DailyJobActivity/DailyJobActivityList.vue'),
+          meta: { roles: ['ADMIN', 'WAREHOUSE', 'CS'] }
+        },
+        {
+          path: 'daily-job-activity/:id',
+          name: 'Daily Job Activity Detail',
+          component: () => import('@/views/DailyJobActivity/DailyJobActivityDetail.vue'),
+          meta: { roles: ['ADMIN', 'WAREHOUSE', 'CS'] }
+        },
+        {
           path: 'schedule-pengiriman',
           name: 'Schedule Pengiriman',
           component: () => import('@/views/Schedule/SchedulePengiriman.vue'),

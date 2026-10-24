@@ -10,6 +10,8 @@ import {
   Truck,
   Package,
   CalendarDays,
+  ClipboardList,
+  Hammer,
   ChevronDown,
   ChevronLeft,
   ChevronRight
@@ -47,6 +49,8 @@ const navigation: NavItem[] = [
   },
   { name: 'Antrian Truk', path: '/antrian-truk', icon: Truck, roles: ['ADMIN', 'WAREHOUSE', 'CS'] },
   { name: 'Picking Progress', path: '/picking-progress', icon: Package, roles: ['ADMIN', 'WAREHOUSE', 'CS'] },
+  { name: 'Transaksi Pekerjaan', path: '/transaksi-pekerjaan', icon: Hammer, roles: ['ADMIN', 'WAREHOUSE', 'CS'] },
+  { name: 'Daily Job Activity', path: '/daily-job-activity', icon: ClipboardList, roles: ['ADMIN', 'WAREHOUSE', 'CS'] },
   { name: 'Schedule Pengiriman', path: '/schedule-pengiriman', icon: CalendarDays, roles: ['ADMIN', 'WAREHOUSE', 'CS'] }
 ]
 
