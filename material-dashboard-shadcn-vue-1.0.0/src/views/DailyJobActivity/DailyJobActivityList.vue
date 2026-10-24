@@ -14,6 +14,7 @@ import {
 } from '@/services/dailyJobActivity'
 import { dateInputOffset, monthEndInput, monthStartInput, shortDateLabel, todayInput } from '@/components/jobTransaction/meta'
 import { statusBubbleClass, statusCardClass } from '@/lib/statusCard'
+import { handleDateInputClick, openDatePicker } from '@/lib/datePicker'
 
 const router = useRouter()
 
@@ -229,14 +230,18 @@ onUnmounted(() => window.removeEventListener('resize', checkMobile))
             v-model="filters.dateFrom"
             type="date"
             aria-label="Dari tanggal"
-            class="h-11 w-full rounded-xl border border-input/80 bg-card/75 px-3 text-sm shadow-sm tabular-nums focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            class="h-11 w-full cursor-pointer rounded-xl border border-input/80 bg-card/75 px-3 text-sm shadow-sm tabular-nums focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            @click="handleDateInputClick"
+            @keydown.enter.prevent="openDatePicker($event.currentTarget as HTMLInputElement)"
             @change="onDateChange"
           />
           <input
             v-model="filters.dateTo"
             type="date"
             aria-label="Sampai tanggal"
-            class="h-11 w-full rounded-xl border border-input/80 bg-card/75 px-3 text-sm shadow-sm tabular-nums focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            class="h-11 w-full cursor-pointer rounded-xl border border-input/80 bg-card/75 px-3 text-sm shadow-sm tabular-nums focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            @click="handleDateInputClick"
+            @keydown.enter.prevent="openDatePicker($event.currentTarget as HTMLInputElement)"
             @change="onDateChange"
           />
         </div>
