@@ -4,6 +4,7 @@ import Button from '@/components/ui/Button.vue'
 import { CheckCircle2, X } from 'lucide-vue-next'
 import type { JobTransaction } from '@/services/jobTransactionApi'
 import { formatWallClock, toDateTimeInput, wallClockToMs } from '@/components/jobTransaction/meta'
+import { handleDateInputClick, openDatePicker } from '@/lib/datePicker'
 
 const props = defineProps<{
   open: boolean
@@ -88,8 +89,10 @@ const submit = () => {
             v-model="finishAt"
             type="datetime-local"
             :disabled="submitting"
-            class="jt-field mt-1 tabular-nums"
+            class="jt-field mt-1 cursor-pointer tabular-nums"
             :min="toDateTimeInput(transaction?.startAt)"
+            @click="handleDateInputClick"
+            @keydown.enter.prevent="openDatePicker($event.currentTarget as HTMLInputElement)"
             @input="localError = null"
           />
         </label>

@@ -14,6 +14,7 @@ import {
   roleFor,
   toDateTimeInput
 } from '@/components/jobTransaction/meta'
+import { handleDateInputClick, openDatePicker } from '@/lib/datePicker'
 
 const props = defineProps<{
   open: boolean
@@ -348,7 +349,9 @@ const submit = (startNow: boolean) => {
             v-model="form.startAt"
             type="datetime-local"
             :disabled="submitting"
-            class="jt-field mt-1 tabular-nums"
+            class="jt-field mt-1 cursor-pointer tabular-nums"
+            @click="handleDateInputClick"
+            @keydown.enter.prevent="openDatePicker($event.currentTarget as HTMLInputElement)"
           />
           <span class="mt-1 block text-[11px] text-muted-foreground">
             Wajib untuk Confirm. Kosongkan bila ingin disimpan sebagai draft.
