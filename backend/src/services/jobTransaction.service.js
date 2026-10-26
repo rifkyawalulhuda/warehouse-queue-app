@@ -214,7 +214,7 @@ function buildSessionData(payload) {
   };
 }
 
-async function buildTransactionData(payload, actor) {
+async function buildTransactionData(payload, actor, options = {}) {
   const activityType = normalizeActivityType(payload?.activityType);
   const base = MANPOWER_ACTIVITIES.includes(activityType)
     ? await buildManpowerData(payload, actor)
@@ -231,7 +231,11 @@ async function buildTransactionData(payload, actor) {
   }
 
   const explicitDate = payload?.transactionDate ? parseWallClock(payload.transactionDate, "Tanggal") : null;
-  const transactionDate = toUtcDateOnly(startAt || explicitDate || new Date());
+  // Saat mengubah transaksi tanpa menyentuh jam mulai, pertahankan tanggal aslinya.
+  // Tanpa fallback ini, draft bertanggal lama akan berpindah ke tanggal hari ini.
+  const transactionDate = toUtcDateOnly(
+    startAt || explicitDate || options.fallbackTransactionDate || new Date()
+  );
 
   return {
     ...base,
@@ -326,7 +330,29 @@ async function updateJobTransaction(id, payload, actor) {
     throw createHttpError(403, "Transaksi sudah SELESAI atau BATAL. Hanya ADMIN yang dapat mengubah.");
   }
 
-  const data = await buildTransactionData(payload, actor);
+  // Jenis pekerjaan menentukan kolom laporan hari itu (manpower vs sesi).
+  // Mengubahnya saat pekerjaan berjalan menggeser pasangan Tally-Operator,
+  // jadi hanya ADMIN yang boleh melakukannya.
+  const requestedActivityType = normalizeActivityType(
+    payload?.activityType ?? existing.activityType
+  );
+  const activityTypeChanged = requestedActivityType !== existing.activityType;
+  if (
+    activityTypeChanged &&
+    existing.status === STATUS_PROGRESS &&
+    actor?.role !== "ADMIN"
+  ) {
+    throw createHttpError(
+      403,
+      "Jenis pekerjaan transaksi yang sedang berjalan hanya dapat diubah oleh ADMIN."
+    );
+  }
+
+  const data = await buildTransactionData(
+    { ...payload, activityType: requestedActivityType },
+    actor,
+    { fallbackTransactionDate: existing.transactionDate }
+  );
 
   await assertNoEmployeeOverlap({
     employeeId: data.employeeId,
@@ -350,7 +376,9 @@ async function updateJobTransaction(id, payload, actor) {
             fromStatus: existing.status,
             toStatus: data.status,
             userId: actor?.id || null,
-            note: "Transaksi diperbarui"
+            note: activityTypeChanged
+              ? `Jenis pekerjaan diubah: ${existing.activityType} → ${data.activityType}`
+              : "Transaksi diperbarui"
           }
         }
       },

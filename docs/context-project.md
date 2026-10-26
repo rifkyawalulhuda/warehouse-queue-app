@@ -1,6 +1,6 @@
 # Context Project - Warehouse Queue App
 
-Terakhir diperbarui: 2026-10-25 (modul Transaksi Pekerjaan + laporan turunan + export Excel transaksi)
+Terakhir diperbarui: 2026-10-26 (edit jenis pekerjaan + sortir laporan harian)
 
 ## Ringkasan
 
@@ -429,7 +429,7 @@ DELETE /api/job-transactions/:id
 Daily Job Activity (laporan turunan, read-only):
 
 ```text
-GET    /api/daily-job-activities              Daftar laporan per tanggal (date/dateFrom/dateTo + pagination)
+GET    /api/daily-job-activities              Daftar laporan per tanggal (date/dateFrom/dateTo/sortBy/sortDir + pagination)
 GET    /api/daily-job-activities?date=YYYY-MM-DD  Laporan tanggal tersebut (selalu ada, status KOSONG bila belum ada transaksi)
 GET    /api/daily-job-activities/:id
 PATCH  /api/daily-job-activities/:id/notes    Satu-satunya field yang bisa diubah manual
@@ -441,7 +441,10 @@ Aturan Job Transaction:
 - Akses `ADMIN`, `WAREHOUSE`, `CS` setara untuk create/update/start/finish. `reopen`, `cancel`, dan delete transaksi `SELESAI` hanya ADMIN.
 - Status: `DRAFT` (belum ada `startAt`) -> `PROSES` (Confirm) -> `SELESAI` (Finish), plus `BATAL`. `SELESAI` dan `BATAL` mengunci edit untuk WAREHOUSE/CS.
 - Satu transaksi = satu pekerjaan. Manpower (`RECEIVING`/`DELIVERY`) wajib punya `employeeId` dari Master Karyawan dengan posisi yang cocok (`TALLYMAN` untuk TALLY, `OPR_FORKLIFT` untuk OPERATOR), `truckType`, dan `qty` minimal 1. Picking/Stuffing wajib punya `totalDo` atau `totalMember`.
-- `activityType` menentukan `jobRole` di server: RECEIVING -> TALLY, DELIVERY -> OPERATOR. Klien tidak boleh mengirim `jobRole`.
+- `activityType` menentukan keluarga isian: `RECEIVING`/`DELIVERY` = manpower, `PICKING`/`STUFFING` = sesi. `jobRole` **dipilih user**, bukan diturunkan dari `activityType`; default-nya dari posisi karyawan (`TALLYMAN` -> TALLY, `OPR_FORKLIFT` -> OPERATOR). Hanya posisi `TALLYMAN` dan `OPR_FORKLIFT` yang boleh dipakai untuk manpower.
+- **Jenis pekerjaan bisa diubah saat edit**, termasuk antar-keluarga. Pindah keluarga membuang field keluarga lama (`employeeId`/`jobRole`/`truckType`/`qty` atau `totalDo`/`totalMember`), jadi form menampilkan peringatan dan konfirmasi dua langkah. Mengubah jenis transaksi `PROSES` hanya boleh ADMIN karena menggeser pasangan Tally-Operator di laporan hari itu.
+- Saat update tanpa menyentuh `startAt`, `transactionDate` dipertahankan dari baris asli (fallback di service). Tanpa ini draft bertanggal lama akan berpindah ke tanggal hari ini.
+- Tombol `Simpan Draft` disembunyikan saat mengedit transaksi yang sudah punya `startAt`; mengirim `startAt: null` akan mengembalikan transaksi ke `DRAFT` dan menghapus jam mulainya.
 - `truckType` memakai enum `CDD | CDE | FUSO | WB | FT20 | FT40 | OTHER`; `OTHER` wajib disertai `truckTypeOther`.
 - **Waktu disimpan sebagai wall-clock UTC.** Input `2026-10-26T13:00` disimpan menjadi `2026-10-26T13:00:00.000Z`, sehingga jam yang dibaca selalu sama dengan yang diketik, tanpa pergeseran timezone server. Jangan memakai `new Date(localString)` saat membandingkan; gunakan parser wall-clock.
 - `transactionDate` diturunkan dari `startAt` dan dipakai untuk mengelompokkan transaksi ke laporan harian. Header `DailyJobActivity` dibuat otomatis saat transaksi pertama pada tanggal itu dibuat.
@@ -456,6 +459,7 @@ Aturan Daily Job Activity (turunan):
 - Ringkasan unit: `CDD`/`CDE` -> CDD / CDE, `WB`/`FUSO`/`OTHER` -> WINGBOX, `FT20`/`FT40` -> CONTAINER; dipisah RECEIVING dan DELIVERY. Nilai 0 ditampilkan kosong.
 - Tabel manpower di sheet memakai kolom terpisah `CDD | WB | FUSO | 20FT | 40FT`, jadi `FUSO` masuk kolom FUSO (bukan WB). `OTHER` tidak punya kolom sendiri dan dihitung ke kolom WB. Pengelompokan ringkasan (WINGBOX) sengaja tetap menggabungkan WB + FUSO + OTHER.
 - Status laporan diturunkan: tidak ada transaksi aktif -> `KOSONG`; ada `PROSES` -> `BERJALAN`; semua `SELESAI` -> `SELESAI`; semua `BATAL` -> `BATAL`. Tidak ada status manual, sehingga laporan tidak bisa bertentangan dengan transaksinya.
+- Sortir daftar laporan dijalankan **di server** (`sortBy` + `sortDir`) dengan daftar putih `date | status | transactions | groups | picking | stuffing | summary`; nilai lain jatuh ke `date desc`. Karena baris laporan adalah data turunan, pengurutan dilakukan setelah baris dirakit, lalu baru dipotong per halaman — kartu status tetap menghitung seluruh rentang.
 - Hanya transaksi `PROSES` dan `SELESAI` yang masuk lembar. `DRAFT` belum punya `startAt` sehingga tidak bisa ditempatkan di timeline; `BATAL` berarti pekerjaan tidak terjadi.
 - Sesi manpower = gabungan transaksi satu karyawan pada satu tanggal. `timeStart` = `startAt` paling awal, `timeFinish` = `finishAt` paling akhir (kosong bila masih ada yang berjalan), `isFinish` = semua transaksinya SELESAI.
 - Pasangan TALLY+OPERATOR dibentuk otomatis: urutkan sesi tally dan operator menurut `startAt`, lalu untuk tiap tally pilih operator yang waktunya beririsan (paling awal). Bila tidak ada yang beririsan, pakai operator berikutnya yang belum terpakai; bila habis, baris pasangan dibiarkan kosong.

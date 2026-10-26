@@ -107,12 +107,12 @@ function sortReports(items, sortBy, sortDir) {
     const bValue = reportSortValue(b, sortBy);
     if (aValue === bValue) {
       // Tie-break: tanggal terbaru lebih dulu supaya urutan tetap deterministik.
-      return b.activityDate.localeCompare(a.activityDate);
+      return String(b.activityDate || "").localeCompare(String(a.activityDate || ""));
     }
     if (typeof aValue === "string" || typeof bValue === "string") {
-      return String(aValue).localeCompare(String(bValue)) * factor;
+      return String(aValue ?? "").localeCompare(String(bValue ?? "")) * factor;
     }
-    return (aValue - bValue) * factor;
+    return ((aValue || 0) - (bValue || 0)) * factor;
   });
 }
 
@@ -235,7 +235,9 @@ function buildSessions(transactions, activityType) {
     const aTime = a.startAt ? a.startAt.getTime() : Number.POSITIVE_INFINITY;
     const bTime = b.startAt ? b.startAt.getTime() : Number.POSITIVE_INFINITY;
     if (aTime !== bTime) return aTime - bTime;
-    return a.employeeName.localeCompare(b.employeeName);
+    // Nama karyawan bisa kosong (mis. sesi tanpa relasi employee) -> jangan sampai
+    // localeCompare dipanggil pada undefined.
+    return String(a.employeeName || "").localeCompare(String(b.employeeName || ""));
   });
 }
 
@@ -380,6 +382,7 @@ async function listDailyJobActivities(query) {
           activityType: true,
           jobRole: true,
           employeeId: true,
+          employeeName: true,
           truckType: true,
           qty: true,
           totalDo: true,

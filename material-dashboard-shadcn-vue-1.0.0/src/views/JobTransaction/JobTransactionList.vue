@@ -1126,6 +1126,7 @@ watch(
       :employees="employees"
       :submitting="formSubmitting"
       :error="formError"
+      :is-admin="isAdmin"
       @close="formOpen = false"
       @submit="submitForm"
     />

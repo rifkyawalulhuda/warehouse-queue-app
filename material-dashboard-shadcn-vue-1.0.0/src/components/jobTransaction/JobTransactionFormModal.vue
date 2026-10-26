@@ -15,6 +15,7 @@ import {
   FIELD_POSITIONS,
   JOB_ROLE_OPTIONS,
   TRUCK_OPTIONS,
+  activityLabel,
   formatWallClock,
   isManpower,
   positionLabel,
@@ -31,6 +32,7 @@ const props = defineProps<{
   employees: Employee[]
   submitting?: boolean
   error?: string | null
+  isAdmin?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -49,6 +51,7 @@ const emit = defineEmits<{
       startAt?: string | null
       finishAt?: string | null
       confirmation?: string | null
+      transactionDate?: string | null
     },
     startNow: boolean
   ): void
@@ -75,6 +78,66 @@ const localError = ref<string | null>(null)
  */
 const jobRoleTouched = ref(false)
 
+/**
+ * Jenis pekerjaan terdiri dari dua keluarga isian: manpower (karyawan + truk)
+ * dan sesi (Total DO / Total Member). Saat user berpindah keluarga, isian
+ * keluarga yang ditinggalkan disimpan dulu supaya bisa dipulihkan bila
+ * user kembali ke jenis sebelumnya sebelum menyimpan.
+ */
+type Family = 'manpower' | 'session'
+
+const familyOf = (type: JobActivityType): Family => (isManpower(type) ? 'manpower' : 'session')
+
+type FamilySnapshot = {
+  employeeId: string
+  jobRole: JobRole | ''
+  truckType: JobTruckType
+  truckTypeOther: string
+  qty: string
+  totalDo: string
+  totalMember: string
+}
+
+const emptySnapshot = (): FamilySnapshot => ({
+  employeeId: '',
+  jobRole: '',
+  truckType: 'CDD',
+  truckTypeOther: '',
+  qty: '1',
+  totalDo: '',
+  totalMember: ''
+})
+
+const snapshots = ref<Record<Family, FamilySnapshot>>({
+  manpower: emptySnapshot(),
+  session: emptySnapshot()
+})
+
+const captureSnapshot = (): FamilySnapshot => ({
+  employeeId: form.value.employeeId,
+  jobRole: form.value.jobRole,
+  truckType: form.value.truckType,
+  truckTypeOther: form.value.truckTypeOther,
+  qty: form.value.qty,
+  totalDo: form.value.totalDo,
+  totalMember: form.value.totalMember
+})
+
+const applySnapshot = (snapshot: FamilySnapshot) => {
+  form.value.employeeId = snapshot.employeeId
+  form.value.jobRole = snapshot.jobRole
+  form.value.truckType = snapshot.truckType
+  form.value.truckTypeOther = snapshot.truckTypeOther
+  form.value.qty = snapshot.qty
+  form.value.totalDo = snapshot.totalDo
+  form.value.totalMember = snapshot.totalMember
+  jobRoleTouched.value = Boolean(snapshot.jobRole)
+}
+
+/** Konfirmasi dua langkah saat jenis berpindah keluarga dan data lama terbuang. */
+const confirmSwitch = ref(false)
+const pendingStartNow = ref(false)
+
 const reset = () => {
   const row = props.initial
   form.value = {
@@ -91,6 +154,13 @@ const reset = () => {
     confirmation: row?.confirmation || ''
   }
   jobRoleTouched.value = Boolean(row?.jobRole)
+  const initialFamily = familyOf(form.value.activityType)
+  snapshots.value = {
+    manpower: initialFamily === 'manpower' ? captureSnapshot() : emptySnapshot(),
+    session: initialFamily === 'session' ? captureSnapshot() : emptySnapshot()
+  }
+  confirmSwitch.value = false
+  pendingStartNow.value = false
   localError.value = null
 }
 
@@ -104,16 +174,33 @@ watch(
 
 watch(
   () => form.value.activityType,
-  (type) => {
-    if (!isManpower(type)) {
-      form.value.employeeId = ''
-      form.value.jobRole = ''
-      jobRoleTouched.value = false
-    }
+  (type, previous) => {
+    if (!previous || previous === type) return
+    snapshots.value[familyOf(previous)] = captureSnapshot()
+    if (familyOf(type) !== familyOf(previous)) applySnapshot(snapshots.value[familyOf(type)])
+    confirmSwitch.value = false
   }
 )
 
 const manpower = computed(() => isManpower(form.value.activityType))
+
+/** Jenis pada transaksi berjalan hanya boleh diubah ADMIN. */
+const activityLocked = computed(
+  () =>
+    Boolean(props.submitting) ||
+    (props.mode === 'edit' && props.initial?.status === 'PROSES' && !props.isAdmin)
+)
+
+/** Jenis berbeda keluarga dari data awal -> isian lama akan dibuang. */
+const familyChanged = computed(() => {
+  if (props.mode !== 'edit' || !props.initial) return false
+  return familyOf(props.initial.activityType as JobActivityType) !== familyOf(form.value.activityType)
+})
+
+/** Transaksi yang sudah punya waktu mulai tidak boleh dikembalikan jadi draft lewat form. */
+const canSaveDraft = computed(
+  () => !(props.mode === 'edit' && Boolean(props.initial?.startAt))
+)
 
 /** Semua tenaga kerja lapangan, apa pun jenis pekerjaannya. */
 const eligibleEmployees = computed(() => {
@@ -212,6 +299,9 @@ const buildPayload = () => ({
   totalDo: manpower.value ? null : toNumberOrNull(form.value.totalDo),
   totalMember: manpower.value ? null : toNumberOrNull(form.value.totalMember),
   startAt: form.value.startAt || null,
+  // Kirim tanggal asli supaya draft bertanggal lama tidak berpindah ke hari ini
+  // ketika diubah tanpa menyentuh waktu mulai.
+  transactionDate: props.mode === 'edit' ? props.initial?.transactionDate || null : null,
   confirmation: hasValue(form.value.confirmation)
     ? String(form.value.confirmation).trim()
     : null
@@ -230,6 +320,17 @@ const submit = (startNow: boolean) => {
     return
   }
   localError.value = null
+  if (familyChanged.value && !confirmSwitch.value) {
+    pendingStartNow.value = startNow
+    confirmSwitch.value = true
+    return
+  }
+  emit('submit', buildPayload(), startNow)
+}
+
+const confirmSwitchSubmit = () => {
+  const startNow = pendingStartNow.value
+  confirmSwitch.value = false
   emit('submit', buildPayload(), startNow)
 }
 </script>
@@ -275,7 +376,7 @@ const submit = (startNow: boolean) => {
                   :class="form.activityType === option.value
                     ? 'border-primary/40 bg-primary/10 text-primary'
                     : 'border-border/70 bg-background/60 text-muted-foreground hover:border-border hover:text-foreground'"
-                  :disabled="submitting || mode === 'edit'"
+                  :disabled="activityLocked"
                   :aria-pressed="form.activityType === option.value"
                   @click="form.activityType = option.value"
                 >
@@ -284,6 +385,25 @@ const submit = (startNow: boolean) => {
               </div>
             </div>
           </div>
+          <p
+            v-if="mode === 'edit' && initial?.status === 'PROSES' && !isAdmin"
+            class="mt-1.5 flex items-start gap-1.5 text-[11px] text-muted-foreground"
+          >
+            <Info class="mt-px h-3 w-3 shrink-0" aria-hidden="true" />
+            <span>Jenis pekerjaan transaksi berjalan hanya dapat diubah oleh ADMIN.</span>
+          </p>
+          <p
+            v-else-if="familyChanged"
+            class="mt-1.5 flex items-start gap-1.5 text-[11px] text-amber-600"
+            role="status"
+          >
+            <Info class="mt-px h-3 w-3 shrink-0" aria-hidden="true" />
+            <span>
+              Jenis berubah dari {{ activityLabel(initial?.activityType ?? form.activityType) }} ke
+              {{ activityLabel(form.activityType) }}. Isian karyawan/truk atau Total DO akan diganti
+              saat disimpan.
+            </span>
+          </p>
         </div>
 
         <template v-if="manpower">
@@ -441,14 +561,48 @@ const submit = (startNow: boolean) => {
         </p>
       </div>
 
-      <div class="flex flex-wrap items-center justify-end gap-2 border-t border-border/60 bg-muted/20 px-5 py-3">
-        <Button variant="ghost" :disabled="submitting" @click="emit('close')">Batal</Button>
-        <Button variant="outline" :disabled="submitting" @click="submit(false)">
-          Simpan Draft
-        </Button>
-        <Button :disabled="submitting" @click="submit(true)">
-          {{ submitting ? 'Menyimpan…' : 'Confirm' }}
-        </Button>
+      <div class="border-t border-border/60 bg-muted/20 px-5 py-3">
+        <div
+          v-if="confirmSwitch"
+          class="mb-2.5 rounded-xl border border-amber-300/70 bg-amber-50 px-3 py-2 text-[11px] text-amber-800 dark:border-amber-400/30 dark:bg-amber-500/10 dark:text-amber-200"
+          role="alertdialog"
+          aria-labelledby="jt-switch-warning"
+        >
+          <p id="jt-switch-warning" class="font-medium">Ubah jenis pekerjaan?</p>
+          <p class="mt-0.5">
+            Data karyawan, peran, dan tipe truk akan dihapus bila pindah ke Picking/Stuffing, dan
+            Total DO/Total Member akan dihapus bila pindah ke Receiving/Delivery.
+          </p>
+          <div class="mt-2 flex flex-wrap items-center gap-2">
+            <Button size="sm" :disabled="submitting" @click="confirmSwitchSubmit">
+              Ya, ubah jenis
+            </Button>
+            <Button size="sm" variant="ghost" :disabled="submitting" @click="confirmSwitch = false">
+              Batal
+            </Button>
+          </div>
+        </div>
+
+        <div class="flex flex-wrap items-center justify-end gap-2">
+          <Button variant="ghost" :disabled="submitting" @click="emit('close')">Batal</Button>
+          <Button
+            v-if="canSaveDraft"
+            variant="outline"
+            :disabled="submitting"
+            @click="submit(false)"
+          >
+            Simpan Draft
+          </Button>
+          <Button :disabled="submitting" @click="submit(true)">
+            {{ submitting ? 'Menyimpan…' : 'Confirm' }}
+          </Button>
+        </div>
+        <p
+          v-if="!canSaveDraft"
+          class="mt-1.5 text-right text-[11px] text-muted-foreground"
+        >
+          Transaksi sudah berjalan. Gunakan "Kembalikan status" bila ingin menjadikannya draft lagi.
+        </p>
       </div>
     </div>
   </div>
