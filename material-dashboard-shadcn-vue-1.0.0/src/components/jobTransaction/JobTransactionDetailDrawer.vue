@@ -310,7 +310,7 @@ onUnmounted(() => {
       role="dialog"
       aria-modal="true"
       aria-labelledby="jt-detail-title"
-      class="absolute inset-x-0 bottom-0 flex max-h-[92vh] flex-col overflow-hidden rounded-t-3xl border border-border/70 bg-card shadow-2xl sm:inset-y-0 sm:left-auto sm:right-0 sm:max-h-none sm:w-full sm:max-w-lg sm:rounded-none sm:rounded-l-3xl sm:border-l"
+      class="absolute inset-x-0 bottom-0 flex max-h-[92vh] flex-col overflow-hidden rounded-t-3xl border border-border/70 bg-card shadow-2xl sm:inset-y-0 sm:left-auto sm:right-0 sm:max-h-none sm:w-full sm:max-w-lg sm:rounded-none sm:border-l"
     >
       <div class="flex items-start justify-between gap-3 border-b border-border/60 px-5 pb-3 pt-3 sm:pt-4">
         <div class="min-w-0">

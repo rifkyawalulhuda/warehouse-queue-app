@@ -19,6 +19,28 @@ const REPORT_RUNNING = "BERJALAN";
 const REPORT_DONE = "SELESAI";
 const REPORT_CANCELLED = "BATAL";
 
+/**
+ * Kolom laporan adalah data turunan (status & hitungan dirakit dari transaksi),
+ * jadi sortir dijalankan setelah baris dibangun. Satu baris = satu tanggal,
+ * sehingga jumlah baris per rentang tetap kecil dan aman disortir di memori.
+ */
+const REPORT_SORT_FIELDS = [
+  "date",
+  "status",
+  "transactions",
+  "groups",
+  "picking",
+  "stuffing",
+  "summary"
+];
+
+const STATUS_SORT_RANK = {
+  [REPORT_EMPTY]: 0,
+  [REPORT_RUNNING]: 1,
+  [REPORT_DONE]: 2,
+  [REPORT_CANCELLED]: 3
+};
+
 const BUCKET_BY_TRUCK = {
   CDD: "cddCde",
   CDE: "cddCde",
@@ -46,6 +68,52 @@ function normalizeText(value, maxLength) {
 function resolveActivityDate(value) {
   if (!value) throw createHttpError(400, "Tanggal wajib diisi");
   return toUtcDateOnly(parseWallClock(value, "Tanggal"));
+}
+
+function resolveReportSort(query) {
+  const requested = typeof query?.sortBy === "string" ? query.sortBy.trim() : "";
+  const sortBy = REPORT_SORT_FIELDS.includes(requested) ? requested : "date";
+  const sortDir = String(query?.sortDir || "").trim().toLowerCase() === "asc" ? "asc" : "desc";
+  return { sortBy, sortDir };
+}
+
+function reportSortValue(item, sortBy) {
+  switch (sortBy) {
+    case "status":
+      return STATUS_SORT_RANK[item.status] ?? 99;
+    case "transactions":
+      return item.transactions;
+    case "groups":
+      return item.manpowerGroupCount;
+    case "picking":
+      return item.pickingRowCount;
+    case "stuffing":
+      return item.stuffingRowCount;
+    case "summary":
+      return (
+        (item.summary?.totals?.receiving?.total || 0) +
+        (item.summary?.totals?.delivery?.total || 0)
+      );
+    case "date":
+    default:
+      return item.activityDate;
+  }
+}
+
+function sortReports(items, sortBy, sortDir) {
+  const factor = sortDir === "asc" ? 1 : -1;
+  return [...items].sort((a, b) => {
+    const aValue = reportSortValue(a, sortBy);
+    const bValue = reportSortValue(b, sortBy);
+    if (aValue === bValue) {
+      // Tie-break: tanggal terbaru lebih dulu supaya urutan tetap deterministik.
+      return b.activityDate.localeCompare(a.activityDate);
+    }
+    if (typeof aValue === "string" || typeof bValue === "string") {
+      return String(aValue).localeCompare(String(bValue)) * factor;
+    }
+    return (aValue - bValue) * factor;
+  });
 }
 
 function overlap(a, b) {
@@ -287,6 +355,7 @@ async function getDailyJobActivityById(id) {
 async function listDailyJobActivities(query) {
   const page = Math.max(1, Number(query?.page) || 1);
   const limit = Math.min(100, Math.max(1, Number(query?.limit) || 30));
+  const { sortBy, sortDir } = resolveReportSort(query);
 
   const where = {};
   if (query?.date) {
@@ -300,33 +369,28 @@ async function listDailyJobActivities(query) {
     where.activityDate = { gte: from, lte: to };
   }
 
-  const [total, rows] = await Promise.all([
-    prisma.dailyJobActivity.count({ where }),
-    prisma.dailyJobActivity.findMany({
-      where,
-      orderBy: { activityDate: "desc" },
-      skip: (page - 1) * limit,
-      take: limit,
-      include: {
-        transactions: {
-          select: {
-            id: true,
-            status: true,
-            activityType: true,
-            jobRole: true,
-            employeeId: true,
-            truckType: true,
-            qty: true,
-            totalDo: true,
-            totalMember: true,
-            startAt: true,
-            finishAt: true,
-            confirmation: true
-          }
+  const rows = await prisma.dailyJobActivity.findMany({
+    where,
+    orderBy: { activityDate: "desc" },
+    include: {
+      transactions: {
+        select: {
+          id: true,
+          status: true,
+          activityType: true,
+          jobRole: true,
+          employeeId: true,
+          truckType: true,
+          qty: true,
+          totalDo: true,
+          totalMember: true,
+          startAt: true,
+          finishAt: true,
+          confirmation: true
         }
       }
-    })
-  ]);
+    }
+  });
 
   const items = rows.map((row) => {
     const report = buildReport(row, row.transactions);
@@ -352,20 +416,27 @@ async function listDailyJobActivities(query) {
     };
   });
 
+  // Hitungan kartu status memakai seluruh rentang, bukan hanya halaman aktif.
   const counts = { ALL: 0, KOSONG: 0, BERJALAN: 0, SELESAI: 0, BATAL: 0 };
   items.forEach((item) => {
     counts.ALL += 1;
     if (item.status in counts) counts[item.status] += 1;
   });
 
+  const sorted = sortReports(items, sortBy, sortDir);
+  const total = sorted.length;
+  const start = (page - 1) * limit;
+
   return {
-    items,
+    items: sorted.slice(start, start + limit),
     meta: {
       page,
       limit,
       total,
       totalPages: Math.max(1, Math.ceil(total / limit)),
-      counts
+      counts,
+      sortBy,
+      sortDir
     }
   };
 }

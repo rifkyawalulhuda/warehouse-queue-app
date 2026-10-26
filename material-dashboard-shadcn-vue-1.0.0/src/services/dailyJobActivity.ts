@@ -83,10 +83,23 @@ export type DailyJobReportCounts = {
   BATAL: number
 }
 
+export type DailyJobReportSortKey =
+  | 'date'
+  | 'status'
+  | 'transactions'
+  | 'groups'
+  | 'picking'
+  | 'stuffing'
+  | 'summary'
+
+export type DailyJobReportSortDir = 'asc' | 'desc'
+
 export const listDailyJobActivities = (params?: {
   date?: string
   dateFrom?: string
   dateTo?: string
+  sortBy?: DailyJobReportSortKey
+  sortDir?: DailyJobReportSortDir
   page?: number
   limit?: number
 }) => api.get('/daily-job-activities', { params })

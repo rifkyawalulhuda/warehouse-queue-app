@@ -6,10 +6,12 @@ import Card from '@/components/ui/Card.vue'
 import CardHeader from '@/components/ui/CardHeader.vue'
 import CardContent from '@/components/ui/CardContent.vue'
 import DailyJobStamp from '@/components/dailyJob/DailyJobStamp.vue'
-import { RefreshCw, ChevronRight, ChevronLeft, FileText } from 'lucide-vue-next'
+import { RefreshCw, ChevronRight, ChevronLeft, FileText, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-vue-next'
 import {
   listDailyJobActivities,
   type DailyJobReport,
+  type DailyJobReportSortDir,
+  type DailyJobReportSortKey,
   type DailyJobReportStatus
 } from '@/services/dailyJobActivity'
 import { dateInputOffset, monthEndInput, monthStartInput, shortDateLabel, todayInput } from '@/components/jobTransaction/meta'
@@ -31,6 +33,42 @@ const page = ref(1)
 const loading = ref(false)
 const error = ref<string | null>(null)
 const isMobile = ref(false)
+
+/**
+ * Sortir dijalankan server-side supaya urutannya berlaku untuk seluruh rentang,
+ * bukan hanya 30 baris yang kebetulan tampil di halaman aktif.
+ */
+type SortKey = DailyJobReportSortKey
+type SortDir = DailyJobReportSortDir
+
+const sortBy = ref<SortKey>('date')
+const sortDir = ref<SortDir>('desc')
+
+const sortColumns: Array<{ key: SortKey; label: string; align: 'left' | 'center' }> = [
+  { key: 'date', label: 'Tanggal', align: 'left' },
+  { key: 'status', label: 'Status', align: 'left' },
+  { key: 'transactions', label: 'Transaksi', align: 'center' },
+  { key: 'groups', label: 'Grup', align: 'center' },
+  { key: 'picking', label: 'Picking', align: 'center' },
+  { key: 'stuffing', label: 'Stuffing', align: 'center' },
+  { key: 'summary', label: 'Ringkasan', align: 'left' }
+]
+
+const toggleSort = (key: SortKey) => {
+  if (sortBy.value === key) {
+    sortDir.value = sortDir.value === 'asc' ? 'desc' : 'asc'
+  } else {
+    sortBy.value = key
+    sortDir.value = key === 'date' ? 'desc' : 'asc'
+  }
+  page.value = 1
+  fetchList()
+}
+
+const ariaSort = (key: SortKey) => {
+  if (sortBy.value !== key) return 'none'
+  return sortDir.value === 'asc' ? 'ascending' : 'descending'
+}
 
 const checkMobile = () => {
   isMobile.value = window.innerWidth < 1024
@@ -71,6 +109,8 @@ const fetchList = async () => {
     const response = await listDailyJobActivities({
       dateFrom: filters.value.dateFrom || undefined,
       dateTo: filters.value.dateTo || undefined,
+      sortBy: sortBy.value,
+      sortDir: sortDir.value,
       page: page.value,
       limit: meta.value.limit
     })
@@ -271,13 +311,29 @@ onUnmounted(() => window.removeEventListener('resize', checkMobile))
           <table class="w-full min-w-[820px] text-sm">
             <thead class="bg-muted/60 text-muted-foreground">
               <tr>
-                <th class="px-3 py-2 text-left font-medium">Tanggal</th>
-                <th class="px-3 py-2 text-left font-medium">Status</th>
-                <th class="px-3 py-2 text-center font-medium">Transaksi</th>
-                <th class="px-3 py-2 text-center font-medium">Grup</th>
-                <th class="px-3 py-2 text-center font-medium">Picking</th>
-                <th class="px-3 py-2 text-center font-medium">Stuffing</th>
-                <th class="px-3 py-2 text-left font-medium">Ringkasan</th>
+                <th
+                  v-for="column in sortColumns"
+                  :key="column.key"
+                  :aria-sort="ariaSort(column.key)"
+                  class="px-3 py-2 font-medium"
+                  :class="column.align === 'center' ? 'text-center' : 'text-left'"
+                >
+                  <button
+                    type="button"
+                    class="-mx-1 inline-flex items-center gap-1 rounded px-1 py-0.5 transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    :class="sortBy === column.key ? 'text-foreground' : ''"
+                    :aria-label="`Urutkan menurut ${column.label}`"
+                    @click="toggleSort(column.key)"
+                  >
+                    {{ column.label }}
+                    <component
+                      :is="sortBy !== column.key ? ArrowUpDown : sortDir === 'asc' ? ArrowUp : ArrowDown"
+                      class="h-3 w-3 shrink-0"
+                      :class="sortBy === column.key ? 'opacity-100' : 'opacity-35'"
+                      aria-hidden="true"
+                    />
+                  </button>
+                </th>
                 <th class="w-8 px-1 py-2"><span class="sr-only">Buka</span></th>
               </tr>
             </thead>
@@ -357,6 +413,29 @@ onUnmounted(() => window.removeEventListener('resize', checkMobile))
         </div>
 
         <div v-else class="space-y-2.5">
+          <div class="-mx-1 flex items-center gap-1.5 overflow-x-auto px-1 pb-1">
+            <span class="shrink-0 text-[11px] text-muted-foreground">Urut:</span>
+            <button
+              v-for="column in sortColumns"
+              :key="column.key"
+              type="button"
+              class="flex shrink-0 items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors"
+              :class="sortBy === column.key
+                ? 'border-primary/40 bg-primary/10 text-primary'
+                : 'border-border/70 bg-card/60 text-muted-foreground'"
+              :aria-pressed="sortBy === column.key"
+              :aria-label="`Urutkan menurut ${column.label}`"
+              @click="toggleSort(column.key)"
+            >
+              {{ column.label }}
+              <component
+                :is="sortBy !== column.key ? ArrowUpDown : sortDir === 'asc' ? ArrowUp : ArrowDown"
+                class="h-3 w-3 shrink-0"
+                aria-hidden="true"
+              />
+            </button>
+          </div>
+
           <p v-if="loading" class="py-10 text-center text-sm text-muted-foreground">Memuat laporan…</p>
           <p v-else-if="items.length > 0 && visibleItems.length === 0" class="py-10 text-center text-sm text-muted-foreground">
             Tidak ada laporan berstatus ini pada rentang tanggal tersebut.
