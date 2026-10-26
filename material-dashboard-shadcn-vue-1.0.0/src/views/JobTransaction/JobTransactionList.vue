@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import Button from '@/components/ui/Button.vue'
 import Card from '@/components/ui/Card.vue'
 import CardHeader from '@/components/ui/CardHeader.vue'
@@ -13,6 +13,7 @@ import DailyJobConfirmModal from '@/components/dailyJob/DailyJobConfirmModal.vue
 import DailyJobCancelModal from '@/components/dailyJob/DailyJobCancelModal.vue'
 import JobTransactionFormModal from '@/components/jobTransaction/JobTransactionFormModal.vue'
 import JobTransactionFinishModal from '@/components/jobTransaction/JobTransactionFinishModal.vue'
+import JobTransactionDetailDrawer from '@/components/jobTransaction/JobTransactionDetailDrawer.vue'
 import {
   Plus,
   RefreshCw,
@@ -22,7 +23,11 @@ import {
   ClipboardList,
   ChevronLeft,
   ChevronRight,
-  FileSpreadsheet
+  FileSpreadsheet,
+  Eye,
+  ArrowUp,
+  ArrowDown,
+  ArrowUpDown
 } from 'lucide-vue-next'
 import { useAuth } from '@/composables/useAuth'
 import { listEmployees, type Employee } from '@/services/employeeApi'
@@ -32,6 +37,7 @@ import {
   deleteJobTransaction,
   exportJobTransactions,
   finishJobTransaction,
+  getJobTransactionById,
   listJobTransactions,
   reopenJobTransaction,
   startJobTransaction,
@@ -60,6 +66,7 @@ import { statusBubbleClass, statusCardClass } from '@/lib/statusCard'
 import { handleDateInputClick, openDatePicker } from '@/lib/datePicker'
 
 const route = useRoute()
+const router = useRouter()
 const { user, initFromStorage } = useAuth()
 initFromStorage()
 const isAdmin = computed(() => user.value?.role === 'ADMIN')
@@ -161,6 +168,40 @@ const multiDayRange = computed(() => filters.value.dateFrom !== filters.value.da
 const getErrorMessage = (err: any, fallback: string) =>
   err?.response?.data?.message || err?.message || fallback
 
+/**
+ * Sortir dijalankan server-side supaya hasilnya benar untuk seluruh halaman,
+ * bukan hanya 30 baris yang kebetulan tampil.
+ */
+type SortKey = 'time' | 'activity' | 'employee' | 'truck' | 'status'
+type SortDir = 'asc' | 'desc'
+
+const sortBy = ref<SortKey>('time')
+const sortDir = ref<SortDir>('desc')
+
+const sortColumns: Array<{ key: SortKey; label: string }> = [
+  { key: 'time', label: 'Waktu' },
+  { key: 'activity', label: 'Pekerjaan' },
+  { key: 'employee', label: 'Karyawan / Beban' },
+  { key: 'truck', label: 'Unit' },
+  { key: 'status', label: 'Status' }
+]
+
+const toggleSort = (key: SortKey) => {
+  if (sortBy.value === key) {
+    sortDir.value = sortDir.value === 'asc' ? 'desc' : 'asc'
+  } else {
+    sortBy.value = key
+    sortDir.value = key === 'time' ? 'desc' : 'asc'
+  }
+  page.value = 1
+  fetchList()
+}
+
+const ariaSort = (key: SortKey) => {
+  if (sortBy.value !== key) return 'none'
+  return sortDir.value === 'asc' ? 'ascending' : 'descending'
+}
+
 let lastFetchedSearch = ''
 
 const fetchList = async () => {
@@ -174,6 +215,8 @@ const fetchList = async () => {
       status: filters.value.status,
       activityType: filters.value.activityType,
       search: filters.value.search.trim() || undefined,
+      sortBy: sortBy.value,
+      sortDir: sortDir.value,
       page: page.value,
       limit: meta.value.limit
     })
@@ -405,6 +448,7 @@ const executeConfirmed = async () => {
     confirmOpen.value = false
     pendingAction.value = null
     await fetchList()
+    if (drawerOpen.value) await detailDrawerRef.value?.reload()
   } catch (err: any) {
     const code = err?.response?.data?.details?.code
     if (code === 'EMPLOYEE_OVERLAP') {
@@ -433,6 +477,7 @@ const submitFinish = async (payload: { finishAt: string; confirmation: string | 
     finishTarget.value = null
     showSuccess('Pekerjaan diselesaikan')
     await fetchList()
+    if (drawerOpen.value) await detailDrawerRef.value?.reload()
   } catch (err: any) {
     finishError.value = getErrorMessage(err, 'Gagal menyelesaikan transaksi')
   } finally {
@@ -520,10 +565,59 @@ const unitLabel = (row: JobTransaction) => {
   return `${truckLabel(row)} × ${row.qty}`
 }
 
-onMounted(() => {
+const drawerOpen = ref(false)
+const drawerId = ref<string | null>(null)
+const drawerSnapshot = ref<JobTransaction | null>(null)
+const detailDrawerRef = ref<InstanceType<typeof JobTransactionDetailDrawer> | null>(null)
+
+/** Utamakan baris terbaru dari daftar; snapshot hanya jaring pengaman saat deep link. */
+const drawerRow = computed<JobTransaction | null>(() => {
+  if (!drawerId.value) return drawerSnapshot.value
+  return items.value.find((row) => row.id === drawerId.value) || drawerSnapshot.value
+})
+
+const openDetail = (row: JobTransaction) => {
+  drawerSnapshot.value = row
+  drawerId.value = row.id
+  drawerOpen.value = true
+  router.replace({ path: route.path, query: { ...route.query, detailId: row.id } })
+}
+
+const closeDetail = () => {
+  drawerOpen.value = false
+  drawerId.value = null
+  drawerSnapshot.value = null
+  const nextQuery = { ...route.query }
+  delete nextQuery.detailId
+  router.replace({ path: route.path, query: nextQuery })
+}
+
+const openDetailById = async (id: string) => {
+  const found = items.value.find((row) => row.id === id)
+  if (found) {
+    drawerSnapshot.value = found
+  } else {
+    try {
+      const response = await getJobTransactionById(id)
+      drawerSnapshot.value = (response.data?.data ?? response.data) as JobTransaction
+    } catch {
+      drawerSnapshot.value = null
+    }
+  }
+  drawerId.value = id
+  drawerOpen.value = true
+}
+
+const handleDrawerPrimary = (row: JobTransaction) => {
+  if (row.status === 'DRAFT') requestStart(row)
+  else if (row.status === 'PROSES') openFinish(row)
+}
+
+const drawerActionSubmitting = computed(() => confirmSubmitting.value || finishSubmitting.value)
+
+onMounted(async () => {
   checkMobile()
   window.addEventListener('resize', checkMobile)
-
   const queryDate = typeof route.query.date === 'string' ? route.query.date : ''
   if (queryDate) {
     filters.value.dateFrom = queryDate
@@ -532,7 +626,10 @@ onMounted(() => {
   }
 
   loadEmployees()
-  fetchList()
+  await fetchList()
+
+  const detailId = typeof route.query.detailId === 'string' ? route.query.detailId : ''
+  if (detailId) await openDetailById(detailId)
 })
 
 onUnmounted(() => {
@@ -540,6 +637,22 @@ onUnmounted(() => {
   if (successTimer) window.clearTimeout(successTimer)
   if (searchTimer) window.clearTimeout(searchTimer)
 })
+
+watch(
+  () => route.query.detailId,
+  (value) => {
+    const id = typeof value === 'string' ? value : ''
+    if (!id) {
+      if (drawerOpen.value) {
+        drawerOpen.value = false
+        drawerId.value = null
+        drawerSnapshot.value = null
+      }
+      return
+    }
+    if (id !== drawerId.value) openDetailById(id)
+  }
+)
 
 watch(
   () => filters.value.search,
@@ -718,11 +831,27 @@ watch(
           <table class="w-full min-w-[860px] text-sm">
             <thead class="bg-muted/60 text-muted-foreground">
               <tr>
-                <th class="px-3 py-2 text-left font-medium">Waktu</th>
-                <th class="px-3 py-2 text-left font-medium">Pekerjaan</th>
-                <th class="px-3 py-2 text-left font-medium">Karyawan / Beban</th>
-                <th class="px-3 py-2 text-left font-medium">Unit</th>
-                <th class="px-3 py-2 text-left font-medium">Status</th>
+                <th
+                  v-for="column in sortColumns"
+                  :key="column.key"
+                  :aria-sort="ariaSort(column.key)"
+                  class="px-3 py-2 text-left font-medium"
+                >
+                  <button
+                    type="button"
+                    class="-mx-1 inline-flex items-center gap-1 rounded px-1 py-0.5 transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    :class="sortBy === column.key ? 'text-foreground' : ''"
+                    @click="toggleSort(column.key)"
+                  >
+                    {{ column.label }}
+                    <component
+                      :is="sortBy !== column.key ? ArrowUpDown : sortDir === 'asc' ? ArrowUp : ArrowDown"
+                      class="h-3 w-3 shrink-0"
+                      :class="sortBy === column.key ? 'opacity-100' : 'opacity-35'"
+                      aria-hidden="true"
+                    />
+                  </button>
+                </th>
                 <th class="w-32 px-3 py-2 text-right font-medium">Aksi</th>
               </tr>
             </thead>
@@ -736,7 +865,9 @@ watch(
                 v-for="row in items"
                 v-else
                 :key="row.id"
-                class="border-t border-border/60 transition-colors hover:bg-muted/45"
+                class="cursor-pointer border-t border-border/60 transition-colors hover:bg-muted/45"
+                :class="drawerId === row.id ? 'bg-muted/40' : ''"
+                @click="openDetail(row)"
               >
                 <td class="px-3 py-2.5">
                   <p
@@ -777,7 +908,7 @@ watch(
                 <td class="px-3 py-2.5">
                   <DailyJobStamp :status="row.status" size="sm" :rotate="false" />
                 </td>
-                <td class="px-3 py-2.5">
+                <td class="px-3 py-2.5" @click.stop>
                   <div class="flex items-center justify-end gap-1">
                     <Button
                       v-if="row.status === 'DRAFT'"
@@ -799,18 +930,21 @@ watch(
                       <CheckCircle2 class="mr-1 h-3.5 w-3.5" aria-hidden="true" />
                       Selesaikan
                     </Button>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      class="h-8 w-8 rounded-full"
+                      :aria-label="`Lihat detail ${rowLabel(row)}`"
+                      @click="openDetail(row)"
+                    >
+                      <Eye class="h-3.5 w-3.5" aria-hidden="true" />
+                    </Button>
                     <ActionMenu
                       v-if="secondaryActions(row).length"
                       :items="secondaryActions(row)"
                       :label="`Aksi lain untuk ${rowLabel(row)}`"
                       @select="onSecondary(row, $event)"
                     />
-                    <span
-                      v-else-if="row.status !== 'DRAFT' && row.status !== 'PROSES'"
-                      class="px-1 text-xs text-muted-foreground"
-                    >
-                      —
-                    </span>
                   </div>
                 </td>
               </tr>
@@ -819,12 +953,37 @@ watch(
         </div>
 
         <div v-else class="space-y-2.5">
+          <div class="-mx-1 flex items-center gap-1.5 overflow-x-auto px-1 pb-1">
+            <span class="shrink-0 text-[11px] text-muted-foreground">Urut:</span>
+            <button
+              v-for="column in sortColumns"
+              :key="column.key"
+              type="button"
+              class="flex shrink-0 items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors"
+              :class="sortBy === column.key
+                ? 'border-primary/40 bg-primary/10 text-primary'
+                : 'border-border/70 bg-card/60 text-muted-foreground'"
+              :aria-pressed="sortBy === column.key"
+              :aria-label="`Urutkan menurut ${column.label}`"
+              @click="toggleSort(column.key)"
+            >
+              {{ column.label }}
+              <component
+                :is="sortBy !== column.key ? ArrowUpDown : sortDir === 'asc' ? ArrowUp : ArrowDown"
+                class="h-3 w-3 shrink-0"
+                aria-hidden="true"
+              />
+            </button>
+          </div>
+
           <p v-if="loading" class="py-10 text-center text-sm text-muted-foreground">Memuat transaksi…</p>
           <article
             v-for="row in items"
             v-else
             :key="row.id"
-            class="rounded-xl border border-border/70 bg-background/40 p-3"
+            class="cursor-pointer rounded-xl border border-border/70 bg-background/40 p-3 transition-colors"
+            :class="drawerId === row.id ? 'border-primary/40 bg-muted/40' : ''"
+            @click="openDetail(row)"
           >
             <div class="flex items-start justify-between gap-2">
               <div class="min-w-0">
@@ -858,7 +1017,7 @@ watch(
               </template>
             </div>
 
-            <div class="mt-2.5 flex items-center gap-2">
+            <div class="mt-2.5 flex items-center gap-2" @click.stop>
               <Button
                 v-if="row.status === 'DRAFT'"
                 variant="outline"
@@ -880,6 +1039,14 @@ watch(
               <span v-else class="flex-1 text-xs text-muted-foreground">
                 {{ row.status === 'BATAL' ? 'Transaksi dibatalkan' : 'Pekerjaan selesai' }}
               </span>
+              <Button
+                variant="outline"
+                class="h-11 w-11 shrink-0"
+                :aria-label="`Lihat detail ${rowLabel(row)}`"
+                @click="openDetail(row)"
+              >
+                <Eye class="h-4 w-4" aria-hidden="true" />
+              </Button>
               <ActionMenu
                 v-if="secondaryActions(row).length"
                 :items="secondaryActions(row)"
@@ -942,6 +1109,15 @@ watch(
         </div>
       </CardContent>
     </Card>
+
+    <JobTransactionDetailDrawer
+      ref="detailDrawerRef"
+      :open="drawerOpen"
+      :transaction="drawerRow"
+      :action-submitting="drawerActionSubmitting"
+      @close="closeDetail"
+      @primary="handleDrawerPrimary"
+    />
 
     <JobTransactionFormModal
       :open="formOpen"

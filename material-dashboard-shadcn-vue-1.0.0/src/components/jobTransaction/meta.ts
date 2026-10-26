@@ -1,9 +1,11 @@
 import type {
   JobActivityType,
+  JobRole,
   JobTransaction,
   JobTransactionStatus,
   JobTruckType
 } from '@/services/jobTransactionApi'
+import type { EmployeePosition } from '@/services/employeeApi'
 
 export const ACTIVITY_OPTIONS: Array<{ value: JobActivityType; label: string; group: string }> = [
   { value: 'RECEIVING', label: 'Receiving', group: 'Man Power' },
@@ -26,10 +28,33 @@ export const MANPOWER_ACTIVITIES: JobActivityType[] = ['RECEIVING', 'DELIVERY']
 
 export const isManpower = (type: JobActivityType) => MANPOWER_ACTIVITIES.includes(type)
 
-export const roleFor = (type: JobActivityType) => (type === 'RECEIVING' ? 'TALLY' : 'OPERATOR')
+/** Posisi yang boleh dipilih untuk Receiving/Delivery. Foreman tidak termasuk. */
+export const FIELD_POSITIONS: EmployeePosition[] = ['TALLYMAN', 'OPR_FORKLIFT']
 
-export const positionFor = (type: JobActivityType) =>
-  type === 'RECEIVING' ? 'TALLYMAN' : 'OPR_FORKLIFT'
+export const POSITION_LABEL: Record<EmployeePosition, string> = {
+  FOREMAN: 'Foreman',
+  TALLYMAN: 'Tallyman',
+  OPR_FORKLIFT: 'Operator'
+}
+
+export const positionLabel = (position?: string | null) =>
+  POSITION_LABEL[position as EmployeePosition] || position || '-'
+
+/** Posisi karyawan -> peran default. Null bila posisinya bukan tenaga kerja lapangan. */
+export const roleFromPosition = (position?: string | null): JobRole | null => {
+  if (position === 'TALLYMAN') return 'TALLY'
+  if (position === 'OPR_FORKLIFT') return 'OPERATOR'
+  return null
+}
+
+/** Peran dipilih user; label ditampilkan sebagai Tallyman / Operator. */
+export const JOB_ROLE_OPTIONS: Array<{ value: JobRole; label: string }> = [
+  { value: 'TALLY', label: 'Tallyman' },
+  { value: 'OPERATOR', label: 'Operator' }
+]
+
+export const roleLabelOf = (role?: string | null) =>
+  JOB_ROLE_OPTIONS.find((option) => option.value === role)?.label || role || '-'
 
 export const activityLabel = (type: JobActivityType) =>
   ACTIVITY_OPTIONS.find((option) => option.value === type)?.label || type

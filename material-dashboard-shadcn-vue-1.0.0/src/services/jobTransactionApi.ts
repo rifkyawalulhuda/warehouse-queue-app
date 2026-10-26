@@ -51,6 +51,7 @@ export type JobTransactionStatusCounts = {
 
 export type JobTransactionPayload = {
   activityType: JobActivityType
+  jobRole?: JobRole | null
   employeeId?: string | null
   truckType?: JobTruckType | null
   truckTypeOther?: string | null
@@ -63,6 +64,8 @@ export type JobTransactionPayload = {
   transactionDate?: string | null
 }
 
+export type JobTransactionSortKey = 'time' | 'activity' | 'employee' | 'truck' | 'status' | 'date'
+
 export const listJobTransactions = (params?: {
   date?: string
   dateFrom?: string
@@ -70,6 +73,8 @@ export const listJobTransactions = (params?: {
   status?: 'ALL' | JobTransactionStatus
   activityType?: 'ALL' | JobActivityType
   search?: string
+  sortBy?: JobTransactionSortKey
+  sortDir?: 'asc' | 'desc'
   page?: number
   limit?: number
 }) => api.get('/job-transactions', { params })

@@ -20,15 +20,22 @@ const TRUCK_TYPES = ["CDD", "CDE", "FUSO", "WB", "FT20", "FT40", "OTHER"];
 
 const EXPORT_ROW_LIMIT = 5000;
 
-const ROLE_BY_ACTIVITY = {
-  [ACTIVITY_RECEIVING]: "TALLY",
-  [ACTIVITY_DELIVERY]: "OPERATOR"
+/**
+ * Peran (jobRole) kini dipilih user dan tidak lagi diturunkan dari jenis pekerjaan.
+ * Jenis pekerjaan hanya menentukan bentuk input (manpower vs sesi kerja).
+ *
+ * Nilai default peran diambil dari posisi karyawan di Master Karyawan, lalu
+ * boleh di-override lewat payload.jobRole.
+ */
+const JOB_ROLES = ["TALLY", "OPERATOR"];
+
+const ROLE_BY_POSITION = {
+  TALLYMAN: "TALLY",
+  OPR_FORKLIFT: "OPERATOR"
 };
 
-const POSITION_BY_ROLE = {
-  TALLY: "TALLYMAN",
-  OPERATOR: "OPR_FORKLIFT"
-};
+/** Posisi yang boleh dipilih untuk Receiving/Delivery. FOREMAN tidak termasuk. */
+const FIELD_POSITIONS = Object.keys(ROLE_BY_POSITION);
 
 const TRANSACTION_INCLUDE = {
   employee: { select: { id: true, name: true, nik: true, position: true } },
@@ -134,17 +141,28 @@ function normalizeActivityType(value) {
   return type.toUpperCase();
 }
 
+function normalizeJobRole(value, fallback) {
+  const raw = normalizeText(value, 20);
+  if (!raw) return fallback;
+  const role = raw.toUpperCase();
+  if (!JOB_ROLES.includes(role)) {
+    throw createHttpError(400, "Peran harus Tallyman atau Operator");
+  }
+  return role;
+}
+
 async function buildManpowerData(payload, actor) {
   const activityType = normalizeActivityType(payload?.activityType);
-  const jobRole = ROLE_BY_ACTIVITY[activityType];
   const employee = await resolveEmployee(payload?.employeeId);
 
-  if (employee.position !== POSITION_BY_ROLE[jobRole]) {
+  if (!FIELD_POSITIONS.includes(employee.position)) {
     throw createHttpError(
       400,
-      `Karyawan ${employee.name} berposisi ${employee.position}, bukan ${POSITION_BY_ROLE[jobRole]}`
+      `Karyawan ${employee.name} berposisi ${employee.position}. Hanya Tallyman dan Operator yang dapat dipilih untuk ${activityType}.`
     );
   }
+
+  const jobRole = normalizeJobRole(payload?.jobRole, ROLE_BY_POSITION[employee.position]);
 
   const truckType = normalizeText(payload?.truckType, 10);
   if (!truckType || !TRUCK_TYPES.includes(truckType.toUpperCase())) {
@@ -597,12 +615,46 @@ function buildTransactionWhere(query) {
   return where;
 }
 
+/**
+ * Sortir dijalankan di server supaya konsisten untuk semua halaman.
+ * Kolom yang diizinkan dibatasi daftar putih — nilai dari query tidak
+ * pernah langsung dipakai sebagai nama kolom Prisma.
+ */
+const SORT_FIELDS = {
+  time: ["startAt", "createdAt"],
+  activity: ["activityType", "startAt"],
+  employee: ["employeeName", "startAt"],
+  truck: ["truckType", "startAt"],
+  status: ["status", "startAt"],
+  date: ["transactionDate", "startAt"]
+};
+
+function resolveOrderBy(query) {
+  const key = normalizeText(query?.sortBy, 20)?.toLowerCase();
+  const fields = SORT_FIELDS[key];
+
+  if (!fields) {
+    return [
+      { startAt: { sort: "desc", nulls: "last" } },
+      { createdAt: "desc" }
+    ];
+  }
+
+  const dir = String(query?.sortDir || "asc").toLowerCase() === "desc" ? "desc" : "asc";
+  const orderBy = fields.map((field) => {
+    if (field === "startAt") return { startAt: { sort: dir, nulls: "last" } };
+    return { [field]: dir };
+  });
+  orderBy.push({ id: "asc" });
+  return orderBy;
+}
+
 async function listJobTransactionsForExport(query) {
   const where = buildTransactionWhere(query);
   const rows = await prisma.jobTransaction.findMany({
     where,
     include: TRANSACTION_INCLUDE,
-    orderBy: [{ transactionDate: "asc" }, { startAt: "asc" }, { createdAt: "asc" }],
+    orderBy: resolveOrderBy(query),
     take: EXPORT_ROW_LIMIT
   });
 
@@ -627,7 +679,7 @@ async function listJobTransactions(query) {
     prisma.jobTransaction.findMany({
       where,
       include: TRANSACTION_INCLUDE,
-      orderBy: [{ startAt: "desc" }, { createdAt: "desc" }],
+      orderBy: resolveOrderBy(query),
       skip: (page - 1) * limit,
       take: limit
     }),
@@ -681,6 +733,8 @@ module.exports = {
   listJobTransactions,
   listJobTransactionsForExport,
   buildTransactionWhere,
+  resolveOrderBy,
+  SORT_FIELDS,
   EXPORT_ROW_LIMIT,
   mapTransaction,
   toTimeString,

@@ -414,8 +414,8 @@ PATCH /api/picking-progress/:id/cancel
 Job Transactions (sumber data modul laporan harian):
 
 ```text
-GET    /api/job-transactions                  Daftar transaksi (date/dateFrom/dateTo/status/activityType/search + pagination)
-GET    /api/job-transactions/export           Export Excel semua baris sesuai filter yang sama (maks 5000 baris)
+GET    /api/job-transactions                  Daftar transaksi (date/dateFrom/dateTo/status/activityType/search/sortBy/sortDir + pagination)
+GET    /api/job-transactions/export           Export Excel semua baris sesuai filter & sortir yang sama (maks 5000 baris)
 POST   /api/job-transactions                  Buat transaksi (startAt terisi -> PROSES, startAt+finishAt -> SELESAI, tanpa startAt -> DRAFT)
 GET    /api/job-transactions/:id
 PUT    /api/job-transactions/:id
@@ -448,11 +448,13 @@ Aturan Job Transaction:
 - Transaksi `PROSES` milik karyawan yang sama tidak boleh beririsan waktu. Pelanggaran dibalas `422` dengan `details.code = "EMPLOYEE_OVERLAP"`.
 - `finish` hanya boleh dari `PROSES`; `finishAt` wajib dan harus lebih besar dari `startAt`.
 - Export Excel Transaksi Pekerjaan memakai filter aktif di halaman (tanggal, status, pekerjaan, pencarian) dan mengabaikan pagination, jadi yang terunduh selalu seluruh baris yang cocok. Batas keras 5000 baris; bila terlewati, file diberi baris peringatan di atas tabel.
+- Sortir tabel Transaksi Pekerjaan dijalankan **di server** (`sortBy` + `sortDir`), bukan di client, karena tabel dipaginasi — menyortir 30 baris yang tampil akan salah. Nilai `sortBy` dibatasi daftar putih `time | activity | employee | truck | status | date`; nilai di luar itu jatuh ke default `startAt desc`. Kolom `startAt` selalu diurutkan `nulls: last` supaya transaksi Draft tidak menumpuk di atas. Sortir yang sama juga berlaku pada Export Excel.
 
 Aturan Daily Job Activity (turunan):
 
 - **Tidak ada input angka di laporan.** Semua angka dihitung ulang dari `JobTransaction` setiap kali laporan dibuka.
 - Ringkasan unit: `CDD`/`CDE` -> CDD / CDE, `WB`/`FUSO`/`OTHER` -> WINGBOX, `FT20`/`FT40` -> CONTAINER; dipisah RECEIVING dan DELIVERY. Nilai 0 ditampilkan kosong.
+- Tabel manpower di sheet memakai kolom terpisah `CDD | WB | FUSO | 20FT | 40FT`, jadi `FUSO` masuk kolom FUSO (bukan WB). `OTHER` tidak punya kolom sendiri dan dihitung ke kolom WB. Pengelompokan ringkasan (WINGBOX) sengaja tetap menggabungkan WB + FUSO + OTHER.
 - Status laporan diturunkan: tidak ada transaksi aktif -> `KOSONG`; ada `PROSES` -> `BERJALAN`; semua `SELESAI` -> `SELESAI`; semua `BATAL` -> `BATAL`. Tidak ada status manual, sehingga laporan tidak bisa bertentangan dengan transaksinya.
 - Hanya transaksi `PROSES` dan `SELESAI` yang masuk lembar. `DRAFT` belum punya `startAt` sehingga tidak bisa ditempatkan di timeline; `BATAL` berarti pekerjaan tidak terjadi.
 - Sesi manpower = gabungan transaksi satu karyawan pada satu tanggal. `timeStart` = `startAt` paling awal, `timeFinish` = `finishAt` paling akhir (kosong bila masih ada yang berjalan), `isFinish` = semua transaksinya SELESAI.

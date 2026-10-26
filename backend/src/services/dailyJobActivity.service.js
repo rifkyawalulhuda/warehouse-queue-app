@@ -62,7 +62,12 @@ function deriveReportStatus(transactions) {
   const active = transactions.filter(
     (row) => row.status === STATUS_PROGRESS || row.status === STATUS_FINISHED
   );
-  if (active.length === 0) return REPORT_CANCELLED;
+  if (active.length === 0) {
+    // Hanya transaksi BATAL yang membuat laporan berstatus BATAL.
+    // Hari yang isinya masih Draft belum punya pekerjaan berjalan -> KOSONG.
+    const allCancelled = transactions.every((row) => row.status === STATUS_CANCELLED);
+    return allCancelled ? REPORT_CANCELLED : REPORT_EMPTY;
+  }
   if (active.some((row) => row.status === STATUS_PROGRESS)) return REPORT_RUNNING;
   return REPORT_DONE;
 }
@@ -117,9 +122,10 @@ function buildSessions(transactions, activityType) {
     const qty = { qtyCdd: 0, qtyWb: 0, qtyFuso: 0, qty20ft: 0, qty40ft: 0 };
     sorted.forEach((row) => {
       if (row.truckType === "CDD" || row.truckType === "CDE") qty.qtyCdd += row.qty || 0;
-      else if (row.truckType === "WB" || row.truckType === "FUSO" || row.truckType === "OTHER") {
-        qty.qtyWb += row.qty || 0;
-      } else if (row.truckType === "FT20") qty.qty20ft += row.qty || 0;
+      else if (row.truckType === "WB") qty.qtyWb += row.qty || 0;
+      else if (row.truckType === "FUSO") qty.qtyFuso += row.qty || 0;
+      else if (row.truckType === "OTHER") qty.qtyWb += row.qty || 0;
+      else if (row.truckType === "FT20") qty.qty20ft += row.qty || 0;
       else if (row.truckType === "FT40") qty.qty40ft += row.qty || 0;
     });
 

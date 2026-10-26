@@ -2,16 +2,24 @@
 import { computed, ref, watch } from 'vue'
 import Button from '@/components/ui/Button.vue'
 import Combobox from '@/components/ui/Combobox.vue'
-import { X, Clock, Truck, User, ListChecks } from 'lucide-vue-next'
+import { X, Clock, Truck, User, ListChecks, BadgeCheck, Info } from 'lucide-vue-next'
 import type { Employee } from '@/services/employeeApi'
-import type { JobActivityType, JobTransaction, JobTruckType } from '@/services/jobTransactionApi'
+import type {
+  JobActivityType,
+  JobRole,
+  JobTransaction,
+  JobTruckType
+} from '@/services/jobTransactionApi'
 import {
   ACTIVITY_OPTIONS,
+  FIELD_POSITIONS,
+  JOB_ROLE_OPTIONS,
   TRUCK_OPTIONS,
   formatWallClock,
   isManpower,
-  positionFor,
-  roleFor,
+  positionLabel,
+  roleFromPosition,
+  roleLabelOf,
   toDateTimeInput
 } from '@/components/jobTransaction/meta'
 import { handleDateInputClick, openDatePicker } from '@/lib/datePicker'
@@ -31,6 +39,7 @@ const emit = defineEmits<{
     e: 'submit',
     payload: {
       activityType: JobActivityType
+      jobRole?: JobRole | null
       employeeId?: string | null
       truckType?: JobTruckType | null
       truckTypeOther?: string | null
@@ -48,6 +57,7 @@ const emit = defineEmits<{
 const form = ref({
   activityType: 'RECEIVING' as JobActivityType,
   employeeId: '',
+  jobRole: '' as JobRole | '',
   truckType: 'CDD' as JobTruckType,
   truckTypeOther: '',
   qty: '1',
@@ -58,11 +68,19 @@ const form = ref({
 })
 const localError = ref<string | null>(null)
 
+/**
+ * Peran diisi otomatis dari posisi karyawan, tapi berhenti diisi otomatis
+ * begitu user mengubahnya sendiri — supaya pilihan manual tidak tertimpa
+ * saat karyawan diganti.
+ */
+const jobRoleTouched = ref(false)
+
 const reset = () => {
   const row = props.initial
   form.value = {
     activityType: (row?.activityType as JobActivityType) || 'RECEIVING',
     employeeId: row?.employeeId || '',
+    jobRole: (row?.jobRole as JobRole) || '',
     truckType: (row?.truckType as JobTruckType) || 'CDD',
     truckTypeOther: row?.truckTypeOther || '',
     qty: String(row?.qty ?? 1),
@@ -72,6 +90,7 @@ const reset = () => {
     startAt: toDateTimeInput(row?.startAt),
     confirmation: row?.confirmation || ''
   }
+  jobRoleTouched.value = Boolean(row?.jobRole)
   localError.value = null
 }
 
@@ -88,35 +107,39 @@ watch(
   (type) => {
     if (!isManpower(type)) {
       form.value.employeeId = ''
-      return
+      form.value.jobRole = ''
+      jobRoleTouched.value = false
     }
-    if (!props.employees.length) return
-    const position = positionFor(type)
-    const current = props.employees.find((employee) => employee.id === form.value.employeeId)
-    if (current && current.position === position) return
-    form.value.employeeId = ''
   }
 )
 
 const manpower = computed(() => isManpower(form.value.activityType))
 
+/** Semua tenaga kerja lapangan, apa pun jenis pekerjaannya. */
 const eligibleEmployees = computed(() => {
   if (!manpower.value) return []
-  const position = positionFor(form.value.activityType)
   return props.employees
-    .filter((employee) => employee.position === position)
+    .filter((employee) => FIELD_POSITIONS.includes(employee.position))
     .sort((a, b) => a.name.localeCompare(b.name, 'id'))
 })
 
 const employeeOptions = computed(() =>
-  eligibleEmployees.value.map((employee) => ({ value: employee.id, label: employee.name }))
+  eligibleEmployees.value.map((employee) => ({
+    value: employee.id,
+    label: `${employee.name} · ${positionLabel(employee.position)}`
+  }))
 )
 
-const roleLabel = computed(() => (manpower.value ? roleFor(form.value.activityType) : null))
-
-const employeeSearchPlaceholder = computed(() =>
-  roleLabel.value === 'TALLY' ? 'Cari tallyman...' : 'Cari operator...'
+const selectedEmployee = computed(
+  () => eligibleEmployees.value.find((employee) => employee.id === form.value.employeeId) || null
 )
+
+/** Posisi karyawan berbeda dari peran yang dipilih. Hanya informasi, tidak memblokir. */
+const roleMismatch = computed(() => {
+  if (!manpower.value || !selectedEmployee.value || !form.value.jobRole) return false
+  const natural = roleFromPosition(selectedEmployee.value.position)
+  return Boolean(natural) && natural !== form.value.jobRole
+})
 
 const groupedActivities = computed(() => {
   const groups = new Map<string, typeof ACTIVITY_OPTIONS>()
@@ -129,6 +152,14 @@ const groupedActivities = computed(() => {
 
 const onEmployeeSelect = (employeeId: string) => {
   form.value.employeeId = employeeId
+  if (jobRoleTouched.value) return
+  const employee = eligibleEmployees.value.find((row) => row.id === employeeId)
+  form.value.jobRole = roleFromPosition(employee?.position) || ''
+}
+
+const onRoleSelect = (role: string) => {
+  form.value.jobRole = (role as JobRole) || ''
+  jobRoleTouched.value = true
 }
 
 /**
@@ -148,6 +179,7 @@ const toNumberOrNull = (value: unknown) => {
 const validate = (requireStart: boolean) => {
   if (manpower.value) {
     if (!form.value.employeeId) return 'Pilih karyawan dari daftar Master Karyawan'
+    if (!form.value.jobRole) return 'Peran wajib dipilih (Tallyman atau Operator)'
     if (!form.value.truckType) return 'Tipe truk wajib dipilih'
     if (form.value.truckType === 'OTHER' && !hasValue(form.value.truckTypeOther)) {
       return 'Keterangan tipe truk wajib diisi untuk Lainnya'
@@ -169,6 +201,7 @@ const validate = (requireStart: boolean) => {
 
 const buildPayload = () => ({
   activityType: form.value.activityType,
+  jobRole: manpower.value ? form.value.jobRole || null : null,
   employeeId: manpower.value ? form.value.employeeId : null,
   truckType: manpower.value ? form.value.truckType : null,
   truckTypeOther:
@@ -257,7 +290,7 @@ const submit = (startNow: boolean) => {
           <div>
             <span class="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
               <User class="h-3 w-3" aria-hidden="true" />
-              Karyawan · {{ roleLabel }}
+              Karyawan
             </span>
             <div class="mt-1">
               <Combobox
@@ -265,11 +298,41 @@ const submit = (startNow: boolean) => {
                 :options="employeeOptions"
                 :disabled="submitting"
                 placeholder="Pilih karyawan..."
-                :search-placeholder="employeeSearchPlaceholder"
+                search-placeholder="Cari nama karyawan..."
                 empty-text="Tidak ada karyawan"
                 @update:model-value="onEmployeeSelect"
               />
             </div>
+          </div>
+
+          <div>
+            <span class="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+              <BadgeCheck class="h-3 w-3" aria-hidden="true" />
+              Peran
+            </span>
+            <div class="mt-1 grid grid-cols-2 gap-2">
+              <button
+                v-for="option in JOB_ROLE_OPTIONS"
+                :key="option.value"
+                type="button"
+                class="rounded-xl border px-3 py-2.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+                :class="form.jobRole === option.value
+                  ? 'border-primary/40 bg-primary/10 text-primary'
+                  : 'border-border/70 bg-background/60 text-muted-foreground hover:border-border hover:text-foreground'"
+                :disabled="submitting"
+                :aria-pressed="form.jobRole === option.value"
+                @click="onRoleSelect(option.value)"
+              >
+                {{ option.label }}
+              </button>
+            </div>
+            <p v-if="roleMismatch" class="mt-1.5 flex items-start gap-1.5 text-[11px] text-amber-600">
+              <Info class="mt-px h-3 w-3 shrink-0" aria-hidden="true" />
+              <span>
+                {{ selectedEmployee?.name }} tercatat {{ positionLabel(selectedEmployee?.position) }} di
+                Master Karyawan, tetapi dicatat sebagai {{ roleLabelOf(form.jobRole) }} hari ini.
+              </span>
+            </p>
           </div>
 
           <div class="grid gap-3 sm:grid-cols-2">
