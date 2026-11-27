@@ -579,6 +579,23 @@ async function listQueueEntriesForExport(query) {
       customer: true,
       gate: true,
       pickerEmployee: true,
+      // Nilai plan diambil dari snapshot pada antrian, dengan cadangan ke item
+      // schedule bila snapshot kosong. Item bisa sudah terhapus (antrian BATAL),
+      // sehingga relasinya opsional.
+      scheduleItem: {
+        select: {
+          id: true,
+          plateNumber: true,
+          truckType: true,
+          truckTypeOther: true,
+          driverName: true,
+          containerNumbers: true,
+          plannedStart: true,
+          plannedFinish: true,
+          status: true,
+          transporter: { select: { name: true } },
+        },
+      },
       logs: {
         where: {
           type: "STATUS_CHANGE",

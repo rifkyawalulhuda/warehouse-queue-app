@@ -561,8 +561,16 @@ async function updateSchedule(id, data) {
   try {
     return await prisma.$transaction(async (tx) => {
       if (toDelete.length > 0) {
+        const deletedIds = toDelete.map((item) => item.id);
+        // Antrian BATAL tetap menyimpan snapshot plan, jadi cukup dilepas
+        // tautannya sebelum item dihapus. Tanpa ini FK Restrict menolak
+        // penghapusan dan pengguna menerima error database mentah.
+        await tx.queueEntry.updateMany({
+          where: { scheduleItemId: { in: deletedIds } },
+          data: { scheduleItemId: null },
+        });
         await tx.shipmentScheduleItem.deleteMany({
-          where: { id: { in: toDelete.map((item) => item.id) } },
+          where: { id: { in: deletedIds } },
         });
       }
 

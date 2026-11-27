@@ -146,15 +146,56 @@ function buildQueueWorkbook(entries) {
   const workbook = new ExcelJS.Workbook();
   const worksheet = workbook.addWorksheet("Antrian Truk");
 
+  // Nilai plan diambil dari snapshot pada antrian (samakan dengan report),
+  // dan jatuh ke nilai item schedule bila snapshot kosong. Item schedule bisa
+  // saja sudah dihapus, jadi snapshot adalah sumber utama.
+  const resolvePlan = (entry) => {
+    const item = entry.scheduleItem || null;
+    const plannedStart = entry.plannedStart || item?.plannedStart || null;
+    const plannedFinish = entry.plannedFinish || item?.plannedFinish || null;
+    return {
+      plannedTruckType:
+        entry.plannedTruckType || item?.truckType || item?.truckTypeOther || null,
+      plannedTransporterName:
+        entry.plannedTransporterName || item?.transporter?.name || null,
+      plannedDriverName: entry.plannedDriverName || item?.driverName || null,
+      plannedContainerNumbers:
+        entry.plannedContainerNumbers?.length
+          ? entry.plannedContainerNumbers
+          : item?.containerNumbers || [],
+      plannedStart,
+      plannedFinish,
+      scheduleItemStatus: item?.status || null,
+      varianceArrival:
+        entry.registerTime && plannedStart
+          ? Math.round(
+              (new Date(entry.registerTime).getTime() - new Date(plannedStart).getTime()) / 60000
+            )
+          : null,
+      varianceFinish:
+        entry.finishTime && plannedFinish
+          ? Math.round(
+              (new Date(entry.finishTime).getTime() - new Date(plannedFinish).getTime()) / 60000
+            )
+          : null,
+    };
+  };
+
   worksheet.columns = [
     { header: "No", key: "no", width: 6 },
     { header: "Tanggal", key: "date", width: 14 },
     { header: "Customer Name", key: "customerName", width: 28 },
     { header: "Driver Name", key: "driverName", width: 20 },
+    { header: "Driver Plan", key: "plannedDriverName", width: 20 },
     { header: "Driver Phone", key: "driverPhone", width: 18 },
+    // Plat plan tidak dijadikan kolom terpisah: nilainya dijamin sama dengan
+    // No Truck selama tautan ke schedule aktif (plat terkunci di kedua sisi).
     { header: "No Truck", key: "truckNumber", width: 16 },
+    { header: "Tipe Truk Plan", key: "plannedTruckType", width: 16 },
     { header: "No Container", key: "containerNumber", width: 18 },
+    { header: "Container Plan", key: "plannedContainerNumbers", width: 22 },
     { header: "Transporter", key: "transporter", width: 18 },
+    { header: "Transporter Plan", key: "plannedTransporterName", width: 22 },
     { header: "Notes", key: "notes", width: 24 },
     { header: "Notes from WH", key: "notesFromWh", width: 30 },
     { header: "Gate No", key: "gateNo", width: 12 },
@@ -162,14 +203,19 @@ function buildQueueWorkbook(entries) {
     { header: "Gate Warehouse", key: "gateWarehouse", width: 18 },
     { header: "Nama Tallyman", key: "pickerEmployeeName", width: 28 },
     { header: "Register Time", key: "registerTime", width: 20 },
+    { header: "Estimasi Start Plan", key: "plannedStart", width: 20 },
+    { header: "Variance Kedatangan (mnt)", key: "varianceArrival", width: 24 },
     { header: "In WH - Time", key: "inWhTime", width: 20 },
     { header: "Start", key: "startTime", width: 20 },
     { header: "Finish", key: "finishTime", width: 20 },
+    { header: "Estimasi Finish Plan", key: "plannedFinish", width: 20 },
+    { header: "Variance Selesai (mnt)", key: "varianceFinish", width: 22 },
     { header: "Total Waktu (Register → Finish)", key: "totalDuration", width: 28 },
     { header: "SLA Menunggu", key: "slaWaitingMinutes", width: 18 },
     { header: "SLA IN_WH + Proses", key: "slaInWhProcessMinutes", width: 22 },
     { header: "Time Remaining", key: "timeRemaining", width: 18 },
     { header: "Status", key: "status", width: 14 },
+    { header: "Status Plan", key: "scheduleItemStatus", width: 16 },
     { header: "Loading Type", key: "loadingType", width: 18 },
     { header: "Keterangan Batal", key: "cancelReason", width: 30 },
     { header: "Category", key: "category", width: 14 },
@@ -178,6 +224,7 @@ function buildQueueWorkbook(entries) {
 
   entries.forEach((entry, index) => {
     const remainingMinutes = queueService.getEntryRemainingMinutes(entry);
+    const plan = resolvePlan(entry);
     let timeRemaining = "-";
     if (remainingMinutes !== null) {
       timeRemaining =
@@ -191,10 +238,14 @@ function buildQueueWorkbook(entries) {
       date: formatDateOnlyDmy(entry.registerTime),
       customerName: entry.customer?.name || "-",
       driverName: entry.driverName || "-",
+      plannedDriverName: plan.plannedDriverName || "-",
       driverPhone: entry.driverPhone || "-",
       truckNumber: entry.truckNumber || "-",
+      plannedTruckType: plan.plannedTruckType || "-",
       containerNumber: (entry.containerNumbers || []).join(", ") || "-",
+      plannedContainerNumbers: (plan.plannedContainerNumbers || []).join(", ") || "-",
       transporter: entry.transporter || "-",
+      plannedTransporterName: plan.plannedTransporterName || "-",
       notes: entry.notes || "-",
       notesFromWh: entry.notesFromWh || "-",
       gateNo: entry.gate?.gateNo || "-",
@@ -202,14 +253,19 @@ function buildQueueWorkbook(entries) {
       gateWarehouse: entry.gate?.warehouse || "-",
       pickerEmployeeName: entry.pickerEmployee?.name || "-",
       registerTime: formatDateTimeDmy(entry.registerTime),
+      plannedStart: formatDateTimeDmy(plan.plannedStart),
+      varianceArrival: plan.varianceArrival ?? "-",
       inWhTime: formatDateTimeDmy(entry.inWhTime),
       startTime: formatDateTimeDmy(entry.startTime),
       finishTime: formatDateTimeDmy(entry.finishTime),
+      plannedFinish: formatDateTimeDmy(plan.plannedFinish),
+      varianceFinish: plan.varianceFinish ?? "-",
       slaWaitingMinutes: formatMinutesHuman(entry.slaWaitingMinutes),
       slaInWhProcessMinutes: formatMinutesHuman(entry.slaInWhProcessMinutes),
       totalDuration: formatDurationHuman(entry.registerTime, entry.finishTime),
       timeRemaining,
       status: entry.status || "-",
+      scheduleItemStatus: plan.scheduleItemStatus || "-",
       loadingType: entry.loadingType || "-",
       cancelReason: entry.logs?.[0]?.note || "-",
       category: mapQueueCategory(entry.category),
