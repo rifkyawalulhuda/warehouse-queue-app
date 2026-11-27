@@ -96,6 +96,24 @@ const router = createRouter({
           name: 'Schedule Pengiriman',
           component: () => import('@/views/Schedule/SchedulePengiriman.vue'),
           meta: { roles: ['ADMIN', 'WAREHOUSE', 'CS'] }
+        },
+        {
+          path: 'report-schedule-vs-aktual',
+          name: 'Report Schedule vs Aktual',
+          component: () => import('@/views/Report/ScheduleVsActual.vue'),
+          meta: { roles: ['ADMIN', 'WAREHOUSE', 'CS'] }
+        },
+        {
+          path: 'master-transporter',
+          name: 'Master Transporter',
+          component: () => import('@/views/MasterTransporter/TransporterList.vue'),
+          meta: { roles: ['ADMIN'] }
+        },
+        {
+          path: 'pengaturan-sistem',
+          name: 'Pengaturan Sistem',
+          component: () => import('@/views/Settings/PengaturanSistem.vue'),
+          meta: { roles: ['ADMIN'] }
         }
       ]
     }

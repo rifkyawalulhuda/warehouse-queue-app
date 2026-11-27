@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import { computed, nextTick, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import Card from '@/components/ui/Card.vue'
@@ -511,12 +511,12 @@ const buildMonthlyReportHtml = (report: MonthlyReportPayload) => {
       </div>
 
       <div class="section">
-        <h3>Ringkasan Schedule In & Out (Total Qty Bulanan)</h3>
+        <h3>Ringkasan Schedule In & Out (Total Truk Bulanan)</h3>
         <div class="section-body">
           <div class="cards">
-            <div class="card"><div class="label">Store In Qty</div><div class="value">${formatNumber(report.scheduleSummary?.storeInQty || 0)}</div></div>
-            <div class="card"><div class="label">Store Out Qty</div><div class="value">${formatNumber(report.scheduleSummary?.storeOutQty || 0)}</div></div>
-            <div class="card"><div class="label">Total Qty</div><div class="value">${formatNumber(report.scheduleSummary?.totalQty || 0)}</div></div>
+            <div class="card"><div class="label">Store In (Truk)</div><div class="value">${formatNumber(report.scheduleSummary?.storeInQty || 0)}</div></div>
+            <div class="card"><div class="label">Store Out (Truk)</div><div class="value">${formatNumber(report.scheduleSummary?.storeOutQty || 0)}</div></div>
+            <div class="card"><div class="label">Total Truk</div><div class="value">${formatNumber(report.scheduleSummary?.totalQty || 0)}</div></div>
             <div class="card"><div class="label">Kategori Truk Aktif</div><div class="value">${formatNumber(report.truckCategoryItems?.filter((x) => x.totalQty > 0).length || 0)}</div></div>
           </div>
         </div>
@@ -561,7 +561,7 @@ const buildMonthlyReportHtml = (report: MonthlyReportPayload) => {
         <h3>Distribusi Jenis Truk Schedule (Store In vs Store Out)</h3>
         <div class="section-body">
           <table>
-            <thead><tr><th>Kategori Truk</th><th>Store In Qty</th><th>Store Out Qty</th><th>Total Qty</th></tr></thead>
+            <thead><tr><th>Kategori Truk</th><th>Store In (Truk)</th><th>Store Out (Truk)</th><th>Total Truk</th></tr></thead>
             <tbody>${truckCategoryRows}</tbody>
           </table>
         </div>
@@ -582,10 +582,10 @@ const buildMonthlyReportHtml = (report: MonthlyReportPayload) => {
       </div>
 
       <div class="section">
-        <h3>Customer Schedule (Berdasarkan Qty)</h3>
+        <h3>Customer Schedule (Berdasarkan Jumlah Truk)</h3>
         <div class="section-body">
           <table>
-            <thead><tr><th>No</th><th>Customer</th><th>Store In Qty</th><th>Store Out Qty</th><th>Total Qty</th></tr></thead>
+            <thead><tr><th>No</th><th>Customer</th><th>Store In (Truk)</th><th>Store Out (Truk)</th><th>Total Truk</th></tr></thead>
             <tbody>${scheduleTopCustomerRows}</tbody>
           </table>
         </div>
@@ -602,10 +602,10 @@ const buildMonthlyReportHtml = (report: MonthlyReportPayload) => {
       </div>
 
       <div class="section">
-        <h3>Rekap Harian Schedule (Qty)</h3>
+        <h3>Rekap Harian Schedule (Jumlah Truk)</h3>
         <div class="section-body">
           <table>
-            <thead><tr><th>Tanggal</th><th>Store In Qty</th><th>Store Out Qty</th><th>Total Qty</th></tr></thead>
+            <thead><tr><th>Tanggal</th><th>Store In (Truk)</th><th>Store Out (Truk)</th><th>Total Truk</th></tr></thead>
             <tbody>${dailyScheduleRows}</tbody>
           </table>
         </div>
@@ -1291,7 +1291,7 @@ onUnmounted(() => {
           <div>
             <CardTitle>Schedule Pengiriman per Jenis Truk (Bulanan)</CardTitle>
             <p class="text-xs text-muted-foreground">
-              Total Qty Store In + Store Out untuk bulan {{ formatMonthLabel(monthlyTruckSummary.month) }}
+              Total Truk Store In + Store Out untuk bulan {{ formatMonthLabel(monthlyTruckSummary.month) }}
             </p>
           </div>
           <input
@@ -1306,7 +1306,7 @@ onUnmounted(() => {
           </div>
           <template v-else>
             <p class="mb-3 text-xs text-muted-foreground">
-              Total Qty Bulan Ini: {{ monthlyTruckSummary.totalQty }}
+              Total Truk Bulan Ini: {{ monthlyTruckSummary.totalQty }}
             </p>
             <MonthlyTruckCategoryStackedBar :items="monthlyTruckSummary.items" />
           </template>

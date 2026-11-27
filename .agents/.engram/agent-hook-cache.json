@@ -1,0 +1,718 @@
+{
+  "records": {
+    "opencode:70df3cd322b4f08bc698605282a62129209897f5fe7c5dfacf385db9e6ec9398:ses_de4c54f6dffeuAdH4zbKV3JwqN": {
+      "host": "opencode",
+      "cwd": "E:\\Github\\warehouse-queue-app",
+      "sessionId": "ses_de4c54f6dffeuAdH4zbKV3JwqN",
+      "promptHash": "b4fd460d751ca11b34864bf3edc00f87da24e8ad96ee2a2428046ce55c44beb7",
+      "routedSignature": "4261bcac0d01331dcb1713f7ef73a6c7e68d34116d9728f20248106876586631"
+    },
+    "opencode:70df3cd322b4f08bc698605282a62129209897f5fe7c5dfacf385db9e6ec9398:ses_de4877af8ffez7fkRZK9lJoVBQ": {
+      "host": "opencode",
+      "cwd": "E:\\Github\\warehouse-queue-app",
+      "sessionId": "ses_de4877af8ffez7fkRZK9lJoVBQ",
+      "promptHash": "905963c692349a6115036e317ec152423e735d27ff6adbdee67a901a0633939e",
+      "routedSignature": "4261bcac0d01331dcb1713f7ef73a6c7e68d34116d9728f20248106876586631"
+    },
+    "opencode:70df3cd322b4f08bc698605282a62129209897f5fe7c5dfacf385db9e6ec9398:ses_de4875edcffep0Gq1bCjKSaTul": {
+      "host": "opencode",
+      "cwd": "E:\\Github\\warehouse-queue-app",
+      "sessionId": "ses_de4875edcffep0Gq1bCjKSaTul",
+      "promptHash": "70b315fb66a7b30b0b937deb175a6626060d05be77f9fed1b12163e2a9509cc0",
+      "routedSignature": "4261bcac0d01331dcb1713f7ef73a6c7e68d34116d9728f20248106876586631"
+    },
+    "opencode:70df3cd322b4f08bc698605282a62129209897f5fe7c5dfacf385db9e6ec9398:ses_de47ac43affeCnszX2EexslqhO": {
+      "host": "opencode",
+      "cwd": "E:\\Github\\warehouse-queue-app",
+      "sessionId": "ses_de47ac43affeCnszX2EexslqhO",
+      "promptHash": "b9da67abc0dfa6e655bd4b884730b76cd033f9e69b2ebd334579c46739e6d992",
+      "routedSignature": "4261bcac0d01331dcb1713f7ef73a6c7e68d34116d9728f20248106876586631"
+    },
+    "opencode:70df3cd322b4f08bc698605282a62129209897f5fe7c5dfacf385db9e6ec9398:ses_de47aaa94ffeBxLxdPUt1K4kJr": {
+      "host": "opencode",
+      "cwd": "E:\\Github\\warehouse-queue-app",
+      "sessionId": "ses_de47aaa94ffeBxLxdPUt1K4kJr",
+      "promptHash": "0167e3951425f14b871918c6ca4c525f2aa5e5d304e544b3805de073bb9a4a41",
+      "routedSignature": "4261bcac0d01331dcb1713f7ef73a6c7e68d34116d9728f20248106876586631"
+    },
+    "opencode:70df3cd322b4f08bc698605282a62129209897f5fe7c5dfacf385db9e6ec9398:ses_de475e3f8ffeO04cNqzcVPt0r8": {
+      "host": "opencode",
+      "cwd": "E:\\Github\\warehouse-queue-app",
+      "sessionId": "ses_de475e3f8ffeO04cNqzcVPt0r8",
+      "promptHash": "40a6f17a25650d77b0f05e6c0fff0f955cfabe3b30aebf57b423f7faeff20252",
+      "routedSignature": "4261bcac0d01331dcb1713f7ef73a6c7e68d34116d9728f20248106876586631"
+    },
+    "opencode:70df3cd322b4f08bc698605282a62129209897f5fe7c5dfacf385db9e6ec9398:ses_de475c9d1ffeoxTBkqGizcDfTQ": {
+      "host": "opencode",
+      "cwd": "E:\\Github\\warehouse-queue-app",
+      "sessionId": "ses_de475c9d1ffeoxTBkqGizcDfTQ",
+      "promptHash": "5727cef0b92cb384197ff287280cb7abdbbd05d3b37e3ed7385e1ba9eceff0e1",
+      "routedSignature": "4261bcac0d01331dcb1713f7ef73a6c7e68d34116d9728f20248106876586631"
+    },
+    "opencode:70df3cd322b4f08bc698605282a62129209897f5fe7c5dfacf385db9e6ec9398:ses_de4754ac0ffeMIHzAsV5O8E96R": {
+      "host": "opencode",
+      "cwd": "E:\\Github\\warehouse-queue-app",
+      "sessionId": "ses_de4754ac0ffeMIHzAsV5O8E96R",
+      "promptHash": "6659d8259a651d50448544f31263c82a910aedf4448acbf42c01b919b3dc5bdf",
+      "routedSignature": "4261bcac0d01331dcb1713f7ef73a6c7e68d34116d9728f20248106876586631"
+    },
+    "opencode:70df3cd322b4f08bc698605282a62129209897f5fe7c5dfacf385db9e6ec9398:ses_de46e994cffeBEa2eQUO2OKGhh": {
+      "host": "opencode",
+      "cwd": "E:\\Github\\warehouse-queue-app",
+      "sessionId": "ses_de46e994cffeBEa2eQUO2OKGhh",
+      "promptHash": "6f850d2ce722a0dd6e23d63867e2ff6dd8f9595e227f33766518115730551d05",
+      "routedSignature": "4261bcac0d01331dcb1713f7ef73a6c7e68d34116d9728f20248106876586631"
+    },
+    "opencode:70df3cd322b4f08bc698605282a62129209897f5fe7c5dfacf385db9e6ec9398:ses_de46e7c22ffeqjSVh9gY7xVZKN": {
+      "host": "opencode",
+      "cwd": "E:\\Github\\warehouse-queue-app",
+      "sessionId": "ses_de46e7c22ffeqjSVh9gY7xVZKN",
+      "promptHash": "648b8387acf093bd73ef26495213b264db69584898b1606125d6e47c7d068ba8",
+      "routedSignature": "4261bcac0d01331dcb1713f7ef73a6c7e68d34116d9728f20248106876586631"
+    },
+    "opencode:70df3cd322b4f08bc698605282a62129209897f5fe7c5dfacf385db9e6ec9398:ses_de468c450ffeEbbhOorh0dvdp1": {
+      "host": "opencode",
+      "cwd": "E:\\Github\\warehouse-queue-app",
+      "sessionId": "ses_de468c450ffeEbbhOorh0dvdp1",
+      "promptHash": "4c04e8c9e63784b42fbc9c553115efc2c14ddc02b9fd7110e753f1e8382f787f",
+      "routedSignature": "4261bcac0d01331dcb1713f7ef73a6c7e68d34116d9728f20248106876586631"
+    },
+    "opencode:70df3cd322b4f08bc698605282a62129209897f5fe7c5dfacf385db9e6ec9398:ses_de4689cfdffeStkS6ITreRpRgi": {
+      "host": "opencode",
+      "cwd": "E:\\Github\\warehouse-queue-app",
+      "sessionId": "ses_de4689cfdffeStkS6ITreRpRgi",
+      "promptHash": "3457d55abcef91a2615001ff3b85b09310ce09468e8fb6e52232d6e93deca7bf",
+      "routedSignature": "4261bcac0d01331dcb1713f7ef73a6c7e68d34116d9728f20248106876586631"
+    },
+    "opencode:70df3cd322b4f08bc698605282a62129209897f5fe7c5dfacf385db9e6ec9398:ses_de4687e5fffe1kiuRP6m1yPhTZ": {
+      "host": "opencode",
+      "cwd": "E:\\Github\\warehouse-queue-app",
+      "sessionId": "ses_de4687e5fffe1kiuRP6m1yPhTZ",
+      "promptHash": "84ded22660fc633fa00bab1260a9ae20039ef779abffa388e34eb0685e9b67ce",
+      "routedSignature": "4261bcac0d01331dcb1713f7ef73a6c7e68d34116d9728f20248106876586631"
+    },
+    "opencode:70df3cd322b4f08bc698605282a62129209897f5fe7c5dfacf385db9e6ec9398:ses_de467620affeD38au421Bf6PWY": {
+      "host": "opencode",
+      "cwd": "E:\\Github\\warehouse-queue-app",
+      "sessionId": "ses_de467620affeD38au421Bf6PWY",
+      "promptHash": "4ea6239640a95bff7bc5be67190b8dd6f33d5d888c045e8803ace2b092920524",
+      "routedSignature": "4261bcac0d01331dcb1713f7ef73a6c7e68d34116d9728f20248106876586631"
+    },
+    "opencode:70df3cd322b4f08bc698605282a62129209897f5fe7c5dfacf385db9e6ec9398:ses_de46193e5ffecrHAhJmjlaqyzG": {
+      "host": "opencode",
+      "cwd": "E:\\Github\\warehouse-queue-app",
+      "sessionId": "ses_de46193e5ffecrHAhJmjlaqyzG",
+      "promptHash": "929db13224ef8043b0583f3a5d6cb5e988ba9eafae75826c45b579d008f0d6f6",
+      "routedSignature": "4261bcac0d01331dcb1713f7ef73a6c7e68d34116d9728f20248106876586631"
+    },
+    "opencode:70df3cd322b4f08bc698605282a62129209897f5fe7c5dfacf385db9e6ec9398:ses_de4616a18ffeSKfXDnFNyCcpjB": {
+      "host": "opencode",
+      "cwd": "E:\\Github\\warehouse-queue-app",
+      "sessionId": "ses_de4616a18ffeSKfXDnFNyCcpjB",
+      "promptHash": "0b87ca44fb3a105150deee0d13b3045eedce53d0f1c4b7cd5aad95db6754b8f3",
+      "routedSignature": "4261bcac0d01331dcb1713f7ef73a6c7e68d34116d9728f20248106876586631"
+    },
+    "opencode:70df3cd322b4f08bc698605282a62129209897f5fe7c5dfacf385db9e6ec9398:ses_de44c69d3ffemdlFwFLxqBMnx1": {
+      "host": "opencode",
+      "cwd": "E:\\Github\\warehouse-queue-app",
+      "sessionId": "ses_de44c69d3ffemdlFwFLxqBMnx1",
+      "promptHash": "130a6eb5bf6c908a4238aa8718d816a49156b78468ef6d81a36450ef4acf945f",
+      "routedSignature": "4261bcac0d01331dcb1713f7ef73a6c7e68d34116d9728f20248106876586631"
+    },
+    "opencode:70df3cd322b4f08bc698605282a62129209897f5fe7c5dfacf385db9e6ec9398:ses_de44ba851ffe6esgf68TAHA190": {
+      "host": "opencode",
+      "cwd": "E:\\Github\\warehouse-queue-app",
+      "sessionId": "ses_de44ba851ffe6esgf68TAHA190",
+      "promptHash": "ff499c7d019b22ddd9aa7319487924e77d2ce56ed5db6360d801d54674e05142",
+      "routedSignature": "4261bcac0d01331dcb1713f7ef73a6c7e68d34116d9728f20248106876586631"
+    },
+    "opencode:70df3cd322b4f08bc698605282a62129209897f5fe7c5dfacf385db9e6ec9398:ses_de446aebaffe064sBm7tVi10FA": {
+      "host": "opencode",
+      "cwd": "E:\\Github\\warehouse-queue-app",
+      "sessionId": "ses_de446aebaffe064sBm7tVi10FA",
+      "promptHash": "d5e76d9731a04fafc508446bc7f6117b3e7d14c22b40647f62e6aac4f395df2b",
+      "routedSignature": "4261bcac0d01331dcb1713f7ef73a6c7e68d34116d9728f20248106876586631"
+    },
+    "opencode:70df3cd322b4f08bc698605282a62129209897f5fe7c5dfacf385db9e6ec9398:ses_de4468b9cffeArkmZVenn5Pksu": {
+      "host": "opencode",
+      "cwd": "E:\\Github\\warehouse-queue-app",
+      "sessionId": "ses_de4468b9cffeArkmZVenn5Pksu",
+      "promptHash": "bb6be5e41e1a001468b15f190255174f9091849644b1284f130e8ad09e5427fe",
+      "routedSignature": "4261bcac0d01331dcb1713f7ef73a6c7e68d34116d9728f20248106876586631"
+    },
+    "opencode:70df3cd322b4f08bc698605282a62129209897f5fe7c5dfacf385db9e6ec9398:ses_de445db00ffekkHoDaapbgSReO": {
+      "host": "opencode",
+      "cwd": "E:\\Github\\warehouse-queue-app",
+      "sessionId": "ses_de445db00ffekkHoDaapbgSReO",
+      "promptHash": "2ca93af1b74a4f7069680c009f4b8baef564247dcb5d387b0c5ba6836bb22008",
+      "routedSignature": "4261bcac0d01331dcb1713f7ef73a6c7e68d34116d9728f20248106876586631"
+    },
+    "opencode:70df3cd322b4f08bc698605282a62129209897f5fe7c5dfacf385db9e6ec9398:ses_de443c56dffepe8VU8wn40iPdh": {
+      "host": "opencode",
+      "cwd": "E:\\Github\\warehouse-queue-app",
+      "sessionId": "ses_de443c56dffepe8VU8wn40iPdh",
+      "promptHash": "15f496b5ef9a6225f10f1844fe3e6d78acae9db372be6eb276bd77f5f8f9dc5d",
+      "routedSignature": "4261bcac0d01331dcb1713f7ef73a6c7e68d34116d9728f20248106876586631"
+    },
+    "opencode:70df3cd322b4f08bc698605282a62129209897f5fe7c5dfacf385db9e6ec9398:ses_de4432aefffexd05aKR5oxArmT": {
+      "host": "opencode",
+      "cwd": "E:\\Github\\warehouse-queue-app",
+      "sessionId": "ses_de4432aefffexd05aKR5oxArmT",
+      "promptHash": "456b356bb2713f94862ff7e55ca074a446b6abc28bc7302f6e4ce513946d123a",
+      "routedSignature": "4261bcac0d01331dcb1713f7ef73a6c7e68d34116d9728f20248106876586631"
+    },
+    "opencode:70df3cd322b4f08bc698605282a62129209897f5fe7c5dfacf385db9e6ec9398:ses_de44305e2ffe63Lpuuzq323DbE": {
+      "host": "opencode",
+      "cwd": "E:\\Github\\warehouse-queue-app",
+      "sessionId": "ses_de44305e2ffe63Lpuuzq323DbE",
+      "promptHash": "b3d7019b4c6fa5afaf239f937700c97b8c1e00a486cc9a7fcd3e8923aeace690",
+      "routedSignature": "4261bcac0d01331dcb1713f7ef73a6c7e68d34116d9728f20248106876586631"
+    },
+    "opencode:70df3cd322b4f08bc698605282a62129209897f5fe7c5dfacf385db9e6ec9398:ses_de4420451ffegT7VoWpC4NL7b0": {
+      "host": "opencode",
+      "cwd": "E:\\Github\\warehouse-queue-app",
+      "sessionId": "ses_de4420451ffegT7VoWpC4NL7b0",
+      "promptHash": "6c27d2f3bdb8eab8f8cc6e5c2422273199c03d386c66f9e88ea687996f3ae24d",
+      "routedSignature": "4261bcac0d01331dcb1713f7ef73a6c7e68d34116d9728f20248106876586631"
+    },
+    "opencode:70df3cd322b4f08bc698605282a62129209897f5fe7c5dfacf385db9e6ec9398:ses_de440fcb6ffex5oFnH4UCAi4sY": {
+      "host": "opencode",
+      "cwd": "E:\\Github\\warehouse-queue-app",
+      "sessionId": "ses_de440fcb6ffex5oFnH4UCAi4sY",
+      "promptHash": "2090b40aefb007630bbdca9ade9d6ab8651bd9be13f914d8f52caa61f670950e",
+      "routedSignature": "4261bcac0d01331dcb1713f7ef73a6c7e68d34116d9728f20248106876586631"
+    },
+    "opencode:70df3cd322b4f08bc698605282a62129209897f5fe7c5dfacf385db9e6ec9398:ses_de43ff811ffeHpsdFxPo3vP4zB": {
+      "host": "opencode",
+      "cwd": "E:\\Github\\warehouse-queue-app",
+      "sessionId": "ses_de43ff811ffeHpsdFxPo3vP4zB",
+      "promptHash": "e6c5e7e88bb32d861f250ae2e281935cc26ee9fe5e4a66fa3b8554b250578118",
+      "routedSignature": "4261bcac0d01331dcb1713f7ef73a6c7e68d34116d9728f20248106876586631"
+    },
+    "opencode:70df3cd322b4f08bc698605282a62129209897f5fe7c5dfacf385db9e6ec9398:ses_de43f0827ffeOtqLdmYMhfbUtT": {
+      "host": "opencode",
+      "cwd": "E:\\Github\\warehouse-queue-app",
+      "sessionId": "ses_de43f0827ffeOtqLdmYMhfbUtT",
+      "promptHash": "b62ca9405cfa7d130e7120b68635b929fc2aa42c5442fec26165ef7fbc37cae6",
+      "routedSignature": "4261bcac0d01331dcb1713f7ef73a6c7e68d34116d9728f20248106876586631"
+    },
+    "opencode:70df3cd322b4f08bc698605282a62129209897f5fe7c5dfacf385db9e6ec9398:ses_de438b1ceffekVN5nBPg4KNZaE": {
+      "host": "opencode",
+      "cwd": "E:\\Github\\warehouse-queue-app",
+      "sessionId": "ses_de438b1ceffekVN5nBPg4KNZaE",
+      "promptHash": "7dbc3499ea605532f8fa88252a6de923ac74a65289c2aabdd098eb7b623c271d",
+      "routedSignature": "4261bcac0d01331dcb1713f7ef73a6c7e68d34116d9728f20248106876586631"
+    },
+    "opencode:70df3cd322b4f08bc698605282a62129209897f5fe7c5dfacf385db9e6ec9398:ses_de4388651ffegpMekjZFZqx4p3": {
+      "host": "opencode",
+      "cwd": "E:\\Github\\warehouse-queue-app",
+      "sessionId": "ses_de4388651ffegpMekjZFZqx4p3",
+      "promptHash": "69d2345fd7c51f5a33bf4bd07a1380116d561e23be1728a5933dd7da9bd62e27",
+      "routedSignature": "4261bcac0d01331dcb1713f7ef73a6c7e68d34116d9728f20248106876586631"
+    },
+    "opencode:70df3cd322b4f08bc698605282a62129209897f5fe7c5dfacf385db9e6ec9398:ses_de435f380ffeSJWW9q6L3FyUSl": {
+      "host": "opencode",
+      "cwd": "E:\\Github\\warehouse-queue-app",
+      "sessionId": "ses_de435f380ffeSJWW9q6L3FyUSl",
+      "promptHash": "1d9221922b8d8d7276fcfd9a8d2e081b957c3c2e95176c4009102e3f35277665",
+      "routedSignature": "4261bcac0d01331dcb1713f7ef73a6c7e68d34116d9728f20248106876586631"
+    },
+    "opencode:70df3cd322b4f08bc698605282a62129209897f5fe7c5dfacf385db9e6ec9398:ses_de42f6a91ffeygHtNk544fmnsG": {
+      "host": "opencode",
+      "cwd": "E:\\Github\\warehouse-queue-app",
+      "sessionId": "ses_de42f6a91ffeygHtNk544fmnsG",
+      "promptHash": "5b1d4d3a3460dff35dbac3c095a0ba70498c9b98e16498952a0e057c997365e8",
+      "routedSignature": "4261bcac0d01331dcb1713f7ef73a6c7e68d34116d9728f20248106876586631"
+    },
+    "opencode:70df3cd322b4f08bc698605282a62129209897f5fe7c5dfacf385db9e6ec9398:ses_de42f5560ffeOVO4KkJc6a317t": {
+      "host": "opencode",
+      "cwd": "E:\\Github\\warehouse-queue-app",
+      "sessionId": "ses_de42f5560ffeOVO4KkJc6a317t",
+      "promptHash": "937fe55021cca11219d04c99c94643841dc318295a046c6ebf2f37e73ebea9e0",
+      "routedSignature": "4261bcac0d01331dcb1713f7ef73a6c7e68d34116d9728f20248106876586631"
+    },
+    "opencode:70df3cd322b4f08bc698605282a62129209897f5fe7c5dfacf385db9e6ec9398:ses_de4263381ffe70MmVU8R131Hgz": {
+      "host": "opencode",
+      "cwd": "E:\\Github\\warehouse-queue-app",
+      "sessionId": "ses_de4263381ffe70MmVU8R131Hgz",
+      "promptHash": "a8e953342f4d0cfb8e31f170ba5dc474337d25b987de484278a07912774bae6f",
+      "routedSignature": "4261bcac0d01331dcb1713f7ef73a6c7e68d34116d9728f20248106876586631"
+    },
+    "opencode:70df3cd322b4f08bc698605282a62129209897f5fe7c5dfacf385db9e6ec9398:ses_de426099affen6GPmnCcrLkzg4": {
+      "host": "opencode",
+      "cwd": "E:\\Github\\warehouse-queue-app",
+      "sessionId": "ses_de426099affen6GPmnCcrLkzg4",
+      "promptHash": "86d007d84f665d899190af1f92683af8b5370b57e8e67e08ace835619f785d90",
+      "routedSignature": "4261bcac0d01331dcb1713f7ef73a6c7e68d34116d9728f20248106876586631"
+    },
+    "opencode:70df3cd322b4f08bc698605282a62129209897f5fe7c5dfacf385db9e6ec9398:ses_de41cde37ffeF8rTx17isp1WJv": {
+      "host": "opencode",
+      "cwd": "E:\\Github\\warehouse-queue-app",
+      "sessionId": "ses_de41cde37ffeF8rTx17isp1WJv",
+      "promptHash": "0ecf31dcad544ca289f9ca10fffc069486fe6a3388cb9b14584103f688e3426d",
+      "routedSignature": "4261bcac0d01331dcb1713f7ef73a6c7e68d34116d9728f20248106876586631"
+    },
+    "opencode:70df3cd322b4f08bc698605282a62129209897f5fe7c5dfacf385db9e6ec9398:ses_de41cbd6fffeC7pR6lXbRXNRE0": {
+      "host": "opencode",
+      "cwd": "E:\\Github\\warehouse-queue-app",
+      "sessionId": "ses_de41cbd6fffeC7pR6lXbRXNRE0",
+      "promptHash": "d3ba727dcff335b9b9bb08b4febfb9a07b07be4603039eccdda487ad96654342",
+      "routedSignature": "4261bcac0d01331dcb1713f7ef73a6c7e68d34116d9728f20248106876586631"
+    },
+    "opencode:70df3cd322b4f08bc698605282a62129209897f5fe7c5dfacf385db9e6ec9398:ses_de4101b13ffeSilnl4XXGNK8x2": {
+      "host": "opencode",
+      "cwd": "E:\\Github\\warehouse-queue-app",
+      "sessionId": "ses_de4101b13ffeSilnl4XXGNK8x2",
+      "promptHash": "45772cb41087571ed309234dae511b3f28e1686a4cc482ce963b526ad3fe78fd",
+      "routedSignature": "4261bcac0d01331dcb1713f7ef73a6c7e68d34116d9728f20248106876586631"
+    },
+    "opencode:70df3cd322b4f08bc698605282a62129209897f5fe7c5dfacf385db9e6ec9398:ses_de40f2a7affeeocL6ZabE9HbiE": {
+      "host": "opencode",
+      "cwd": "E:\\Github\\warehouse-queue-app",
+      "sessionId": "ses_de40f2a7affeeocL6ZabE9HbiE",
+      "promptHash": "922a7858929c7ce1516ea96b103b35749d535433dccbb0ced9271f29a95abc6d",
+      "routedSignature": "4261bcac0d01331dcb1713f7ef73a6c7e68d34116d9728f20248106876586631"
+    },
+    "opencode:70df3cd322b4f08bc698605282a62129209897f5fe7c5dfacf385db9e6ec9398:ses_de40672daffeym9M5L7QgHd7zQ": {
+      "host": "opencode",
+      "cwd": "E:\\Github\\warehouse-queue-app",
+      "sessionId": "ses_de40672daffeym9M5L7QgHd7zQ",
+      "promptHash": "c5b39ccf7f37f441d78c01fbdafa811cf52333cf04be7d69454c0385a9151175",
+      "routedSignature": "4261bcac0d01331dcb1713f7ef73a6c7e68d34116d9728f20248106876586631"
+    },
+    "opencode:70df3cd322b4f08bc698605282a62129209897f5fe7c5dfacf385db9e6ec9398:ses_de406598bffeDGv2C63XL2KbcL": {
+      "host": "opencode",
+      "cwd": "E:\\Github\\warehouse-queue-app",
+      "sessionId": "ses_de406598bffeDGv2C63XL2KbcL",
+      "promptHash": "f88917ff5875628530deb8f68364001507e782b30247cb740e1bcccf4bc3a297",
+      "routedSignature": "4261bcac0d01331dcb1713f7ef73a6c7e68d34116d9728f20248106876586631"
+    },
+    "opencode:70df3cd322b4f08bc698605282a62129209897f5fe7c5dfacf385db9e6ec9398:ses_de4012673ffezfnLoO6UbPO4UZ": {
+      "host": "opencode",
+      "cwd": "E:\\Github\\warehouse-queue-app",
+      "sessionId": "ses_de4012673ffezfnLoO6UbPO4UZ",
+      "promptHash": "e7be9243f0ab9297acd3e5848dfa2f27c440dcdd9938af59e73b463365b532c2",
+      "routedSignature": "4261bcac0d01331dcb1713f7ef73a6c7e68d34116d9728f20248106876586631"
+    },
+    "opencode:70df3cd322b4f08bc698605282a62129209897f5fe7c5dfacf385db9e6ec9398:ses_de40103c5ffeK2hDPoo23AJHtD": {
+      "host": "opencode",
+      "cwd": "E:\\Github\\warehouse-queue-app",
+      "sessionId": "ses_de40103c5ffeK2hDPoo23AJHtD",
+      "promptHash": "35df950e2f736d6571ba5baf44da92029269814ea68933ad5a351d0cfed53d09",
+      "routedSignature": "4261bcac0d01331dcb1713f7ef73a6c7e68d34116d9728f20248106876586631"
+    },
+    "opencode:70df3cd322b4f08bc698605282a62129209897f5fe7c5dfacf385db9e6ec9398:ses_de400dadeffe9XFyG47d7aLLIz": {
+      "host": "opencode",
+      "cwd": "E:\\Github\\warehouse-queue-app",
+      "sessionId": "ses_de400dadeffe9XFyG47d7aLLIz",
+      "promptHash": "14a2adfe865ca5baba03f786c846846c980a82d896e2ace16a94a83256c715d9",
+      "routedSignature": "4261bcac0d01331dcb1713f7ef73a6c7e68d34116d9728f20248106876586631"
+    },
+    "opencode:70df3cd322b4f08bc698605282a62129209897f5fe7c5dfacf385db9e6ec9398:ses_de3ffd9baffe2xxnTRvUI4CiiX": {
+      "host": "opencode",
+      "cwd": "E:\\Github\\warehouse-queue-app",
+      "sessionId": "ses_de3ffd9baffe2xxnTRvUI4CiiX",
+      "promptHash": "6d8551e1fef0705cf28126e98633cf701b6258a50e66062a5d94c4c3ab8a934e",
+      "routedSignature": "4261bcac0d01331dcb1713f7ef73a6c7e68d34116d9728f20248106876586631"
+    },
+    "opencode:70df3cd322b4f08bc698605282a62129209897f5fe7c5dfacf385db9e6ec9398:ses_de3fee0d7ffe2OqyPkplXKI022": {
+      "host": "opencode",
+      "cwd": "E:\\Github\\warehouse-queue-app",
+      "sessionId": "ses_de3fee0d7ffe2OqyPkplXKI022",
+      "promptHash": "af75fc1900ff9f0cb03b87bcbeb29ba31bf6527a717cc5845a494c7dc061da10",
+      "routedSignature": "4261bcac0d01331dcb1713f7ef73a6c7e68d34116d9728f20248106876586631"
+    },
+    "opencode:70df3cd322b4f08bc698605282a62129209897f5fe7c5dfacf385db9e6ec9398:ses_de3fdbd70ffeKTzNIgoRjfupMO": {
+      "host": "opencode",
+      "cwd": "E:\\Github\\warehouse-queue-app",
+      "sessionId": "ses_de3fdbd70ffeKTzNIgoRjfupMO",
+      "promptHash": "d7ce3eb805947a1ad856a8f63d60b33c26c0350234b51e2d556cb7b9186eef8c",
+      "routedSignature": "4261bcac0d01331dcb1713f7ef73a6c7e68d34116d9728f20248106876586631"
+    },
+    "opencode:70df3cd322b4f08bc698605282a62129209897f5fe7c5dfacf385db9e6ec9398:ses_de3fd25ffffedPQl1j2r3R3Oco": {
+      "host": "opencode",
+      "cwd": "E:\\Github\\warehouse-queue-app",
+      "sessionId": "ses_de3fd25ffffedPQl1j2r3R3Oco",
+      "promptHash": "9f2fc05d48ba8a80390f314579376657e7077b5a1bfeb4cfa3e86bd72395006f",
+      "routedSignature": "4261bcac0d01331dcb1713f7ef73a6c7e68d34116d9728f20248106876586631"
+    },
+    "opencode:70df3cd322b4f08bc698605282a62129209897f5fe7c5dfacf385db9e6ec9398:ses_de3fd0e60ffe8HasWVnyPrYDIb": {
+      "host": "opencode",
+      "cwd": "E:\\Github\\warehouse-queue-app",
+      "sessionId": "ses_de3fd0e60ffe8HasWVnyPrYDIb",
+      "promptHash": "95eddfbaf2e7ccdcafc75668e78c896908877aab2512e55c4a9f6de8f3766d30",
+      "routedSignature": "4261bcac0d01331dcb1713f7ef73a6c7e68d34116d9728f20248106876586631"
+    },
+    "opencode:70df3cd322b4f08bc698605282a62129209897f5fe7c5dfacf385db9e6ec9398:ses_de3fc4bfdffeajDLzNG7szuP1w": {
+      "host": "opencode",
+      "cwd": "E:\\Github\\warehouse-queue-app",
+      "sessionId": "ses_de3fc4bfdffeajDLzNG7szuP1w",
+      "promptHash": "32f1195bbb5080b6d135938020f69887cc3629447ee62d7aed500d41e2afb99f",
+      "routedSignature": "4261bcac0d01331dcb1713f7ef73a6c7e68d34116d9728f20248106876586631"
+    },
+    "opencode:70df3cd322b4f08bc698605282a62129209897f5fe7c5dfacf385db9e6ec9398:ses_de3fc2d56ffeYAHMIz4lUsp6HJ": {
+      "host": "opencode",
+      "cwd": "E:\\Github\\warehouse-queue-app",
+      "sessionId": "ses_de3fc2d56ffeYAHMIz4lUsp6HJ",
+      "promptHash": "246d533388c946bb39b12567fb1f4c13c4483a343bbc07febbe1e8ddf4babf08",
+      "routedSignature": "4261bcac0d01331dcb1713f7ef73a6c7e68d34116d9728f20248106876586631"
+    },
+    "opencode:70df3cd322b4f08bc698605282a62129209897f5fe7c5dfacf385db9e6ec9398:ses_de3fbd197ffeNgdugLGABsQVEZ": {
+      "host": "opencode",
+      "cwd": "E:\\Github\\warehouse-queue-app",
+      "sessionId": "ses_de3fbd197ffeNgdugLGABsQVEZ",
+      "promptHash": "9928f40148a3c049d0132642128013e416bc5df035b0cd231a350fdf6ad5794a",
+      "routedSignature": "4261bcac0d01331dcb1713f7ef73a6c7e68d34116d9728f20248106876586631"
+    },
+    "opencode:70df3cd322b4f08bc698605282a62129209897f5fe7c5dfacf385db9e6ec9398:ses_de3fad171ffeaC6ufGz4pjQd2u": {
+      "host": "opencode",
+      "cwd": "E:\\Github\\warehouse-queue-app",
+      "sessionId": "ses_de3fad171ffeaC6ufGz4pjQd2u",
+      "promptHash": "3f281e0ff541e89e5c99bef21f994b4801d722bdbfa872448d1886c5db7b99bd",
+      "routedSignature": "4261bcac0d01331dcb1713f7ef73a6c7e68d34116d9728f20248106876586631"
+    },
+    "opencode:70df3cd322b4f08bc698605282a62129209897f5fe7c5dfacf385db9e6ec9398:ses_de3f9bf95ffeeNtOLcFFWAVn4R": {
+      "host": "opencode",
+      "cwd": "E:\\Github\\warehouse-queue-app",
+      "sessionId": "ses_de3f9bf95ffeeNtOLcFFWAVn4R",
+      "promptHash": "dd352c72becc80d8a48c10189678f55e653a29b068de555e291b8207708c0149",
+      "routedSignature": "4261bcac0d01331dcb1713f7ef73a6c7e68d34116d9728f20248106876586631"
+    },
+    "opencode:70df3cd322b4f08bc698605282a62129209897f5fe7c5dfacf385db9e6ec9398:ses_de3f8c711ffeVb24XvgA0ZMHy9": {
+      "host": "opencode",
+      "cwd": "E:\\Github\\warehouse-queue-app",
+      "sessionId": "ses_de3f8c711ffeVb24XvgA0ZMHy9",
+      "promptHash": "3f7b5178fd19f47ba5e9776e10b65df09027d81fae0fdf5b48b0b0b7f07937b3",
+      "routedSignature": "4261bcac0d01331dcb1713f7ef73a6c7e68d34116d9728f20248106876586631"
+    },
+    "opencode:70df3cd322b4f08bc698605282a62129209897f5fe7c5dfacf385db9e6ec9398:ses_de3f7d376ffeucyve1AHnURaly": {
+      "host": "opencode",
+      "cwd": "E:\\Github\\warehouse-queue-app",
+      "sessionId": "ses_de3f7d376ffeucyve1AHnURaly",
+      "promptHash": "5f97f96a1a340418d46ebf0129c7951e8de30caf94dba8f7627490a27b94b1a2",
+      "routedSignature": "4261bcac0d01331dcb1713f7ef73a6c7e68d34116d9728f20248106876586631"
+    },
+    "opencode:70df3cd322b4f08bc698605282a62129209897f5fe7c5dfacf385db9e6ec9398:ses_de3f6c111ffeM0z2wGAd7xvqKB": {
+      "host": "opencode",
+      "cwd": "E:\\Github\\warehouse-queue-app",
+      "sessionId": "ses_de3f6c111ffeM0z2wGAd7xvqKB",
+      "promptHash": "9e52f1e9c73e9036ea89c31df7ab63cfc980fab2241c5e19a0c1ded27b6468f8",
+      "routedSignature": "4261bcac0d01331dcb1713f7ef73a6c7e68d34116d9728f20248106876586631"
+    },
+    "opencode:70df3cd322b4f08bc698605282a62129209897f5fe7c5dfacf385db9e6ec9398:ses_de3f5b38effeHjVUbkdCl6VOK7": {
+      "host": "opencode",
+      "cwd": "E:\\Github\\warehouse-queue-app",
+      "sessionId": "ses_de3f5b38effeHjVUbkdCl6VOK7",
+      "promptHash": "e64004cb9fd87025862823b7f6f987797c529601d8d737774fb96c6cca515938",
+      "routedSignature": "4261bcac0d01331dcb1713f7ef73a6c7e68d34116d9728f20248106876586631"
+    },
+    "opencode:70df3cd322b4f08bc698605282a62129209897f5fe7c5dfacf385db9e6ec9398:ses_de3f4952bffe7Pq38aYC437AOK": {
+      "host": "opencode",
+      "cwd": "E:\\Github\\warehouse-queue-app",
+      "sessionId": "ses_de3f4952bffe7Pq38aYC437AOK",
+      "promptHash": "855c36b3126abc980bc769a03644977207dc59de534a201d5e4aeefa5ab72c15",
+      "routedSignature": "4261bcac0d01331dcb1713f7ef73a6c7e68d34116d9728f20248106876586631"
+    },
+    "opencode:70df3cd322b4f08bc698605282a62129209897f5fe7c5dfacf385db9e6ec9398:ses_de3f3f22effedU2TZh4DvhSrBc": {
+      "host": "opencode",
+      "cwd": "E:\\Github\\warehouse-queue-app",
+      "sessionId": "ses_de3f3f22effedU2TZh4DvhSrBc",
+      "promptHash": "a67f28188fb753d86faff908322176a4bee677ef4eb114b7d67b0c682db6b2f4",
+      "routedSignature": "4261bcac0d01331dcb1713f7ef73a6c7e68d34116d9728f20248106876586631"
+    },
+    "opencode:70df3cd322b4f08bc698605282a62129209897f5fe7c5dfacf385db9e6ec9398:ses_de3f37c49ffekf2EGYh6JrHAra": {
+      "host": "opencode",
+      "cwd": "E:\\Github\\warehouse-queue-app",
+      "sessionId": "ses_de3f37c49ffekf2EGYh6JrHAra",
+      "promptHash": "a9d4d3fae6b55e3e80fb0195f0a6ac470e165016f9713d98b03fa41294be036b",
+      "routedSignature": "4261bcac0d01331dcb1713f7ef73a6c7e68d34116d9728f20248106876586631"
+    },
+    "opencode:70df3cd322b4f08bc698605282a62129209897f5fe7c5dfacf385db9e6ec9398:ses_de3f3384bffeiLuJzSwagKxysQ": {
+      "host": "opencode",
+      "cwd": "E:\\Github\\warehouse-queue-app",
+      "sessionId": "ses_de3f3384bffeiLuJzSwagKxysQ",
+      "promptHash": "fc1a31ff85588e698559b743bd867bfbaf4f20a07292a3525ce7cdba831c7663",
+      "routedSignature": "4261bcac0d01331dcb1713f7ef73a6c7e68d34116d9728f20248106876586631"
+    },
+    "opencode:70df3cd322b4f08bc698605282a62129209897f5fe7c5dfacf385db9e6ec9398:ses_de3f322a5ffeVoYNwnKjjdXWuH": {
+      "host": "opencode",
+      "cwd": "E:\\Github\\warehouse-queue-app",
+      "sessionId": "ses_de3f322a5ffeVoYNwnKjjdXWuH",
+      "promptHash": "b85ed5f0d8d46ee3c4c9f0db7ec20a70d2691faa5125d3281bb53bb5d64a19de",
+      "routedSignature": "4261bcac0d01331dcb1713f7ef73a6c7e68d34116d9728f20248106876586631"
+    },
+    "opencode:70df3cd322b4f08bc698605282a62129209897f5fe7c5dfacf385db9e6ec9398:ses_de3f149f4ffe58G2w4Q1icR46e": {
+      "host": "opencode",
+      "cwd": "E:\\Github\\warehouse-queue-app",
+      "sessionId": "ses_de3f149f4ffe58G2w4Q1icR46e",
+      "promptHash": "850d8cf921a91214ddb0dbec18414f21c932f29455174f243e18eda69fe14bc5",
+      "routedSignature": "4261bcac0d01331dcb1713f7ef73a6c7e68d34116d9728f20248106876586631"
+    },
+    "opencode:70df3cd322b4f08bc698605282a62129209897f5fe7c5dfacf385db9e6ec9398:ses_de3f03de2ffewoYyfZGKD8o40T": {
+      "host": "opencode",
+      "cwd": "E:\\Github\\warehouse-queue-app",
+      "sessionId": "ses_de3f03de2ffewoYyfZGKD8o40T",
+      "promptHash": "bdd0183b366b51ab39ca83e1164a32703dce6bebe845f2ec9aedc04426d63d77",
+      "routedSignature": "4261bcac0d01331dcb1713f7ef73a6c7e68d34116d9728f20248106876586631"
+    },
+    "opencode:70df3cd322b4f08bc698605282a62129209897f5fe7c5dfacf385db9e6ec9398:ses_de3ef20adffey9ioK31mfmwl5R": {
+      "host": "opencode",
+      "cwd": "E:\\Github\\warehouse-queue-app",
+      "sessionId": "ses_de3ef20adffey9ioK31mfmwl5R",
+      "promptHash": "36e73f534dc7580473b541dff6c464ac75a6b2a46d8cc1f96f757f1832687b2b",
+      "routedSignature": "4261bcac0d01331dcb1713f7ef73a6c7e68d34116d9728f20248106876586631"
+    },
+    "opencode:70df3cd322b4f08bc698605282a62129209897f5fe7c5dfacf385db9e6ec9398:ses_de3ee053bffepZeaUmv7pM2r6k": {
+      "host": "opencode",
+      "cwd": "E:\\Github\\warehouse-queue-app",
+      "sessionId": "ses_de3ee053bffepZeaUmv7pM2r6k",
+      "promptHash": "58580915e14138159f899a1867821e1a17361502c9b4391eb5c8159f818dbd7f",
+      "routedSignature": "4261bcac0d01331dcb1713f7ef73a6c7e68d34116d9728f20248106876586631"
+    },
+    "opencode:70df3cd322b4f08bc698605282a62129209897f5fe7c5dfacf385db9e6ec9398:ses_de3ecf8ecffemtMHOBZbUsam50": {
+      "host": "opencode",
+      "cwd": "E:\\Github\\warehouse-queue-app",
+      "sessionId": "ses_de3ecf8ecffemtMHOBZbUsam50",
+      "promptHash": "98ec05aa0c2d74de53bd21ee4ce8c74ef56d266c4eda03e7ee8eff1c7f93ada7",
+      "routedSignature": "4261bcac0d01331dcb1713f7ef73a6c7e68d34116d9728f20248106876586631"
+    },
+    "opencode:70df3cd322b4f08bc698605282a62129209897f5fe7c5dfacf385db9e6ec9398:ses_de3ebd830ffeZqLnR0yFnWYnR1": {
+      "host": "opencode",
+      "cwd": "E:\\Github\\warehouse-queue-app",
+      "sessionId": "ses_de3ebd830ffeZqLnR0yFnWYnR1",
+      "promptHash": "b237d11349db5cf8a7722fbb6b41c4c06f653e2c156a73a0a6fee352af9b3263",
+      "routedSignature": "4261bcac0d01331dcb1713f7ef73a6c7e68d34116d9728f20248106876586631"
+    },
+    "opencode:70df3cd322b4f08bc698605282a62129209897f5fe7c5dfacf385db9e6ec9398:ses_de3eae089ffee30VBoBcMRJwgF": {
+      "host": "opencode",
+      "cwd": "E:\\Github\\warehouse-queue-app",
+      "sessionId": "ses_de3eae089ffee30VBoBcMRJwgF",
+      "promptHash": "e1b02f52ddfbca977ba0cac885d5ce5f2daa5fea8f99af116fa74ec6e2d904b3",
+      "routedSignature": "4261bcac0d01331dcb1713f7ef73a6c7e68d34116d9728f20248106876586631"
+    },
+    "opencode:70df3cd322b4f08bc698605282a62129209897f5fe7c5dfacf385db9e6ec9398:ses_de3eac3d8ffe6K7Lora88LAT04": {
+      "host": "opencode",
+      "cwd": "E:\\Github\\warehouse-queue-app",
+      "sessionId": "ses_de3eac3d8ffe6K7Lora88LAT04",
+      "promptHash": "ca9cdd0272bd504976b73da7e7adc41ce9a030a41dd0616d21a03f9aae9117aa",
+      "routedSignature": "4261bcac0d01331dcb1713f7ef73a6c7e68d34116d9728f20248106876586631"
+    },
+    "opencode:70df3cd322b4f08bc698605282a62129209897f5fe7c5dfacf385db9e6ec9398:ses_de3eaa8aaffeNa0AbASW3TxQ6J": {
+      "host": "opencode",
+      "cwd": "E:\\Github\\warehouse-queue-app",
+      "sessionId": "ses_de3eaa8aaffeNa0AbASW3TxQ6J",
+      "promptHash": "627e8c1ad5044b83bb6f3cfa5ff9a13589e05f48c063f6a414f988f62f6b1796",
+      "routedSignature": "4261bcac0d01331dcb1713f7ef73a6c7e68d34116d9728f20248106876586631"
+    },
+    "opencode:70df3cd322b4f08bc698605282a62129209897f5fe7c5dfacf385db9e6ec9398:ses_de3cfca4effeTpStO4Cpid4HyP": {
+      "host": "opencode",
+      "cwd": "E:\\Github\\warehouse-queue-app",
+      "sessionId": "ses_de3cfca4effeTpStO4Cpid4HyP",
+      "promptHash": "448c100122e9f767d400801ff7d12bc7b8e1f49101fd2779596113e1df6c3b11",
+      "routedSignature": "4261bcac0d01331dcb1713f7ef73a6c7e68d34116d9728f20248106876586631"
+    },
+    "opencode:70df3cd322b4f08bc698605282a62129209897f5fe7c5dfacf385db9e6ec9398:ses_de3cf0b9cffeM1UMilc2XDoALq": {
+      "host": "opencode",
+      "cwd": "E:\\Github\\warehouse-queue-app",
+      "sessionId": "ses_de3cf0b9cffeM1UMilc2XDoALq",
+      "promptHash": "c951150ef09310a97fafc1c5ab14f3366253a0183a601b3956bac62512215b50",
+      "routedSignature": "4261bcac0d01331dcb1713f7ef73a6c7e68d34116d9728f20248106876586631"
+    },
+    "opencode:70df3cd322b4f08bc698605282a62129209897f5fe7c5dfacf385db9e6ec9398:ses_de3c697e6ffeQaoyEhn0EI5ytY": {
+      "host": "opencode",
+      "cwd": "E:\\Github\\warehouse-queue-app",
+      "sessionId": "ses_de3c697e6ffeQaoyEhn0EI5ytY",
+      "promptHash": "8c354f107ac45b74fcd1956fb91db333c9a22f7a5077ac990f745b55eb140511",
+      "routedSignature": "4261bcac0d01331dcb1713f7ef73a6c7e68d34116d9728f20248106876586631"
+    },
+    "opencode:70df3cd322b4f08bc698605282a62129209897f5fe7c5dfacf385db9e6ec9398:ses_de3c65eb8ffeN06Rn2gGQ7W6yu": {
+      "host": "opencode",
+      "cwd": "E:\\Github\\warehouse-queue-app",
+      "sessionId": "ses_de3c65eb8ffeN06Rn2gGQ7W6yu",
+      "promptHash": "b3f6d229af81c1aab7f8d6bc0269a48b8eb027b28dadd1c51751f525d08a5003",
+      "routedSignature": "4261bcac0d01331dcb1713f7ef73a6c7e68d34116d9728f20248106876586631"
+    },
+    "opencode:70df3cd322b4f08bc698605282a62129209897f5fe7c5dfacf385db9e6ec9398:ses_de3c36cd8ffeLCTR2k7eLbMgk7": {
+      "host": "opencode",
+      "cwd": "E:\\Github\\warehouse-queue-app",
+      "sessionId": "ses_de3c36cd8ffeLCTR2k7eLbMgk7",
+      "promptHash": "a9ccc3d0e8f650f4c1c82ce621fa2ecc9b577c01cbe69ae8b2b20bf94dc45ab5",
+      "routedSignature": "4261bcac0d01331dcb1713f7ef73a6c7e68d34116d9728f20248106876586631"
+    },
+    "opencode:70df3cd322b4f08bc698605282a62129209897f5fe7c5dfacf385db9e6ec9398:ses_de3c34963ffeFxFgq8XWFIwEb0": {
+      "host": "opencode",
+      "cwd": "E:\\Github\\warehouse-queue-app",
+      "sessionId": "ses_de3c34963ffeFxFgq8XWFIwEb0",
+      "promptHash": "8b0e18bd85f1a89d15fcaabeb5b9b344edff2ed734e3040e23b2f710a5d6e6fa",
+      "routedSignature": "4261bcac0d01331dcb1713f7ef73a6c7e68d34116d9728f20248106876586631"
+    },
+    "opencode:70df3cd322b4f08bc698605282a62129209897f5fe7c5dfacf385db9e6ec9398:ses_de3c31eb9ffeIcDckZXXyqK6Av": {
+      "host": "opencode",
+      "cwd": "E:\\Github\\warehouse-queue-app",
+      "sessionId": "ses_de3c31eb9ffeIcDckZXXyqK6Av",
+      "promptHash": "7efc6c8766b6ffa79319d0b9d1c01568df6086d994973e8213062d4d5c31a2cc",
+      "routedSignature": "4261bcac0d01331dcb1713f7ef73a6c7e68d34116d9728f20248106876586631"
+    },
+    "opencode:70df3cd322b4f08bc698605282a62129209897f5fe7c5dfacf385db9e6ec9398:ses_de3c1f824ffeyUz6Iof02jbmnr": {
+      "host": "opencode",
+      "cwd": "E:\\Github\\warehouse-queue-app",
+      "sessionId": "ses_de3c1f824ffeyUz6Iof02jbmnr",
+      "promptHash": "2e2ced801d16c496856a15c1001a3934ea71b3a567f4f2ecd0bdbd50e9ee7554",
+      "routedSignature": "4261bcac0d01331dcb1713f7ef73a6c7e68d34116d9728f20248106876586631"
+    },
+    "opencode:70df3cd322b4f08bc698605282a62129209897f5fe7c5dfacf385db9e6ec9398:ses_de3c0ef6effeX2bnNlsaAFsTvo": {
+      "host": "opencode",
+      "cwd": "E:\\Github\\warehouse-queue-app",
+      "sessionId": "ses_de3c0ef6effeX2bnNlsaAFsTvo",
+      "promptHash": "4e66fb76e1e279c87a15ba63c95199b3c874e30d7d4fc71a2aa161f8f74d4155",
+      "routedSignature": "4261bcac0d01331dcb1713f7ef73a6c7e68d34116d9728f20248106876586631"
+    },
+    "opencode:70df3cd322b4f08bc698605282a62129209897f5fe7c5dfacf385db9e6ec9398:ses_de3bfdaa3ffeCV5O827c8VmOuc": {
+      "host": "opencode",
+      "cwd": "E:\\Github\\warehouse-queue-app",
+      "sessionId": "ses_de3bfdaa3ffeCV5O827c8VmOuc",
+      "promptHash": "f2b3f1a022fec2c76bc6cccf6ef77cf0c7242a19708fef98fcaab6b861882413",
+      "routedSignature": "4261bcac0d01331dcb1713f7ef73a6c7e68d34116d9728f20248106876586631"
+    },
+    "opencode:70df3cd322b4f08bc698605282a62129209897f5fe7c5dfacf385db9e6ec9398:ses_de3bea772ffeCLHnr93uY4rz09": {
+      "host": "opencode",
+      "cwd": "E:\\Github\\warehouse-queue-app",
+      "sessionId": "ses_de3bea772ffeCLHnr93uY4rz09",
+      "promptHash": "20c84b9132cf93b9f7aa0036f8ffad2badd85df29dca6fe82f6d84fe27ccc83a",
+      "routedSignature": "4261bcac0d01331dcb1713f7ef73a6c7e68d34116d9728f20248106876586631"
+    },
+    "opencode:70df3cd322b4f08bc698605282a62129209897f5fe7c5dfacf385db9e6ec9398:ses_de3bdab4affe8l37WVpTXRvVFx": {
+      "host": "opencode",
+      "cwd": "E:\\Github\\warehouse-queue-app",
+      "sessionId": "ses_de3bdab4affe8l37WVpTXRvVFx",
+      "promptHash": "9192772708c5566dc16d0511de146fcb41494708bde3fd46c2095fc4e181e39b",
+      "routedSignature": "4261bcac0d01331dcb1713f7ef73a6c7e68d34116d9728f20248106876586631"
+    },
+    "opencode:70df3cd322b4f08bc698605282a62129209897f5fe7c5dfacf385db9e6ec9398:ses_de3bd5e62ffeyULr7o92hxsnQi": {
+      "host": "opencode",
+      "cwd": "E:\\Github\\warehouse-queue-app",
+      "sessionId": "ses_de3bd5e62ffeyULr7o92hxsnQi",
+      "promptHash": "8f7159ead9514de0eb2d44f96c7e4c40cfb1eb43b011dcbb23b4c15e0eacaf37",
+      "routedSignature": "4261bcac0d01331dcb1713f7ef73a6c7e68d34116d9728f20248106876586631"
+    },
+    "opencode:70df3cd322b4f08bc698605282a62129209897f5fe7c5dfacf385db9e6ec9398:ses_de3bd4547ffeVXjObNxLukAmWi": {
+      "host": "opencode",
+      "cwd": "E:\\Github\\warehouse-queue-app",
+      "sessionId": "ses_de3bd4547ffeVXjObNxLukAmWi",
+      "promptHash": "8b105c0f81294c285c2550de8bb6049a1befc92f7b4b4c74255f4cd3fe9be327",
+      "routedSignature": "4261bcac0d01331dcb1713f7ef73a6c7e68d34116d9728f20248106876586631"
+    },
+    "opencode:70df3cd322b4f08bc698605282a62129209897f5fe7c5dfacf385db9e6ec9398:ses_de3bc4abcffedoFpLHJk3vwXsk": {
+      "host": "opencode",
+      "cwd": "E:\\Github\\warehouse-queue-app",
+      "sessionId": "ses_de3bc4abcffedoFpLHJk3vwXsk",
+      "promptHash": "093133c5d90844b086a025a2af7f437e72a6c717728bddf3a3b09163f3e4fec2",
+      "routedSignature": "4261bcac0d01331dcb1713f7ef73a6c7e68d34116d9728f20248106876586631"
+    },
+    "opencode:70df3cd322b4f08bc698605282a62129209897f5fe7c5dfacf385db9e6ec9398:ses_de3bb52e3ffe3F3wqfCSGCOu4M": {
+      "host": "opencode",
+      "cwd": "E:\\Github\\warehouse-queue-app",
+      "sessionId": "ses_de3bb52e3ffe3F3wqfCSGCOu4M",
+      "promptHash": "7c40e3021db056620b30149c399d928412976fcf1ed0159d7806ecb487586da7",
+      "routedSignature": "4261bcac0d01331dcb1713f7ef73a6c7e68d34116d9728f20248106876586631"
+    },
+    "opencode:70df3cd322b4f08bc698605282a62129209897f5fe7c5dfacf385db9e6ec9398:ses_de3ba5859ffepmkhz2gg7E68Un": {
+      "host": "opencode",
+      "cwd": "E:\\Github\\warehouse-queue-app",
+      "sessionId": "ses_de3ba5859ffepmkhz2gg7E68Un",
+      "promptHash": "9b36d219b0a089345e66cfcb463ff5d771d4bd7ac50b4acac7ae2809c877dd7c",
+      "routedSignature": "4261bcac0d01331dcb1713f7ef73a6c7e68d34116d9728f20248106876586631"
+    },
+    "opencode:70df3cd322b4f08bc698605282a62129209897f5fe7c5dfacf385db9e6ec9398:ses_de3ba3c14ffeFvZ6mCviIfONB4": {
+      "host": "opencode",
+      "cwd": "E:\\Github\\warehouse-queue-app",
+      "sessionId": "ses_de3ba3c14ffeFvZ6mCviIfONB4",
+      "promptHash": "74cb1d3c25a3cde1f04e63b6d5ac68813b5db4d86b24ff3f32fa687d4103ee43",
+      "routedSignature": "4261bcac0d01331dcb1713f7ef73a6c7e68d34116d9728f20248106876586631"
+    },
+    "opencode:70df3cd322b4f08bc698605282a62129209897f5fe7c5dfacf385db9e6ec9398:ses_de3b9355effeteWpOpgMmZyise": {
+      "host": "opencode",
+      "cwd": "E:\\Github\\warehouse-queue-app",
+      "sessionId": "ses_de3b9355effeteWpOpgMmZyise",
+      "promptHash": "17036ee364c755de1ddb07578c6f56aebd961912d4886ab5789963d8e734dd8d",
+      "routedSignature": "4261bcac0d01331dcb1713f7ef73a6c7e68d34116d9728f20248106876586631"
+    },
+    "opencode:70df3cd322b4f08bc698605282a62129209897f5fe7c5dfacf385db9e6ec9398:ses_de3b7c1c2ffeQzbII7wcGigY93": {
+      "host": "opencode",
+      "cwd": "E:\\Github\\warehouse-queue-app",
+      "sessionId": "ses_de3b7c1c2ffeQzbII7wcGigY93",
+      "promptHash": "93db518e8b5f37adc54d19e2da3ff2c969aef4fb83c6a23e63400fecd1191d75",
+      "routedSignature": "4261bcac0d01331dcb1713f7ef73a6c7e68d34116d9728f20248106876586631"
+    },
+    "opencode:70df3cd322b4f08bc698605282a62129209897f5fe7c5dfacf385db9e6ec9398:ses_de3b67880ffeIncZkpzi72CXAx": {
+      "host": "opencode",
+      "cwd": "E:\\Github\\warehouse-queue-app",
+      "sessionId": "ses_de3b67880ffeIncZkpzi72CXAx",
+      "promptHash": "e0c5aac8744a38bbf3d8f3efc0a52f253ffa1d1c5b2ee8b70f161af5c3be3343",
+      "routedSignature": "4261bcac0d01331dcb1713f7ef73a6c7e68d34116d9728f20248106876586631"
+    },
+    "opencode:70df3cd322b4f08bc698605282a62129209897f5fe7c5dfacf385db9e6ec9398:ses_de3b53c53ffe8vF81A7xAgic2K": {
+      "host": "opencode",
+      "cwd": "E:\\Github\\warehouse-queue-app",
+      "sessionId": "ses_de3b53c53ffe8vF81A7xAgic2K",
+      "promptHash": "4bbc6f9bb580e318f5be9f90fd0ec97b404e4e4c59242288683e3c82e9000efa",
+      "routedSignature": "4261bcac0d01331dcb1713f7ef73a6c7e68d34116d9728f20248106876586631"
+    },
+    "opencode:70df3cd322b4f08bc698605282a62129209897f5fe7c5dfacf385db9e6ec9398:ses_de3b444a7ffetPP5vnIepDnfQp": {
+      "host": "opencode",
+      "cwd": "E:\\Github\\warehouse-queue-app",
+      "sessionId": "ses_de3b444a7ffetPP5vnIepDnfQp",
+      "promptHash": "7099507920a1e2f0b34eadf4c0367abe5a5e8e076c763bd5e7110823708fc53f",
+      "routedSignature": "4261bcac0d01331dcb1713f7ef73a6c7e68d34116d9728f20248106876586631"
+    },
+    "opencode:70df3cd322b4f08bc698605282a62129209897f5fe7c5dfacf385db9e6ec9398:ses_de3b42826ffeKMF5P4EiBt1ULa": {
+      "host": "opencode",
+      "cwd": "E:\\Github\\warehouse-queue-app",
+      "sessionId": "ses_de3b42826ffeKMF5P4EiBt1ULa",
+      "promptHash": "50b3b07ee0b10c3c99a35299c8b0ad4d7ac0d3b8bae5dd3afcafab6e1b32e11f",
+      "routedSignature": "4261bcac0d01331dcb1713f7ef73a6c7e68d34116d9728f20248106876586631"
+    },
+    "opencode:70df3cd322b4f08bc698605282a62129209897f5fe7c5dfacf385db9e6ec9398:ses_de3b3eafcffesNBtsz5nfbfOes": {
+      "host": "opencode",
+      "cwd": "E:\\Github\\warehouse-queue-app",
+      "sessionId": "ses_de3b3eafcffesNBtsz5nfbfOes",
+      "promptHash": "917f85342436b004a1864d89737ff625016af1041968862ffa40140f6b89a7f9",
+      "routedSignature": "4261bcac0d01331dcb1713f7ef73a6c7e68d34116d9728f20248106876586631"
+    },
+    "opencode:70df3cd322b4f08bc698605282a62129209897f5fe7c5dfacf385db9e6ec9398:ses_de3b2cbc3ffeyGf9S30UhoFepI": {
+      "host": "opencode",
+      "cwd": "E:\\Github\\warehouse-queue-app",
+      "sessionId": "ses_de3b2cbc3ffeyGf9S30UhoFepI",
+      "promptHash": "35684f7d106f5f9de2c18290a6677d22edf38634376618530cc340bf6f8fe27a",
+      "routedSignature": "4261bcac0d01331dcb1713f7ef73a6c7e68d34116d9728f20248106876586631"
+    },
+    "opencode:70df3cd322b4f08bc698605282a62129209897f5fe7c5dfacf385db9e6ec9398:ses_de3b1c6e9ffe62gxVXU70dZvP4": {
+      "host": "opencode",
+      "cwd": "E:\\Github\\warehouse-queue-app",
+      "sessionId": "ses_de3b1c6e9ffe62gxVXU70dZvP4",
+      "promptHash": "2151155c6582ea1e7f3dd00601743a68df660f0cedf7b4f4a49db356f68a47d9",
+      "routedSignature": "4261bcac0d01331dcb1713f7ef73a6c7e68d34116d9728f20248106876586631"
+    },
+    "opencode:70df3cd322b4f08bc698605282a62129209897f5fe7c5dfacf385db9e6ec9398:ses_de3ab3692ffe8M8tB35asxh0YB": {
+      "host": "opencode",
+      "cwd": "E:\\Github\\warehouse-queue-app",
+      "sessionId": "ses_de3ab3692ffe8M8tB35asxh0YB",
+      "promptHash": "058f0c801816803cabfd46336605ff54d2e56ed09c70324144a758aaf17da92e",
+      "routedSignature": "4261bcac0d01331dcb1713f7ef73a6c7e68d34116d9728f20248106876586631"
+    },
+    "opencode:70df3cd322b4f08bc698605282a62129209897f5fe7c5dfacf385db9e6ec9398:ses_de3aaed02ffeS3vkjMVS8zR43H": {
+      "host": "opencode",
+      "cwd": "E:\\Github\\warehouse-queue-app",
+      "sessionId": "ses_de3aaed02ffeS3vkjMVS8zR43H",
+      "promptHash": "d6ca89b216fe7d241b63b64edefcddd688c1b1d93427a1b831966b08614d7aba",
+      "routedSignature": "4261bcac0d01331dcb1713f7ef73a6c7e68d34116d9728f20248106876586631"
+    },
+    "opencode:70df3cd322b4f08bc698605282a62129209897f5fe7c5dfacf385db9e6ec9398:ses_de3aad0fdffeM99qfeu10qIiH4": {
+      "host": "opencode",
+      "cwd": "E:\\Github\\warehouse-queue-app",
+      "sessionId": "ses_de3aad0fdffeM99qfeu10qIiH4",
+      "promptHash": "5e3d773cf3422a5b8e65ded08b73709ce70fa7752a5238061a23eeb3f653bc29",
+      "routedSignature": "4261bcac0d01331dcb1713f7ef73a6c7e68d34116d9728f20248106876586631"
+    }
+  }
+}

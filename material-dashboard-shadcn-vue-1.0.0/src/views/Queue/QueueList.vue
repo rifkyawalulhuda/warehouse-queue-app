@@ -5,6 +5,7 @@ import Card from '@/components/ui/Card.vue'
 import CardHeader from '@/components/ui/CardHeader.vue'
 import CardContent from '@/components/ui/CardContent.vue'
 import Button from '@/components/ui/Button.vue'
+import ExportDialog from '@/components/export/ExportDialog.vue'
 import Input from '@/components/ui/Input.vue'
 import Combobox from '@/components/ui/Combobox.vue'
 import QueueTable from '@/components/queue/QueueTable.vue'
@@ -40,6 +41,7 @@ type QueueEntry = {
   pickerEmployee?: Employee | null
   driverName: string
   truckNumber: string
+  containerNumbers?: string[]
   containerNumber?: string | null
   transporter?: string | null
   registerTime: string
@@ -109,8 +111,6 @@ const loadingTypeError = ref<string | null>(null)
 const finishSubmitting = ref(false)
 const success = ref<string | null>(null)
 const exportOpen = ref(false)
-const exporting = ref(false)
-const exportError = ref<string | null>(null)
 const page = ref(1)
 const limit = ref(15)
 const totalPages = ref(1)
@@ -132,14 +132,8 @@ const rowLimitValue = computed({
 })
 const mobileFiltersOpen = ref(false)
 
-const exportForm = reactive({
-  dateFrom: '',
-  dateTo: ''
-})
 const filterDateFromInputRef = ref<HTMLInputElement | null>(null)
 const filterDateToInputRef = ref<HTMLInputElement | null>(null)
-const exportDateFromInputRef = ref<HTMLInputElement | null>(null)
-const exportDateToInputRef = ref<HTMLInputElement | null>(null)
 
 const getErrorMessage = (err: any, fallback: string) => {
   return err?.response?.data?.message || err?.message || fallback
@@ -725,13 +719,16 @@ const executeChangeStatus = async () => {
 }
 
 const handleCreate = async (payload: {
+  scheduleItemId?: string
   customerId: string
   category: 'RECEIVING' | 'DELIVERY'
   driverName: string
   driverPhone?: string
   truckNumber: string
-  containerNumber: string
+  truckType?: string
+  containerNumbers: string[]
   transporter: string
+  transporterId?: string
   slaWaitingMinutes?: number
   slaInWhProcessMinutes?: number
   notes: string
@@ -746,6 +743,9 @@ const handleCreate = async (payload: {
       driverName: payload.driverName,
       truckNumber: payload.truckNumber,
     }
+    if (payload.scheduleItemId) body.scheduleItemId = payload.scheduleItemId
+    if (payload.truckType) body.truckType = payload.truckType
+    if (payload.transporterId) body.transporterId = payload.transporterId
     if (payload.driverPhone && payload.driverPhone.trim()) {
       body.driverPhone = payload.driverPhone.trim()
     }
@@ -753,7 +753,9 @@ const handleCreate = async (payload: {
     if (typeof payload.slaInWhProcessMinutes === 'number') {
       body.slaInWhProcessMinutes = payload.slaInWhProcessMinutes
     }
-    if (payload.containerNumber.trim()) body.containerNumber = payload.containerNumber.trim()
+    if (payload.containerNumbers && payload.containerNumbers.length > 0) {
+      body.containerNumbers = payload.containerNumbers
+    }
     if (payload.transporter.trim()) body.transporter = payload.transporter.trim()
     if (payload.notes.trim()) body.notes = payload.notes.trim()
     if (payload.registerTime) body.registerTime = new Date(payload.registerTime).toISOString()
@@ -789,7 +791,7 @@ const handleEdit = async (payload: {
   driverName: string
   driverPhone?: string
   truckNumber: string
-  containerNumber: string
+  containerNumbers: string[]
   transporter: string
   slaWaitingMinutes?: number
   slaInWhProcessMinutes?: number
@@ -807,7 +809,7 @@ const handleEdit = async (payload: {
       driverName: payload.driverName,
       driverPhone: (payload.driverPhone || '').trim(),
       truckNumber: payload.truckNumber,
-      containerNumber: payload.containerNumber.trim(),
+      containerNumbers: payload.containerNumbers,
       transporter: payload.transporter.trim(),
       notes: payload.notes.trim(),
     }
@@ -897,59 +899,10 @@ const goToPage = (target: number) => {
   fetchList()
 }
 
-const buildExportFileName = () => {
-  if (exportForm.dateFrom && exportForm.dateTo) {
-    return `antrian_truk_${exportForm.dateFrom}_sampai_${exportForm.dateTo}.xlsx`
-  }
-  return 'antrian_truk.xlsx'
-}
-
 const openDisplayPage = () => {
   if (!canOpenDisplay.value) return
   const target = router.resolve('/display/antrian-truk')
   window.open(target.href, '_blank', 'noopener,noreferrer')
-}
-
-const handleExportDownload = async () => {
-  exportError.value = null
-  const hasFrom = Boolean(exportForm.dateFrom)
-  const hasTo = Boolean(exportForm.dateTo)
-  if (hasFrom !== hasTo) {
-    exportError.value = 'Tanggal Dari & Sampai harus diisi bersama'
-    return
-  }
-
-  exporting.value = true
-  try {
-    const params = new URLSearchParams()
-    if (hasFrom && hasTo) {
-      params.set('dateFrom', exportForm.dateFrom)
-      params.set('dateTo', exportForm.dateTo)
-    }
-    const url = params.toString() ? `/queue/export?${params.toString()}` : '/queue/export'
-    const response = await api.get(url, { responseType: 'blob' })
-    const downloadUrl = URL.createObjectURL(response.data)
-    const link = document.createElement('a')
-    link.href = downloadUrl
-    link.download = buildExportFileName()
-    document.body.appendChild(link)
-    link.click()
-    link.remove()
-    window.setTimeout(() => URL.revokeObjectURL(downloadUrl), 0)
-
-    exportOpen.value = false
-    exportForm.dateFrom = ''
-    exportForm.dateTo = ''
-  } catch (err: any) {
-    exportError.value = getErrorMessage(err, 'Gagal export excel')
-  } finally {
-    exporting.value = false
-  }
-}
-
-const closeExport = () => {
-  exportOpen.value = false
-  exportError.value = null
 }
 
 const openDatePicker = (input: HTMLInputElement | null) => {
@@ -1610,63 +1563,12 @@ watch(
       </div>
     </div>
 
-    <div v-if="exportOpen" class="fixed inset-0 z-50">
-      <div class="absolute inset-0 bg-black/40" @click="closeExport"></div>
-      <div class="absolute left-1/2 top-1/2 w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-lg bg-card shadow-xl border">
-        <div class="p-4 border-b">
-          <h3 class="text-lg font-semibold">Export Excel</h3>
-        </div>
-        <div class="p-4 space-y-3 text-sm">
-          <div>
-            <label class="text-sm text-muted-foreground">Tanggal Dari</label>
-            <div class="relative mt-1">
-              <input
-                ref="exportDateFromInputRef"
-                v-model="exportForm.dateFrom"
-                type="date"
-                class="w-full appearance-none bg-transparent border rounded-md px-2 py-2 pr-10 text-sm"
-                @click="openDatePicker(exportDateFromInputRef)"
-              />
-              <button
-                type="button"
-                class="absolute inset-y-0 right-0 inline-flex items-center px-3 text-muted-foreground hover:text-foreground"
-                aria-label="Pilih tanggal export dari"
-                @click="openDatePicker(exportDateFromInputRef)"
-              >
-                <CalendarDays class="h-4 w-4" />
-              </button>
-            </div>
-          </div>
-          <div>
-            <label class="text-sm text-muted-foreground">Tanggal Sampai</label>
-            <div class="relative mt-1">
-              <input
-                ref="exportDateToInputRef"
-                v-model="exportForm.dateTo"
-                type="date"
-                class="w-full appearance-none bg-transparent border rounded-md px-2 py-2 pr-10 text-sm"
-                @click="openDatePicker(exportDateToInputRef)"
-              />
-              <button
-                type="button"
-                class="absolute inset-y-0 right-0 inline-flex items-center px-3 text-muted-foreground hover:text-foreground"
-                aria-label="Pilih tanggal export sampai"
-                @click="openDatePicker(exportDateToInputRef)"
-              >
-                <CalendarDays class="h-4 w-4" />
-              </button>
-            </div>
-          </div>
-          <p class="text-xs text-muted-foreground">Kosongkan tanggal untuk export semua data.</p>
-          <p v-if="exportError" class="text-xs text-red-600">{{ exportError }}</p>
-        </div>
-        <div class="p-4 border-t flex items-center justify-end gap-2">
-          <Button variant="ghost" @click="closeExport">Batal</Button>
-          <Button :disabled="exporting" @click="handleExportDownload">
-            {{ exporting ? 'Downloading...' : 'Download' }}
-          </Button>
-        </div>
-      </div>
-    </div>
+    <ExportDialog
+      v-model="exportOpen"
+      type="QUEUE"
+      sync-path="/queue/export"
+      title="Export Antrian Truk"
+      subtitle="Pilih periode data. Default tahun berjalan, data tahun lalu tetap bisa dipilih."
+    />
   </div>
 </template>

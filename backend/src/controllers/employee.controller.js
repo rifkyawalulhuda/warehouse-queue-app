@@ -1,7 +1,7 @@
 const xlsx = require("xlsx");
 const ExcelJS = require("exceljs");
 const employeeService = require("../services/employee.service");
-const { sendSuccess } = require("../utils/response");
+const { sendSuccess, sendPaginated } = require("../utils/response");
 
 function normalizeHeader(value) {
   return String(value || "")
@@ -33,8 +33,8 @@ function ensureEmployeeHeader(rows) {
 
 async function listEmployees(req, res, next) {
   try {
-    const employees = await employeeService.listEmployees();
-    return sendSuccess(res, employees);
+    const { data, meta } = await employeeService.listEmployees(req.query);
+    return sendPaginated(res, data, meta);
   } catch (err) {
     return next(err);
   }

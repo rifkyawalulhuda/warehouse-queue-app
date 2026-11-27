@@ -3,6 +3,7 @@ const {
   SYSTEM_LOADING_TYPE,
   isAllowedLoadingType,
 } = require("../utils/loadingType");
+const { getScheduleSettings } = require("./schedule.service");
 
 const STATUS_FLOW = ["MENUNGGU", "IN_WH", "PROSES", "SELESAI"];
 const SORTABLE_FIELDS = new Set([
@@ -28,6 +29,178 @@ function createHttpError(status, message, details) {
   err.status = status;
   if (details) err.details = details;
   return err;
+}
+
+// Phase 1: container disimpan sebagai array. Form lama masih mengirim
+// `containerNumber` (tunggal), jadi keduanya diterima.
+// Container number ISO selalu huruf besar; normalisasi supaya pencarian
+// `has` (exact match) tidak gagal karena beda kapitalisasi.
+function normalizeContainerNumbers(data) {
+  const normalize = (value) =>
+    typeof value === "string" ? value.trim().toUpperCase().replace(/\s+/g, "") : "";
+  if (Array.isArray(data.containerNumbers)) {
+    return data.containerNumbers.map(normalize).filter(Boolean);
+  }
+  if (typeof data.containerNumber === "string" && data.containerNumber.trim()) {
+    return [normalize(data.containerNumber)];
+  }
+  return [];
+}
+
+// Phase 1: frontend masih membaca `containerNumber` (tunggal). Shim ini
+// dihapus pada Phase 4 saat form antrian memakai array.
+function withLegacyContainerNumber(entry) {
+  if (!entry) return entry;
+  const containerNumbers = entry.containerNumbers || [];
+  return {
+    ...entry,
+    containerNumber: containerNumbers.length > 0 ? containerNumbers[0] : null,
+  };
+}
+
+const SCHEDULE_CATEGORY_BY_STORE_TYPE = {
+  STORE_IN: "RECEIVING",
+  STORE_OUT: "DELIVERY",
+};
+
+/**
+ * Batas backdate registerTime.
+ * Semua role: maksimal N hari (AppSetting schedule.backdateMaxDays).
+ * ADMIN: boleh melebihi, tetapi dicatat di log antrian (keputusan T3).
+ */
+function assertBackdateAllowed(registerTime, actorUser, settings) {
+  if (!registerTime) return { overridden: false };
+
+  const when = new Date(registerTime);
+  if (Number.isNaN(when.getTime())) {
+    throw createHttpError(400, "registerTime tidak valid");
+  }
+
+  const maxDays = settings?.backdateMaxDays ?? 7;
+  const limit = new Date(Date.now() - maxDays * 24 * 60 * 60 * 1000);
+  if (when >= limit) return { overridden: false };
+
+  if (actorUser?.role !== "ADMIN") {
+    throw createHttpError(
+      400,
+      `Waktu registrasi tidak boleh lebih dari ${maxDays} hari ke belakang. Hubungi Admin untuk data lebih lama.`
+    );
+  }
+
+  return { overridden: true, maxDays };
+}
+
+/**
+ * Memuat schedule item yang akan ditautkan, lalu memvalidasi semua aturan
+ * yang disepakati di dokumen desain.
+ */
+async function resolveScheduleItemForCreate(scheduleItemId, data, settings) {
+  const item = await prisma.shipmentScheduleItem.findUnique({
+    where: { id: scheduleItemId },
+    include: {
+      transporter: { select: { id: true, name: true } },
+      schedule: {
+        select: {
+          id: true,
+          storeType: true,
+          scheduleDate: true,
+          customer: { select: { id: true, name: true } },
+        },
+      },
+    },
+  });
+
+  if (!item) {
+    throw createHttpError(400, "Data Schedule Pengiriman tidak ditemukan");
+  }
+
+  if (item.status === "LINKED" || item.status === "NO_SHOW_CLOSED") {
+    throw createHttpError(
+      409,
+      item.status === "LINKED"
+        ? "Truk ini sudah memiliki antrian aktif"
+        : "Jadwal truk ini sudah ditutup sebagai no-show"
+    );
+  }
+
+  const expectedCategory = SCHEDULE_CATEGORY_BY_STORE_TYPE[item.schedule.storeType];
+  if (data.category && data.category !== expectedCategory) {
+    throw createHttpError(
+      400,
+      `Jadwal ini kategori ${expectedCategory}, tidak bisa dipakai untuk antrian ${data.category}`
+    );
+  }
+
+  // Jendela overdue. Truk yang telat datang beberapa hari tetap bisa dipilih.
+  if (item.plannedStart) {
+    const overdueDays = settings?.overdueWindowDays ?? 7;
+    const windowStart = new Date(Date.now() - overdueDays * 24 * 60 * 60 * 1000);
+    if (item.plannedStart < windowStart) {
+      throw createHttpError(
+        400,
+        `Jadwal ini lebih lama dari ${overdueDays} hari ke belakang sehingga tidak bisa dipakai`
+      );
+    }
+  }
+
+  const activeEntry = await prisma.queueEntry.findFirst({
+    where: { scheduleItemId: item.id, status: { not: "BATAL" } },
+    select: { id: true, status: true },
+  });
+  if (activeEntry) {
+    throw createHttpError(409, "Truk ini sudah memiliki antrian aktif");
+  }
+
+  return { item, category: expectedCategory };
+}
+
+/**
+ * Nilai aktual: payload menang atas nilai plan, kecuali plat nomor yang
+ * dikunci selama terhubung (keputusan S8).
+ */
+function buildLinkedEntryData(data, resolved, actorUser) {
+  const { item, category } = resolved;
+  const plan = item.schedule;
+
+  const driverName =
+    (typeof data.driverName === "string" && data.driverName.trim()) || item.driverName || "";
+  if (!driverName) {
+    throw createHttpError(400, "Driver Name wajib diisi (tidak ada di Schedule Pengiriman)");
+  }
+
+  const containerNumbers =
+    data.containerNumbers !== undefined || data.containerNumber !== undefined
+      ? normalizeContainerNumbers(data)
+      : item.containerNumbers;
+
+  const transporterId = data.transporterId || item.transporterId || null;
+  const transporterName =
+    (typeof data.transporter === "string" && data.transporter.trim()) ||
+    item.transporter?.name ||
+    null;
+
+  return {
+    category,
+    customerId: data.customerId || plan.customer?.id || null,
+    driverName,
+    driverPhone: data.driverPhone || null,
+    // Plat dikunci: mengikuti plan, payload diabaikan.
+    truckNumber: item.plateNumber || data.truckNumber,
+    truckType: data.truckType || item.truckType || null,
+    containerNumbers,
+    transporter: transporterName,
+    transporterId,
+    scheduleItemId: item.id,
+    plannedStart: item.plannedStart,
+    plannedFinish: item.plannedFinish,
+    plannedPlateNumber: item.plateNumber,
+    plannedTruckType: item.truckType,
+    plannedCustomerId: plan.customer?.id || null,
+    plannedCustomerName: plan.customer?.name || null,
+    plannedTransporterName: item.transporter?.name || null,
+    plannedDriverName: item.driverName,
+    plannedContainerNumbers: item.containerNumbers,
+  };
 }
 
 function parseDateOnly(dateStr) {
@@ -226,15 +399,41 @@ async function createQueueEntry(data, actorUser) {
     normalizeSlaMinutes(data.slaWaitingMinutes) ?? LEGACY_WAITING_SLA_MINUTES;
   const inWhProcessSlaMinutes =
     normalizeSlaMinutes(data.slaInWhProcessMinutes) ?? getLegacyInWhProcessSlaMinutes(data);
-  return prisma.queueEntry.create({
+  const settings = await getScheduleSettings();
+  const scheduleItemId =
+    typeof data.scheduleItemId === "string" && data.scheduleItemId.trim()
+      ? data.scheduleItemId.trim()
+      : null;
+
+  const resolved = scheduleItemId
+    ? await resolveScheduleItemForCreate(scheduleItemId, data, settings)
+    : null;
+
+  const backdate = assertBackdateAllowed(data.registerTime, actorUser, settings);
+
+  const baseData = resolved
+    ? buildLinkedEntryData(data, resolved)
+    : {
+        category: data.category,
+        customerId: data.customerId,
+        driverName: data.driverName,
+        driverPhone: data.driverPhone || null,
+        truckNumber: data.truckNumber,
+        truckType: data.truckType || null,
+        containerNumbers: normalizeContainerNumbers(data),
+        transporter: data.transporter || null,
+        // Walk-in tetap menyimpan relasi ke master bila transporter dipilih.
+        transporterId: data.transporterId || null,
+        scheduleItemId: null,
+      };
+
+  const logNote = backdate.overridden
+    ? `Backdate melebihi batas ${backdate.maxDays} hari oleh Admin`
+    : null;
+
+  const created = await prisma.queueEntry.create({
     data: {
-      category: data.category,
-      customerId: data.customerId,
-      driverName: data.driverName,
-      driverPhone: data.driverPhone || null,
-      truckNumber: data.truckNumber,
-      containerNumber: data.containerNumber || null,
-      transporter: data.transporter || null,
+      ...baseData,
       registerTime: data.registerTime ? new Date(data.registerTime) : undefined,
       slaWaitingMinutes: waitingSlaMinutes,
       slaInWhProcessMinutes: inWhProcessSlaMinutes,
@@ -246,6 +445,7 @@ async function createQueueEntry(data, actorUser) {
           userName: resolvedName,
           actorUserId,
           toStatus: "MENUNGGU",
+          note: logNote,
         },
       },
     },
@@ -253,6 +453,15 @@ async function createQueueEntry(data, actorUser) {
       customer: true,
     },
   });
+
+  if (resolved) {
+    await prisma.shipmentScheduleItem.update({
+      where: { id: resolved.item.id },
+      data: { status: "LINKED" },
+    });
+  }
+
+  return withLegacyContainerNumber(created);
 }
 
 async function listQueueEntries(query) {
@@ -271,12 +480,17 @@ async function listQueueEntries(query) {
     if (to) baseWhere.registerTime.lte = to;
   }
   if (search) {
+    // Container disimpan uppercase; sertakan varian uppercase supaya
+    // pencarian `has` (exact) tetap cocok walau user mengetik huruf kecil.
+    const containerCandidates = Array.from(
+      new Set([search, search.trim().toUpperCase(), search.trim().toUpperCase().replace(/\s+/g, "")])
+    ).filter(Boolean);
     baseWhere.OR = [
       { customer: { name: { contains: search, mode: "insensitive" } } },
       { driverName: { contains: search, mode: "insensitive" } },
       { driverPhone: { contains: search, mode: "insensitive" } },
       { truckNumber: { contains: search, mode: "insensitive" } },
-      { containerNumber: { contains: search, mode: "insensitive" } },
+      ...containerCandidates.map((value) => ({ containerNumbers: { has: value } })),
     ];
   }
   if (category) baseWhere.category = category;
@@ -312,7 +526,9 @@ async function listQueueEntries(query) {
   const totalPages = Math.max(1, Math.ceil(totalItems / limit));
   if (page > totalPages) page = totalPages;
   const skip = (page - 1) * limit;
-  const data = prioritizedRows.slice(skip, skip + limit).map((item) => item.entry);
+  const data = prioritizedRows
+    .slice(skip, skip + limit)
+    .map((item) => withLegacyContainerNumber(item.entry));
 
   const groupedStatusRows = await prisma.queueEntry.groupBy({
     by: ["status"],
@@ -356,7 +572,7 @@ async function listQueueEntriesForExport(query) {
     };
   }
 
-  return prisma.queueEntry.findMany({
+  const rows = await prisma.queueEntry.findMany({
     where,
     orderBy: [{ registerTime: "desc" }],
     include: {
@@ -377,6 +593,7 @@ async function listQueueEntriesForExport(query) {
       },
     },
   });
+  return rows.map(withLegacyContainerNumber);
 }
 
 function getTodayRange() {
@@ -407,10 +624,12 @@ async function listQueueEntriesForDisplay() {
     },
   });
   const nowMs = Date.now();
-  const entries = rows.map((entry) => ({
-    ...entry,
-    remainingMinutes: getEntryRemainingMinutes(entry, nowMs),
-  }));
+  const entries = rows.map((entry) =>
+    withLegacyContainerNumber({
+      ...entry,
+      remainingMinutes: getEntryRemainingMinutes(entry, nowMs),
+    })
+  );
 
   const statusOrder = {
     MENUNGGU: 0,
@@ -456,7 +675,10 @@ async function autoCompleteExpiredQueueEntries(now = new Date()) {
       status: {
         in: ["MENUNGGU", "IN_WH", "PROSES"],
       },
-      registerTime: {
+      // Memakai createdAt, bukan registerTime: registerTime boleh diisi mundur
+      // (backdate maks 7 hari), sehingga entri yang baru diinput tidak boleh
+      // langsung ditutup sistem dengan finishTime palsu.
+      createdAt: {
         lt: cutoff,
       },
     },
@@ -478,6 +700,8 @@ async function autoCompleteExpiredQueueEntries(now = new Date()) {
           status: "SELESAI",
           finishTime,
           loadingType: SYSTEM_LOADING_TYPE,
+          autoCompleted: true,
+          autoCompletedAt: finishTime,
           logs: {
             create: {
               type: "STATUS_CHANGE",
@@ -511,12 +735,61 @@ async function getQueueEntryById(id) {
       customer: true,
       gate: true,
       pickerEmployee: true,
+      scheduleItem: {
+        select: {
+          id: true,
+          plateNumber: true,
+          plannedStart: true,
+          plannedFinish: true,
+          status: true,
+          schedule: { select: { id: true, scheduleDate: true, storeType: true } },
+        },
+      },
     },
   });
   if (!entry) {
     throw createHttpError(404, "Data tidak ditemukan");
   }
-  return entry;
+  return withPlanComparison(withLegacyContainerNumber(entry));
+}
+
+/**
+ * Menambahkan variance plan vs aktual ke satu antrian. Dipakai halaman detail
+ * supaya operator bisa melihat selisih tanpa membuka report.
+ * Membandingkan dengan snapshot plan pada antrian, bukan plan terkini.
+ */
+async function withPlanComparison(entry) {
+  if (!entry) return entry;
+  const minutesBetween = (later, earlier) => {
+    if (!later || !earlier) return null;
+    return Math.round((new Date(later).getTime() - new Date(earlier).getTime()) / 60000);
+  };
+
+  const varianceArrivalMinutes = minutesBetween(entry.registerTime, entry.plannedStart);
+  const varianceFinishMinutes = minutesBetween(entry.finishTime, entry.plannedFinish);
+
+  let toleranceArrival = null;
+  let toleranceFinish = null;
+  if (varianceArrivalMinutes !== null || varianceFinishMinutes !== null) {
+    const settings = await getScheduleSettings();
+    toleranceArrival = settings.onTimeToleranceArrivalMinutes;
+    toleranceFinish = settings.onTimeToleranceFinishMinutes;
+  }
+
+  // Antrian yang ditutup sistem tidak dipakai untuk statistik on-time.
+  const measurable = !entry.autoCompleted;
+  const judge = (variance, tolerance) =>
+    variance === null || !measurable ? null : variance <= tolerance;
+
+  return {
+    ...entry,
+    varianceArrivalMinutes,
+    varianceFinishMinutes,
+    isOnTimeArrival: judge(varianceArrivalMinutes, toleranceArrival),
+    isOnTimeFinish: judge(varianceFinishMinutes, toleranceFinish),
+    onTimeToleranceArrivalMinutes: toleranceArrival,
+    onTimeToleranceFinishMinutes: toleranceFinish,
+  };
 }
 
 async function updateQueueEntry(id, data, actorUser) {
@@ -559,7 +832,48 @@ async function updateQueueEntry(id, data, actorUser) {
     loadingTypeUpdate = nextLoadingType || null;
   }
 
-  return prisma.queueEntry.update({
+  // Plat nomor dikunci selama antrian terhubung ke Schedule Pengiriman (S8).
+  if (
+    entry.scheduleItemId &&
+    data.truckNumber !== undefined &&
+    String(data.truckNumber).trim() !== entry.truckNumber
+  ) {
+    throw createHttpError(
+      400,
+      "Plat Nomor tidak bisa diubah karena antrian ini terhubung ke Schedule Pengiriman"
+    );
+  }
+
+  // Transporter hanya berupa teks di form edit. Sinkronkan FK-nya supaya
+  // relasi ke master tidak menunjuk transporter lama setelah teks diubah.
+  let transporterIdUpdate;
+  if (data.transporterId !== undefined) {
+    transporterIdUpdate = data.transporterId || null;
+  } else if (data.transporter !== undefined) {
+    const name = typeof data.transporter === "string" ? data.transporter.trim() : "";
+    if (!name) {
+      transporterIdUpdate = null;
+    } else {
+      const matched = await prisma.transporter.findFirst({
+        where: { name: { equals: name, mode: "insensitive" } },
+        select: { id: true },
+      });
+      transporterIdUpdate = matched?.id ?? null;
+    }
+  }
+
+  // registerTime hanya boleh diubah ADMIN (R1), dan tetap dibatasi backdate.
+  let registerTimeUpdate;
+  if (entry.status === "MENUNGGU" && data.registerTime) {
+    if (actorUser?.role !== "ADMIN") {
+      throw createHttpError(400, "Hanya Admin yang bisa mengubah Waktu Registrasi");
+    }
+    const settings = await getScheduleSettings();
+    assertBackdateAllowed(data.registerTime, actorUser, settings);
+    registerTimeUpdate = new Date(data.registerTime);
+  }
+
+  const updated = await prisma.queueEntry.update({
     where: { id },
     data: {
       category: data.category ?? undefined,
@@ -567,12 +881,14 @@ async function updateQueueEntry(id, data, actorUser) {
       driverName: data.driverName ?? undefined,
       driverPhone: data.driverPhone !== undefined ? (data.driverPhone || null) : undefined,
       truckNumber: data.truckNumber ?? undefined,
-      containerNumber: data.containerNumber ?? undefined,
-      transporter: data.transporter ?? undefined,
-      registerTime:
-        entry.status === "MENUNGGU" && data.registerTime
-          ? new Date(data.registerTime)
+      truckType: data.truckType !== undefined ? (data.truckType || null) : undefined,
+      containerNumbers:
+        data.containerNumbers !== undefined || data.containerNumber !== undefined
+          ? normalizeContainerNumbers(data)
           : undefined,
+      transporter: data.transporter ?? undefined,
+      transporterId: transporterIdUpdate,
+      registerTime: registerTimeUpdate,
       slaWaitingMinutes: waitingSlaMinutes,
       slaInWhProcessMinutes: inWhProcessSlaMinutes,
       loadingType: loadingTypeUpdate,
@@ -590,6 +906,7 @@ async function updateQueueEntry(id, data, actorUser) {
       gate: true,
     },
   });
+  return withLegacyContainerNumber(updated);
 }
 
 async function updateQueueWhNotes(id, notesFromWh, actorUser) {
@@ -735,31 +1052,47 @@ async function changeQueueStatus(
     newStatus === "BATAL" && typeof cancelReason === "string" ? cancelReason.trim() : null;
   const logNote = normalizedCancelReason || normalizedNote;
 
-  return prisma.queueEntry.update({
-    where: { id },
-    data: {
-      status: newStatus,
-      ...gateUpdate,
-      ...pickerEmployeeUpdate,
-      ...timeUpdates,
-      ...loadingTypeUpdate,
-      logs: {
-        create: {
-          type: "STATUS_CHANGE",
-          fromStatus: currentStatus,
-          toStatus: newStatus,
-          note: logNote,
-          userName: resolvedName,
-          actorUserId,
+  const updated = await prisma.$transaction(async (tx) => {
+    const result = await tx.queueEntry.update({
+      where: { id },
+      data: {
+        status: newStatus,
+        ...gateUpdate,
+        ...pickerEmployeeUpdate,
+        ...timeUpdates,
+        ...loadingTypeUpdate,
+        logs: {
+          create: {
+            type: "STATUS_CHANGE",
+            fromStatus: currentStatus,
+            toStatus: newStatus,
+            note: logNote,
+            userName: resolvedName,
+            actorUserId,
+          },
         },
       },
-    },
-    include: {
-      customer: true,
-      gate: true,
-      pickerEmployee: true,
-    },
+      include: {
+        customer: true,
+        gate: true,
+        pickerEmployee: true,
+      },
+    });
+
+    // BATAL membebaskan slot schedule item (S4). Partial unique index
+    // queue_entry_active_schedule_item_unique otomatis mengizinkan item
+    // ditautkan ke antrian baru.
+    if (newStatus === "BATAL" && entry.scheduleItemId) {
+      await tx.shipmentScheduleItem.update({
+        where: { id: entry.scheduleItemId },
+        data: { status: "PLANNED" },
+      });
+    }
+
+    return result;
   });
+
+  return withLegacyContainerNumber(updated);
 }
 
 module.exports = {

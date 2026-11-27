@@ -49,3 +49,6 @@ Thumbs.db
 # Backup files
 backups/
 *.backup
+
+# Generated export files
+backend/exports/

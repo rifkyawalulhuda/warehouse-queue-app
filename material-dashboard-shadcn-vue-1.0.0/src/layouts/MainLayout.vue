@@ -3,6 +3,7 @@ import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
 import { RouterView, useRoute } from 'vue-router'
 import Navbar from '@/components/Navbar.vue'
 import Footer from '@/components/Footer.vue'
+import ExportToastHost from '@/components/export/ExportToastHost.vue'
 import { useAuth } from '@/composables/useAuth'
 import {
   LayoutDashboard,
@@ -10,8 +11,9 @@ import {
   Truck,
   Package,
   CalendarDays,
-  ClipboardList,
   Hammer,
+  BarChart3,
+  Settings2,
   ChevronDown,
   ChevronLeft,
   ChevronRight
@@ -44,14 +46,24 @@ const navigation: NavItem[] = [
       { name: 'Master Customer', path: '/master-customer', roles: ['ADMIN'] },
       { name: 'Master Gate', path: '/master-gate', roles: ['ADMIN', 'WAREHOUSE', 'CS'] },
       { name: 'Master Admin', path: '/master-admin', roles: ['ADMIN'] },
-      { name: 'Master Karyawan', path: '/master-karyawan', roles: ['ADMIN'] }
+      { name: 'Master Karyawan', path: '/master-karyawan', roles: ['ADMIN'] },
+      { name: 'Master Transporter', path: '/master-transporter', roles: ['ADMIN'] }
     ]
   },
   { name: 'Antrian Truk', path: '/antrian-truk', icon: Truck, roles: ['ADMIN', 'WAREHOUSE', 'CS'] },
   { name: 'Picking Progress', path: '/picking-progress', icon: Package, roles: ['ADMIN', 'WAREHOUSE', 'CS'] },
-  { name: 'Transaksi Pekerjaan', path: '/transaksi-pekerjaan', icon: Hammer, roles: ['ADMIN', 'WAREHOUSE', 'CS'] },
-  { name: 'Daily Job Activity', path: '/daily-job-activity', icon: ClipboardList, roles: ['ADMIN', 'WAREHOUSE', 'CS'] },
-  { name: 'Schedule Pengiriman', path: '/schedule-pengiriman', icon: CalendarDays, roles: ['ADMIN', 'WAREHOUSE', 'CS'] }
+  {
+    name: 'Pekerjaan',
+    icon: Hammer,
+    roles: ['ADMIN', 'WAREHOUSE', 'CS'],
+    children: [
+      { name: 'Transaksi Pekerjaan', path: '/transaksi-pekerjaan', roles: ['ADMIN', 'WAREHOUSE', 'CS'] },
+      { name: 'Daily Job Activity', path: '/daily-job-activity', roles: ['ADMIN', 'WAREHOUSE', 'CS'] }
+    ]
+  },
+  { name: 'Schedule Pengiriman', path: '/schedule-pengiriman', icon: CalendarDays, roles: ['ADMIN', 'WAREHOUSE', 'CS'] },
+  { name: 'Report Schedule vs Aktual', path: '/report-schedule-vs-aktual', icon: BarChart3, roles: ['ADMIN', 'WAREHOUSE', 'CS'] },
+  { name: 'Pengaturan Sistem', path: '/pengaturan-sistem', icon: Settings2, roles: ['ADMIN'] }
 ]
 
 const filteredNavigation = computed(() => {
@@ -73,8 +85,11 @@ const filteredNavigation = computed(() => {
 
 const openGroups = ref<Record<string, boolean>>({})
 
+const isChildActive = (child: { path: string }) =>
+  route.path === child.path || route.path.startsWith(`${child.path}/`)
+
 const isGroupActive = (item: NavItem) => {
-  return Boolean(item.children?.some((child) => child.path === route.path))
+  return Boolean(item.children?.some((child) => isChildActive(child)))
 }
 
 const isGroupOpen = (item: NavItem) => {
@@ -192,7 +207,7 @@ watch(
                 @click="closeSidebarOnMobile"
                 :class="[
                   'flex items-center gap-2 rounded-xl px-3 py-2.5 text-sm transition-all',
-                  route.path === child.path
+                  isChildActive(child)
                     ? 'bg-primary/12 text-primary ring-1 ring-primary/20'
                     : 'hover:bg-accent/55 hover:text-accent-foreground'
                 ]"
@@ -232,5 +247,7 @@ watch(
 
       <Footer class="hidden lg:block" />
     </div>
+
+    <ExportToastHost />
   </div>
 </template>

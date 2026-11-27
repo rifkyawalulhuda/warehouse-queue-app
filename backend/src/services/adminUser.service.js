@@ -1,11 +1,26 @@
 const bcrypt = require("bcryptjs");
 const prisma = require("../utils/prisma");
+const {
+  parsePagination,
+  paginateQuery,
+  normalizeSort,
+  normalizeSearch,
+} = require("../utils/pagination");
 
 const ADMIN_ROLES = {
   admin: "ADMIN",
   warehouse: "WAREHOUSE",
   cs: "CS",
 };
+
+const SORTABLE_FIELDS = new Set([
+  "name",
+  "position",
+  "role",
+  "username",
+  "createdAt",
+  "updatedAt",
+]);
 
 const adminSelect = {
   id: true,
@@ -45,8 +60,13 @@ function handlePrismaError(err) {
   throw err;
 }
 
-async function listAdminUsers(query) {
-  const search = typeof query.search === "string" ? query.search.trim() : "";
+async function listAdminUsers(query = {}) {
+  const search = normalizeSearch(query);
+  const role =
+    typeof query.role === "string" ? query.role.trim().toUpperCase() : "";
+  const { sortBy, sortDir } = normalizeSort(query, SORTABLE_FIELDS, "createdAt", "desc");
+  const pagination = parsePagination(query);
+
   const where = {};
   if (search) {
     where.OR = [
@@ -56,12 +76,20 @@ async function listAdminUsers(query) {
       { username: { contains: search, mode: "insensitive" } },
     ];
   }
+  if (role && Object.values(ADMIN_ROLES).includes(role)) {
+    where.role = role;
+  }
 
-  return prisma.adminUser.findMany({
-    where,
-    orderBy: [{ createdAt: "desc" }],
-    select: adminSelect,
-  });
+  const orderBy =
+    sortBy === "createdAt"
+      ? [{ createdAt: sortDir }]
+      : [{ [sortBy]: sortDir }, { createdAt: "desc" }];
+
+  return paginateQuery(
+    prisma.adminUser,
+    { where, orderBy, select: adminSelect },
+    pagination
+  );
 }
 
 async function getAdminUserById(id) {

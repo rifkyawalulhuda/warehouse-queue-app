@@ -17,8 +17,15 @@ export type EmployeePayload = {
   position: EmployeePosition
 }
 
-export const listEmployees = () => {
-  return api.get('/employees')
+export const listEmployees = (params?: {
+  search?: string
+  position?: EmployeePosition
+  sortBy?: string
+  sortDir?: 'asc' | 'desc'
+  page?: number
+  pageSize?: number
+}) => {
+  return api.get('/employees', { params })
 }
 
 export const createEmployee = (payload: EmployeePayload) => {

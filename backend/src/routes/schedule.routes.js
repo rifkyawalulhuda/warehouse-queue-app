@@ -17,6 +17,13 @@ router.post(
   scheduleController.createSchedule
 );
 router.get("/schedules", scheduleController.listSchedules);
+router.get("/schedules/available-items", scheduleController.listAvailableItems);
+router.patch(
+  "/schedules/items/:id/close-no-show",
+  authMiddleware,
+  requireRole("ADMIN"),
+  scheduleController.closeNoShow
+);
 router.get("/schedules/export", scheduleController.exportSchedules);
 router.get("/schedules/print-summary", scheduleController.printSummary);
 router.get("/schedules/:id", scheduleController.getScheduleById);

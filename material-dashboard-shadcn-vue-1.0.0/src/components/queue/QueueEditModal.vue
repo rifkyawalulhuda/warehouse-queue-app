@@ -14,6 +14,7 @@ type QueueEntry = {
   driverName: string
   driverPhone?: string | null
   truckNumber: string
+  containerNumbers?: string[] | null
   containerNumber?: string | null
   transporter?: string | null
   slaWaitingMinutes?: number | null
@@ -21,6 +22,7 @@ type QueueEntry = {
   loadingType?: string | null
   notes?: string | null
   registerTime?: string | null
+  scheduleItemId?: string | null
 }
 
 type FormState = {
@@ -29,7 +31,7 @@ type FormState = {
   driverName: string
   driverPhone: string
   truckNumber: string
-  containerNumber: string
+  containerNumbers: string[]
   transporter: string
   slaWaitingMinutes?: number
   slaInWhProcessMinutes?: number
@@ -61,7 +63,7 @@ const form = reactive<DraftFormState>({
   driverName: '',
   driverPhone: '',
   truckNumber: '',
-  containerNumber: '',
+  containerNumbers: [''],
   transporter: '',
   slaWaitingMinutes: '',
   slaInWhProcessMinutes: '',
@@ -114,6 +116,8 @@ const slaOptions = computed(() =>
 
 const canEditRegisterTime = computed(() => (props.entry?.status || 'MENUNGGU') === 'MENUNGGU')
 const canEditWaitingSla = computed(() => (props.entry?.status || 'MENUNGGU') === 'MENUNGGU')
+// Plat dikunci saat antrian terhubung ke Schedule Pengiriman (S8).
+const isLinkedToSchedule = computed(() => Boolean(props.entry?.scheduleItemId))
 
 const toDatetimeLocal = (value?: string | null) => {
   if (!value) return ''
@@ -134,7 +138,12 @@ const syncFormFromEntry = () => {
   form.driverName = props.entry?.driverName || ''
   form.driverPhone = props.entry?.driverPhone || ''
   form.truckNumber = props.entry?.truckNumber || ''
-  form.containerNumber = props.entry?.containerNumber || ''
+  form.containerNumbers =
+    props.entry?.containerNumbers && props.entry.containerNumbers.length > 0
+      ? [...props.entry.containerNumbers]
+      : props.entry?.containerNumber
+        ? [props.entry.containerNumber]
+        : ['']
   form.transporter = props.entry?.transporter || ''
   form.slaWaitingMinutes = props.entry?.slaWaitingMinutes ? String(props.entry.slaWaitingMinutes) : ''
   form.slaInWhProcessMinutes = props.entry?.slaInWhProcessMinutes ? String(props.entry.slaInWhProcessMinutes) : ''
@@ -192,6 +201,15 @@ const handleDriverPhoneInput = (event: Event) => {
   target.value = sanitized
 }
 
+const addContainerField = () => {
+  form.containerNumbers.push('')
+}
+
+const removeContainerField = (index: number) => {
+  form.containerNumbers.splice(index, 1)
+  if (form.containerNumbers.length === 0) form.containerNumbers.push('')
+}
+
 const handleSubmit = () => {
   if (!validate()) return
   const payload: FormState = {
@@ -200,7 +218,7 @@ const handleSubmit = () => {
     driverName: form.driverName,
     driverPhone: form.driverPhone.trim(),
     truckNumber: form.truckNumber,
-    containerNumber: form.containerNumber,
+    containerNumbers: form.containerNumbers.map((value) => value.trim()).filter(Boolean),
     transporter: form.transporter,
     notes: form.notes,
     registerTime: form.registerTime,
@@ -307,12 +325,43 @@ watch(
           </div>
           <div>
             <label class="text-muted-foreground">No Truck</label>
-            <input v-model="form.truckNumber" type="text" class="mt-1 w-full bg-transparent border rounded-md px-2 py-2 text-sm" />
+            <input
+              v-model="form.truckNumber"
+              type="text"
+              :disabled="isLinkedToSchedule"
+              class="mt-1 w-full bg-transparent border rounded-md px-2 py-2 text-sm disabled:opacity-60"
+            />
+            <p v-if="isLinkedToSchedule" class="mt-1 text-xs text-muted-foreground">
+              Terkunci karena terhubung ke Schedule Pengiriman.
+            </p>
             <p v-if="errors.truckNumber" class="mt-1 text-xs text-red-600">{{ errors.truckNumber }}</p>
           </div>
           <div>
-            <label class="text-muted-foreground">No Container</label>
-            <input v-model="form.containerNumber" type="text" class="mt-1 w-full bg-transparent border rounded-md px-2 py-2 text-sm" />
+            <div class="flex items-center justify-between">
+              <label class="text-muted-foreground">No Container</label>
+              <Button variant="ghost" size="sm" @click="addContainerField">Tambah</Button>
+            </div>
+            <div class="mt-1 space-y-2">
+              <div
+                v-for="(_, index) in form.containerNumbers"
+                :key="index"
+                class="flex items-center gap-2"
+              >
+                <input
+                  v-model="form.containerNumbers[index]"
+                  type="text"
+                  class="w-full bg-transparent border rounded-md px-2 py-2 text-sm uppercase"
+                />
+                <Button
+                  v-if="form.containerNumbers.length > 1"
+                  variant="ghost"
+                  size="sm"
+                  @click="removeContainerField(index)"
+                >
+                  Hapus
+                </Button>
+              </div>
+            </div>
           </div>
           <div>
             <label class="text-muted-foreground">Transporter</label>

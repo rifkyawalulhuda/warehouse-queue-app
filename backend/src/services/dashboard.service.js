@@ -271,33 +271,27 @@ async function getScheduleSummary(dateQuery) {
     throw createHttpError(400, "Format date tidak valid. Gunakan YYYY-MM-DD");
   }
 
-  const [storeInAggregate, storeOutAggregate] = await Promise.all([
-    prisma.shipmentScheduleItem.aggregate({
+  const [storeInCount, storeOutCount] = await Promise.all([
+    prisma.shipmentScheduleItem.count({
       where: {
         schedule: {
           scheduleDate,
           storeType: "STORE_IN",
         },
       },
-      _sum: {
-        qty: true,
-      },
     }),
-    prisma.shipmentScheduleItem.aggregate({
+    prisma.shipmentScheduleItem.count({
       where: {
         schedule: {
           scheduleDate,
           storeType: "STORE_OUT",
         },
       },
-      _sum: {
-        qty: true,
-      },
     }),
   ]);
 
-  const storeIn = storeInAggregate?._sum?.qty || 0;
-  const storeOut = storeOutAggregate?._sum?.qty || 0;
+  const storeIn = storeInCount || 0;
+  const storeOut = storeOutCount || 0;
 
   return {
     date: range.date,
@@ -321,15 +315,12 @@ async function getProgressSummary(dateQuery) {
     },
   };
 
-  const [targetQtyAggregate, selesaiCount, prosesCount] = await Promise.all([
-    prisma.shipmentScheduleItem.aggregate({
+  const [targetPengirimanCount, selesaiCount, prosesCount] = await Promise.all([
+    prisma.shipmentScheduleItem.count({
       where: {
         schedule: {
           scheduleDate,
         },
-      },
-      _sum: {
-        qty: true,
       },
     }),
     prisma.queueEntry.count({
@@ -348,7 +339,7 @@ async function getProgressSummary(dateQuery) {
     }),
   ]);
 
-  const targetPengiriman = targetQtyAggregate?._sum?.qty || 0;
+  const targetPengiriman = targetPengirimanCount || 0;
 
   const selesaiPct = targetPengiriman > 0 ? (selesaiCount / targetPengiriman) * 100 : 0;
   const prosesPct = targetPengiriman > 0 ? (prosesCount / targetPengiriman) * 100 : 0;
@@ -584,7 +575,6 @@ async function getMonthlyScheduleTruckSummary(monthQuery) {
     },
     select: {
       truckType: true,
-      qty: true,
       schedule: {
         select: {
           storeType: true,
@@ -606,7 +596,8 @@ async function getMonthlyScheduleTruckSummary(monthQuery) {
 
   rows.forEach((row) => {
     const key = bucketMap[row.truckType] ? row.truckType : "OTHER";
-    const qty = Number(row.qty) || 0;
+    // Phase 1: qty dihapus, setiap baris schedule item = 1 truk.
+    const qty = 1;
     if (row.schedule?.storeType === "STORE_OUT") {
       bucketMap[key].storeOutQty += qty;
     } else {
@@ -663,7 +654,6 @@ async function getMonthlyReport(monthQuery) {
         },
       },
       select: {
-        qty: true,
         truckType: true,
         truckTypeOther: true,
         schedule: {
@@ -864,7 +854,8 @@ async function getMonthlyReport(monthQuery) {
   const scheduleQtyByCustomer = new Map();
 
   scheduleItems.forEach((item) => {
-    const qty = Number(item.qty) || 0;
+    // Phase 1: qty dihapus, setiap baris schedule item = 1 truk.
+    const qty = 1;
     const storeType = item.schedule?.storeType;
     const dateKey = formatDateOnlyUtc(new Date(item.schedule?.scheduleDate));
 

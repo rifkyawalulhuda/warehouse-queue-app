@@ -12,6 +12,7 @@ type DisplayEntry = {
   gate?: { id: string; gateNo: string; area: string; warehouse: 'WH1' | 'WH2' | 'DG' } | null
   driverName: string
   truckNumber: string
+  containerNumbers?: string[]
   containerNumber?: string | null
   transporter?: string | null
   registerTime: string
@@ -581,8 +582,8 @@ const showSoundBanner = computed(() => soundEnabled.value && ttsSupported && sou
               </td>
               <td class="col-driver cell-strong" :title="entry.driverName">{{ entry.driverName || '-' }}</td>
               <td class="col-truck cell-truck">{{ entry.truckNumber || '-' }}</td>
-              <td class="col-container cell-muted" :title="entry.containerNumber || ''">
-                {{ entry.containerNumber || '-' }}
+              <td class="col-container cell-muted" :title="entry.containerNumbers && entry.containerNumbers.length > 0 ? entry.containerNumbers.join(', ') : (entry.containerNumber || '')">
+                {{ entry.containerNumbers && entry.containerNumbers.length > 0 ? entry.containerNumbers.join(', ') : (entry.containerNumber || '-') }}
               </td>
               <td class="col-transporter cell-muted" :title="entry.transporter || ''">
                 {{ entry.transporter || '-' }}

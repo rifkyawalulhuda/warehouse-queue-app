@@ -7,9 +7,17 @@ const {
   AUTO_COMPLETE_AFTER_DAYS,
   autoCompleteExpiredQueueEntries,
 } = require("./services/queue.service");
+const { markNoShowScheduleItems } = require("./services/schedule.service");
+const {
+  markStaleExportJobsFailed,
+  cleanupExpiredExportFiles,
+  kickExportWorker,
+} = require("./services/export.service");
 
 const PORT = process.env.PORT || 3000;
 const AUTO_COMPLETE_INTERVAL_MS = 60 * 60 * 1000;
+const SCHEDULE_NO_SHOW_INTERVAL_MS = 60 * 60 * 1000;
+const EXPORT_CLEANUP_INTERVAL_MS = 60 * 60 * 1000;
 const LOG_FILE = path.join(__dirname, "..", "runtime.log");
 
 function logToFile(level, ...args) {
@@ -55,8 +63,47 @@ async function runQueueAutoCompleteJob() {
   }
 }
 
+async function runScheduleNoShowJob() {
+  try {
+    const { updatedCount } = await markNoShowScheduleItems();
+    if (updatedCount > 0) {
+      console.log(`[schedule-no-show] ${updatedCount} jadwal truk ditandai NO_SHOW oleh sistem`);
+    }
+  } catch (error) {
+    console.error("[schedule-no-show] gagal menjalankan penandaan no-show", error);
+  }
+}
+
+async function runExportCleanupJob() {
+  try {
+    const removed = await cleanupExpiredExportFiles();
+    if (removed > 0) {
+      console.log(`[export-cleanup] ${removed} file export kedaluwarsa dihapus`);
+    }
+  } catch (error) {
+    console.error("[export-cleanup] gagal membersihkan file export", error);
+  }
+}
+
+async function bootstrapExportJobs() {
+  try {
+    const failed = await markStaleExportJobsFailed();
+    if (failed > 0) {
+      console.log(`[export-job] ${failed} job export menggantung ditandai GAGAL`);
+    }
+    void kickExportWorker();
+  } catch (error) {
+    console.error("[export-job] gagal menyiapkan worker export", error);
+  }
+}
+
 app.listen(PORT, () => {
   console.log(`API running on port ${PORT}`);
   runQueueAutoCompleteJob();
+  runScheduleNoShowJob();
+  void bootstrapExportJobs();
+  runExportCleanupJob();
   setInterval(runQueueAutoCompleteJob, AUTO_COMPLETE_INTERVAL_MS);
+  setInterval(runScheduleNoShowJob, SCHEDULE_NO_SHOW_INTERVAL_MS);
+  setInterval(runExportCleanupJob, EXPORT_CLEANUP_INTERVAL_MS);
 });

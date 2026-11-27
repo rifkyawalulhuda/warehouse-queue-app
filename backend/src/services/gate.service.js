@@ -1,4 +1,5 @@
 const prisma = require("../utils/prisma");
+const { parsePagination, paginateQuery } = require("../utils/pagination");
 
 const WAREHOUSE_VALUES = new Set(["WH1", "WH2", "DG"]);
 const SORTABLE_FIELDS = new Set(["gateNo", "area", "warehouse", "createdAt", "updatedAt"]);
@@ -58,10 +59,14 @@ async function listGates(query) {
     where.warehouse = warehouse;
   }
 
-  return prisma.gate.findMany({
-    where,
-    orderBy: buildOrderBy(sortBy, sortDir),
-  });
+  return paginateQuery(
+    prisma.gate,
+    {
+      where,
+      orderBy: buildOrderBy(sortBy, sortDir),
+    },
+    parsePagination(query)
+  );
 }
 
 async function createGate(data) {

@@ -30,6 +30,7 @@ type QueueEntry = {
   pickerEmployee?: Employee | null
   driverName: string
   truckNumber: string
+  containerNumbers?: string[]
   containerNumber?: string | null
   transporter?: string | null
   registerTime: string
@@ -43,6 +44,24 @@ type QueueEntry = {
   driverPhone?: string | null
   notes?: string | null
   notesFromWh?: string | null
+  scheduleItemId?: string | null
+  scheduleItem?: {
+    id: string
+    plateNumber?: string | null
+    status?: string | null
+    schedule?: { id: string; scheduleDate: string; storeType: string } | null
+  } | null
+  plannedStart?: string | null
+  plannedFinish?: string | null
+  plannedPlateNumber?: string | null
+  plannedDriverName?: string | null
+  plannedTransporterName?: string | null
+  plannedContainerNumbers?: string[]
+  varianceArrivalMinutes?: number | null
+  varianceFinishMinutes?: number | null
+  isOnTimeArrival?: boolean | null
+  isOnTimeFinish?: boolean | null
+  autoCompleted?: boolean
   logs?: QueueLog[]
 }
 
@@ -130,6 +149,52 @@ const categoryLabel = (category?: string) => {
   if (category === 'DELIVERY') return 'Delivery'
   return '-'
 }
+
+// Selisih terhadap rencana. Positif = terlambat, negatif = lebih awal.
+const varianceLabel = (value?: number | null) => {
+  if (value === null || value === undefined) return ''
+  const rounded = Math.round(Number(value))
+  if (!Number.isFinite(rounded)) return ''
+  if (rounded === 0) return '(tepat waktu)'
+  const human = formatMinutesHuman(Math.abs(rounded))
+  return rounded > 0 ? `(+${human})` : `(-${human})`
+}
+
+const varianceClass = (onTime?: boolean | null) => {
+  if (onTime === null || onTime === undefined) return 'text-muted-foreground'
+  return onTime ? 'text-emerald-600' : 'text-red-600'
+}
+
+const normalizeText = (value?: string | null) => (value || '').trim().toUpperCase()
+
+const driverOverridden = computed(
+  () =>
+    Boolean(props.entry?.plannedDriverName) &&
+    normalizeText(props.entry?.plannedDriverName) !== normalizeText(props.entry?.driverName),
+)
+const transporterOverridden = computed(
+  () =>
+    Boolean(props.entry?.plannedTransporterName) &&
+    normalizeText(props.entry?.plannedTransporterName) !== normalizeText(props.entry?.transporter),
+)
+const plateOverridden = computed(
+  () =>
+    Boolean(props.entry?.plannedPlateNumber) &&
+    normalizeText(props.entry?.plannedPlateNumber) !== normalizeText(props.entry?.truckNumber),
+)
+const containerOverridden = computed(() => {
+  const planned = (props.entry?.plannedContainerNumbers || []).map(normalizeText).sort()
+  const actual = (props.entry?.containerNumbers || []).map(normalizeText).sort()
+  if (planned.length === 0 && actual.length === 0) return false
+  return planned.join('|') !== actual.join('|')
+})
+const hasPlanOverrides = computed(
+  () =>
+    driverOverridden.value ||
+    transporterOverridden.value ||
+    plateOverridden.value ||
+    containerOverridden.value,
+)
 
 const resolveAreaType = (category?: QueueEntry['category']) => {
   if (category === 'DELIVERY') return 'Muat'
@@ -392,7 +457,7 @@ const saveWhNotes = async () => {
           </div>
           <div>
             <p class="text-muted-foreground">No Container</p>
-            <p class="font-medium">{{ entry?.containerNumber || '-' }}</p>
+            <p class="font-medium">{{ entry?.containerNumbers && entry.containerNumbers.length > 0 ? entry.containerNumbers.join(', ') : (entry?.containerNumber || '-') }}</p>
           </div>
           <div>
             <p class="text-muted-foreground">Transporter</p>
@@ -447,6 +512,65 @@ const saveWhNotes = async () => {
           <div>
             <p class="text-muted-foreground">Total Waktu (Register → Finish)</p>
             <p class="font-medium">{{ totalDurationHuman }}</p>
+          </div>
+          <div v-if="entry?.scheduleItemId" class="col-span-2 rounded-lg border p-3">
+            <div class="mb-2 flex flex-wrap items-center justify-between gap-2">
+              <p class="text-sm font-semibold">Rencana vs Aktual</p>
+              <span
+                v-if="entry?.autoCompleted"
+                class="rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-700"
+              >
+                Ditutup otomatis sistem
+              </span>
+            </div>
+            <div class="grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
+              <div>
+                <p class="text-muted-foreground">Estimasi Start (Plan)</p>
+                <p class="font-medium">{{ formatDateTime(entry?.plannedStart) }}</p>
+              </div>
+              <div>
+                <p class="text-muted-foreground">Aktual Datang</p>
+                <p class="font-medium">
+                  {{ formatDateTime(entry?.registerTime) }}
+                  <span :class="varianceClass(entry?.isOnTimeArrival)">
+                    {{ varianceLabel(entry?.varianceArrivalMinutes) }}
+                  </span>
+                </p>
+              </div>
+              <div>
+                <p class="text-muted-foreground">Estimasi Finish (Plan)</p>
+                <p class="font-medium">{{ formatDateTime(entry?.plannedFinish) }}</p>
+              </div>
+              <div>
+                <p class="text-muted-foreground">Aktual Selesai</p>
+                <p class="font-medium">
+                  {{ formatDateTime(entry?.finishTime) }}
+                  <span :class="varianceClass(entry?.isOnTimeFinish)">
+                    {{ varianceLabel(entry?.varianceFinishMinutes) }}
+                  </span>
+                </p>
+              </div>
+            </div>
+            <p
+              v-if="entry?.autoCompleted"
+              class="mt-2 text-xs text-amber-600"
+            >
+              Waktu selesai diisi sistem, sehingga tidak dihitung dalam statistik on-time.
+            </p>
+            <div v-if="hasPlanOverrides" class="mt-2 space-y-1 border-t pt-2 text-xs text-muted-foreground">
+              <p class="font-medium">Diubah dari rencana:</p>
+              <p v-if="driverOverridden">Driver: {{ entry?.plannedDriverName }} → {{ entry?.driverName }}</p>
+              <p v-if="transporterOverridden">
+                Transporter: {{ entry?.plannedTransporterName }} → {{ entry?.transporter || '-' }}
+              </p>
+              <p v-if="plateOverridden">
+                Plat: {{ entry?.plannedPlateNumber }} → {{ entry?.truckNumber }}
+              </p>
+              <p v-if="containerOverridden">
+                Container: {{ entry?.plannedContainerNumbers?.join(', ') || '-' }} →
+                {{ entry?.containerNumbers?.join(', ') || '-' }}
+              </p>
+            </div>
           </div>
           <div>
             <p class="text-muted-foreground">SLA Menunggu</p>

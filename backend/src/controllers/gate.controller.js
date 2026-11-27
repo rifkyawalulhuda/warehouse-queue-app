@@ -1,7 +1,7 @@
 const gateService = require("../services/gate.service");
 const xlsx = require("xlsx");
 const ExcelJS = require("exceljs");
-const { sendSuccess } = require("../utils/response");
+const { sendSuccess, sendPaginated } = require("../utils/response");
 
 function normalizeHeader(value) {
   return String(value || "")
@@ -32,8 +32,8 @@ function ensureGateHeader(rows) {
 
 async function listGates(req, res, next) {
   try {
-    const gates = await gateService.listGates(req.query);
-    return sendSuccess(res, gates);
+    const { data, meta } = await gateService.listGates(req.query);
+    return sendPaginated(res, data, meta);
   } catch (err) {
     return next(err);
   }

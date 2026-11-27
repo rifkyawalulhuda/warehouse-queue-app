@@ -1,82 +1,8 @@
-const ExcelJS = require("exceljs");
 const queueService = require("../services/queue.service");
 const adminUserService = require("../services/adminUser.service");
+const exportService = require("../services/export.service");
+const { resolveExportScope } = require("../utils/exportScope");
 const { sendSuccess } = require("../utils/response");
-const { formatLoadingTypeLabel } = require("../utils/loadingType");
-
-function formatDateTime(value) {
-  if (!value) return "-";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "-";
-  const pad = (num) => String(num).padStart(2, "0");
-  const day = pad(date.getDate());
-  const month = pad(date.getMonth() + 1);
-  const year = date.getFullYear();
-  const hours = pad(date.getHours());
-  const minutes = pad(date.getMinutes());
-  return `${day}/${month}/${year} ${hours}:${minutes}`;
-}
-
-function formatDateOnly(value) {
-  if (!value) return "-";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "-";
-  const pad = (num) => String(num).padStart(2, "0");
-  const day = pad(date.getDate());
-  const month = pad(date.getMonth() + 1);
-  const year = date.getFullYear();
-  return `${day}/${month}/${year}`;
-}
-
-function mapCategory(category) {
-  if (category === "RECEIVING") return "Receiving";
-  if (category === "DELIVERY") return "Delivery";
-  return "-";
-}
-
-function formatDurationHuman(registerTime, finishTime) {
-  if (!registerTime || !finishTime) return "-";
-  const start = new Date(registerTime);
-  const end = new Date(finishTime);
-  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return "-";
-  const durationMs = end.getTime() - start.getTime();
-  if (durationMs < 0) return "-";
-
-  const totalMinutes = Math.floor(durationMs / 60000);
-  const hours = Math.floor(totalMinutes / 60);
-  const minutes = totalMinutes % 60;
-
-  if (hours > 0 && minutes > 0) return `${hours} jam ${minutes} menit`;
-  if (hours > 0 && minutes === 0) return `${hours} jam`;
-  if (hours === 0 && minutes > 0) return `${minutes} menit`;
-  return "kurang dari 1 menit";
-}
-
-function formatMinutesHuman(value) {
-  const totalMinutes = Number(value);
-  if (!Number.isFinite(totalMinutes) || totalMinutes <= 0) return "-";
-
-  const hours = Math.floor(totalMinutes / 60);
-  const minutes = totalMinutes % 60;
-
-  if (hours > 0 && minutes > 0) return `${hours} jam ${minutes} menit`;
-  if (hours > 0 && minutes === 0) return `${hours} jam`;
-  return `${minutes} menit`;
-}
-
-function formatTimeRemaining(entry) {
-  const remainingMinutes = queueService.getEntryRemainingMinutes(entry);
-  if (remainingMinutes === null) return "-";
-  if (remainingMinutes < 0) return `Over SLA ${Math.abs(remainingMinutes)} menit`;
-  return `${remainingMinutes} menit`;
-}
-
-function buildExportFilename(dateFrom, dateTo) {
-  if (dateFrom && dateTo) {
-    return `antrian_truk_${dateFrom}_sampai_${dateTo}.xlsx`;
-  }
-  return "antrian_truk.xlsx";
-}
 
 async function createQueue(req, res, next) {
   try {
@@ -165,80 +91,14 @@ async function setInWh(req, res, next) {
 
 async function exportQueue(req, res, next) {
   try {
-    const { dateFrom, dateTo } = req.query;
-    const entries = await queueService.listQueueEntriesForExport(req.query);
+    const scope = resolveExportScope(req.query);
+    const { workbook, fileName } = await exportService.buildWorkbookFor("QUEUE", scope);
 
-    const workbook = new ExcelJS.Workbook();
-    const worksheet = workbook.addWorksheet("Antrian Truk");
-
-    worksheet.columns = [
-      { header: "No", key: "no", width: 6 },
-      { header: "Tanggal", key: "date", width: 14 },
-      { header: "Customer Name", key: "customerName", width: 28 },
-      { header: "Driver Name", key: "driverName", width: 20 },
-      { header: "Driver Phone", key: "driverPhone", width: 18 },
-      { header: "No Truck", key: "truckNumber", width: 16 },
-      { header: "No Container", key: "containerNumber", width: 18 },
-      { header: "Transporter", key: "transporter", width: 18 },
-      { header: "Notes", key: "notes", width: 24 },
-      { header: "Notes from WH", key: "notesFromWh", width: 30 },
-      { header: "Gate No", key: "gateNo", width: 12 },
-      { header: "Gate Area", key: "gateArea", width: 20 },
-      { header: "Gate Warehouse", key: "gateWarehouse", width: 18 },
-      { header: "Nama Tallyman", key: "pickerEmployeeName", width: 28 },
-      { header: "Register Time", key: "registerTime", width: 20 },
-      { header: "In WH - Time", key: "inWhTime", width: 20 },
-      { header: "Start", key: "startTime", width: 20 },
-      { header: "Finish", key: "finishTime", width: 20 },
-      { header: "Total Waktu (Register → Finish)", key: "totalDuration", width: 28 },
-      { header: "SLA Menunggu", key: "slaWaitingMinutes", width: 18 },
-      { header: "SLA IN_WH + Proses", key: "slaInWhProcessMinutes", width: 22 },
-      { header: "Time Remaining", key: "timeRemaining", width: 18 },
-      { header: "Status", key: "status", width: 14 },
-      { header: "Loading Type", key: "loadingType", width: 18 },
-      { header: "Keterangan Batal", key: "cancelReason", width: 30 },
-      { header: "Category", key: "category", width: 14 },
-    ];
-
-    worksheet.getRow(1).font = { bold: true };
-
-    entries.forEach((entry, index) => {
-      worksheet.addRow({
-        no: index + 1,
-        date: formatDateOnly(entry.registerTime),
-        customerName: entry.customer?.name || "-",
-        driverName: entry.driverName || "-",
-        driverPhone: entry.driverPhone || "-",
-        truckNumber: entry.truckNumber || "-",
-        containerNumber: entry.containerNumber || "-",
-        transporter: entry.transporter || "-",
-        notes: entry.notes || "-",
-        notesFromWh: entry.notesFromWh || "-",
-        gateNo: entry.gate?.gateNo || "-",
-        gateArea: entry.gate?.area || "-",
-        gateWarehouse: entry.gate?.warehouse || "-",
-        pickerEmployeeName: entry.pickerEmployee?.name || "-",
-        registerTime: formatDateTime(entry.registerTime),
-        inWhTime: formatDateTime(entry.inWhTime),
-        startTime: formatDateTime(entry.startTime),
-        finishTime: formatDateTime(entry.finishTime),
-        slaWaitingMinutes: formatMinutesHuman(entry.slaWaitingMinutes),
-        slaInWhProcessMinutes: formatMinutesHuman(entry.slaInWhProcessMinutes),
-        totalDuration: formatDurationHuman(entry.registerTime, entry.finishTime),
-        timeRemaining: formatTimeRemaining(entry),
-        status: entry.status || "-",
-        loadingType: formatLoadingTypeLabel(entry.loadingType),
-        cancelReason: entry.logs?.[0]?.note || "-",
-        category: mapCategory(entry.category),
-      });
-    });
-
-    const filename = buildExportFilename(dateFrom, dateTo);
     res.setHeader(
       "Content-Type",
       "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     );
-    res.setHeader("Content-Disposition", `attachment; filename=\"${filename}\"`);
+    res.setHeader("Content-Disposition", `attachment; filename="${fileName}"`);
 
     await workbook.xlsx.write(res);
     res.end();

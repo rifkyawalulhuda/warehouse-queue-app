@@ -1,10 +1,10 @@
 const adminUserService = require("../services/adminUser.service");
-const { sendSuccess } = require("../utils/response");
+const { sendSuccess, sendPaginated } = require("../utils/response");
 
 async function listAdminUsers(req, res, next) {
   try {
-    const admins = await adminUserService.listAdminUsers(req.query);
-    return sendSuccess(res, admins);
+    const { data, meta } = await adminUserService.listAdminUsers(req.query);
+    return sendPaginated(res, data, meta);
   } catch (err) {
     return next(err);
   }

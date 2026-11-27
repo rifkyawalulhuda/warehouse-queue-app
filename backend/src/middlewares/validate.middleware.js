@@ -13,6 +13,25 @@ function isNonEmptyString(value) {
   return typeof value === "string" && value.trim().length > 0;
 }
 
+// Phase 1: container disimpan sebagai array di kedua sisi (plan dan aktual).
+function isValidContainerNumbers(value) {
+  if (value === undefined || value === null) return true;
+  if (!Array.isArray(value)) return false;
+  return value.every((item) => typeof item === "string");
+}
+
+function isValidOptionalTruckType(value) {
+  if (value === undefined || value === null || value === "") return true;
+  return ALLOWED_TRUCK_TYPES.includes(value);
+}
+
+/** "HH:mm" atau "H:mm", 00:00-23:59 */
+function isValidTimeString(value) {
+  if (typeof value !== "string") return false;
+  const match = /^([01]?\d|2[0-3]):([0-5]\d)$/.exec(value.trim());
+  return Boolean(match);
+}
+
 function isValidDateString(dateStr) {
   if (typeof dateStr !== "string") return false;
   const parts = dateStr.trim().split("-");
@@ -59,11 +78,18 @@ function validateQueueCreate(req, res, next) {
     driverName,
     driverPhone,
     truckNumber,
+    truckType,
+    containerNumber,
+    containerNumbers,
     transporter,
     registerTime,
+    scheduleItemId,
     slaWaitingMinutes,
     slaInWhProcessMinutes,
   } = req.body;
+  // Saat menautkan ke Schedule Pengiriman, plat/kategori/customer/driver
+  // diambil dari jadwal. Operator hanya perlu mengisi yang ingin dioverride.
+  const isLinked = typeof scheduleItemId === "string" && scheduleItemId.trim().length > 0;
   const waitingSla = parseSlaMinutes(slaWaitingMinutes);
   const inWhProcessSla = parseSlaMinutes(slaInWhProcessMinutes);
   const hasWaitingSla =
@@ -73,13 +99,24 @@ function validateQueueCreate(req, res, next) {
     slaInWhProcessMinutes !== null &&
     slaInWhProcessMinutes !== "";
 
-  if (!ALLOWED_CATEGORIES.includes(category)) {
-    errors.push("category harus RECEIVING atau DELIVERY");
+  if (!isLinked) {
+    if (!ALLOWED_CATEGORIES.includes(category)) {
+      errors.push("category harus RECEIVING atau DELIVERY");
+    }
+    if (!isNonEmptyString(customerId)) {
+      errors.push("customerId wajib diisi");
+    }
+    if (!isNonEmptyString(truckNumber)) {
+      errors.push("truckNumber wajib diisi");
+    }
+  } else if (category !== undefined && category !== null && category !== "") {
+    // Kalau dikirim, tetap harus valid; kecocokan kategori dengan jadwal
+    // divalidasi di service.
+    if (!ALLOWED_CATEGORIES.includes(category)) {
+      errors.push("category harus RECEIVING atau DELIVERY");
+    }
   }
-  if (!isNonEmptyString(customerId)) {
-    errors.push("customerId wajib diisi");
-  }
-  if (!isNonEmptyString(driverName)) {
+  if (!isLinked && !isNonEmptyString(driverName)) {
     errors.push("driverName wajib diisi");
   }
   if (!isValidOptionalPhone(driverPhone)) {
@@ -87,11 +124,19 @@ function validateQueueCreate(req, res, next) {
       `driverPhone hanya boleh angka, +, -, spasi; jumlah digit ${MIN_PHONE_DIGITS}-${MAX_PHONE_DIGITS}`
     );
   }
-  if (!isNonEmptyString(truckNumber)) {
-    errors.push("truckNumber wajib diisi");
+  if (!isValidOptionalTruckType(truckType)) {
+    errors.push(`truckType harus salah satu dari: ${ALLOWED_TRUCK_TYPES.join(", ")}`);
+  }
+  if (!isValidContainerNumbers(containerNumbers)) {
+    errors.push("containerNumbers harus array of string");
   }
   if (transporter !== undefined && transporter !== null && typeof transporter !== "string") {
     errors.push("transporter harus string");
+  }
+  if (scheduleItemId !== undefined && scheduleItemId !== null && scheduleItemId !== "") {
+    if (!isNonEmptyString(scheduleItemId)) {
+      errors.push("scheduleItemId tidak valid");
+    }
   }
   if (registerTime !== undefined && registerTime !== null && registerTime !== "" && !isValidDateInput(registerTime)) {
     errors.push("registerTime tidak valid");
@@ -125,7 +170,9 @@ function validateQueueUpdate(req, res, next) {
     driverName,
     driverPhone,
     truckNumber,
+    truckType,
     containerNumber,
+    containerNumbers,
     transporter,
     notes,
     registerTime,
@@ -163,6 +210,12 @@ function validateQueueUpdate(req, res, next) {
   }
   if (containerNumber !== undefined && typeof containerNumber !== "string") {
     errors.push("containerNumber harus string");
+  }
+  if (!isValidContainerNumbers(containerNumbers)) {
+    errors.push("containerNumbers harus array of string");
+  }
+  if (!isValidOptionalTruckType(truckType)) {
+    errors.push(`truckType harus salah satu dari: ${ALLOWED_TRUCK_TYPES.join(", ")}`);
   }
   if (transporter !== undefined && typeof transporter !== "string") {
     errors.push("transporter harus string");
@@ -252,18 +305,48 @@ function validateSchedulePayload(req, res, next) {
     items.forEach((item, index) => {
       const row = index + 1;
       const truckType = typeof item?.truckType === "string" ? item.truckType.trim().toUpperCase() : "";
-      const qty = Number(item?.qty);
       const truckTypeOther =
         typeof item?.truckTypeOther === "string" ? item.truckTypeOther.trim() : "";
+      const isExisting = typeof item?.id === "string" && item.id.trim().length > 0;
+      const plateNumber =
+        typeof item?.plateNumber === "string" ? item.plateNumber.trim() : "";
+      const plannedStart =
+        typeof item?.plannedStart === "string" ? item.plannedStart.trim() : "";
+      const plannedFinish =
+        typeof item?.plannedFinish === "string" ? item.plannedFinish.trim() : "";
 
       if (!ALLOWED_TRUCK_TYPES.includes(truckType)) {
         errors.push(`items[${row}] truckType tidak valid`);
       }
-      if (!Number.isInteger(qty) || qty < 1) {
-        errors.push(`items[${row}] qty harus angka bulat minimal 1`);
-      }
       if (truckType === "OTHER" && !truckTypeOther) {
         errors.push(`items[${row}] truckTypeOther wajib diisi jika truckType OTHER`);
+      }
+      // Item baru wajib lengkap. Item lama boleh belum punya plat/waktu
+      // (data sebelum Phase 1) agar tetap bisa diedit.
+      if (!isExisting) {
+        if (!plateNumber) {
+          errors.push(`items[${row}] plateNumber wajib diisi`);
+        }
+        if (!plannedStart || !plannedFinish) {
+          errors.push(`items[${row}] plannedStart dan plannedFinish wajib diisi`);
+        }
+      }
+      if (plannedStart && !isValidTimeString(plannedStart)) {
+        errors.push(`items[${row}] plannedStart harus format HH:mm`);
+      }
+      if (plannedFinish && !isValidTimeString(plannedFinish)) {
+        errors.push(`items[${row}] plannedFinish harus format HH:mm`);
+      }
+      if (!isValidContainerNumbers(item?.containerNumbers)) {
+        errors.push(`items[${row}] containerNumbers harus array of string`);
+      }
+      if (
+        item?.transporterId !== undefined &&
+        item?.transporterId !== null &&
+        item?.transporterId !== "" &&
+        !isNonEmptyString(item.transporterId)
+      ) {
+        errors.push(`items[${row}] transporterId tidak valid`);
       }
     });
   }

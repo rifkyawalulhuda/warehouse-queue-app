@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useAuth } from '@/composables/useAuth'
@@ -10,7 +10,9 @@ import Combobox from '@/components/ui/Combobox.vue'
 import Input from '@/components/ui/Input.vue'
 import { CalendarDays, RefreshCw, Search } from 'lucide-vue-next'
 import api from '@/services/api'
+import ExportDialog from '@/components/export/ExportDialog.vue'
 import { formatDateId, formatDateTimeId } from '@/lib/datetime'
+import { getTransporters, closeNoShowItem, type Transporter } from '@/services/scheduleApi'
 
 type StoreType = 'STORE_IN' | 'STORE_OUT'
 type TruckType = 'CDD' | 'CDE' | 'FUSO' | 'WB' | 'FT20' | 'FT40' | 'OTHER'
@@ -26,17 +28,27 @@ type ScheduleListItem = {
   storeType: StoreType
   customer: Customer | null
   totalTypes: number
-  totalQty: number
+  totalTrucks: number
   createdAt: string
   updatedAt: string
 }
+
+type ScheduleItemStatus = 'PLANNED' | 'LINKED' | 'NO_SHOW' | 'NO_SHOW_CLOSED'
 
 type ScheduleItem = {
   id: string
   scheduleId: string
   truckType: TruckType
   truckTypeOther?: string | null
-  qty: number
+  plateNumber?: string | null
+  plannedStart?: string | null
+  plannedFinish?: string | null
+  transporterId?: string | null
+  transporter?: { id: string; name: string } | null
+  driverName?: string | null
+  containerNumbers?: string[]
+  status?: ScheduleItemStatus
+  queueEntries?: { id: string; status: string }[]
   createdAt: string
 }
 
@@ -53,9 +65,16 @@ type ScheduleDetail = {
 
 type FormItem = {
   key: number
+  id: string | null
   truckType: TruckType | ''
   truckTypeOther: string
-  qty: number | ''
+  plateNumber: string
+  plannedStart: string
+  plannedFinish: string
+  transporterId: string
+  driverName: string
+  containerNumbers: string[]
+  status?: ScheduleItemStatus
 }
 
 type PrintColumn = {
@@ -87,6 +106,7 @@ const truckTypeOptions: Array<{ label: string; value: TruckType }> = [
 
 const schedules = ref<ScheduleListItem[]>([])
 const customers = ref<Customer[]>([])
+const transporters = ref<Transporter[]>([])
 const loading = ref(false)
 const error = ref<string | null>(null)
 const success = ref<string | null>(null)
@@ -125,14 +145,10 @@ const confirmData = ref<ScheduleListItem | null>(null)
 const confirmRemoveItemOpen = ref(false)
 const confirmRemoveItemIndex = ref<number | null>(null)
 const exportOpen = ref(false)
-const exporting = ref(false)
-const exportError = ref<string | null>(null)
 const printing = ref(false)
 const printError = ref<string | null>(null)
 const filterDateInputRef = ref<HTMLInputElement | null>(null)
 const formDateInputRef = ref<HTMLInputElement | null>(null)
-const exportDateFromInputRef = ref<HTMLInputElement | null>(null)
-const exportDateToInputRef = ref<HTMLInputElement | null>(null)
 const route = useRoute()
 const { user } = useAuth()
 const canManageSchedule = computed(() => user.value?.role === 'ADMIN' || user.value?.role === 'CS')
@@ -146,9 +162,15 @@ const filters = reactive({
 let itemKey = 1
 const createEmptyItem = (): FormItem => ({
   key: itemKey++,
+  id: null,
   truckType: '',
   truckTypeOther: '',
-  qty: 1
+  plateNumber: '',
+  plannedStart: '',
+  plannedFinish: '',
+  transporterId: '',
+  driverName: '',
+  containerNumbers: ['']
 })
 
 const form = reactive({
@@ -179,10 +201,33 @@ const truckTypeComboboxOptions = computed(() =>
   }))
 )
 
-const exportForm = reactive({
-  dateFrom: '',
-  dateTo: ''
-})
+const transporterOptions = computed(() =>
+  transporters.value.map((item) => ({
+    value: item.id,
+    label: item.name,
+  }))
+)
+
+const statusLabels: Record<ScheduleItemStatus, string> = {
+  PLANNED: 'Planned',
+  LINKED: 'Sudah Ada Antrian',
+  NO_SHOW: 'No Show',
+  NO_SHOW_CLOSED: 'No Show (Ditutup)',
+}
+
+const statusBadgeClass = (status?: ScheduleItemStatus) => {
+  if (status === 'LINKED') return 'bg-emerald-100 text-emerald-800'
+  if (status === 'NO_SHOW') return 'bg-amber-100 text-amber-800'
+  if (status === 'NO_SHOW_CLOSED') return 'bg-rose-100 text-rose-800'
+  return 'bg-slate-100 text-slate-700'
+}
+
+const formatClock = (value?: string | null) => {
+  if (!value) return '-'
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return '-'
+  return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`
+}
 
 const todayString = () => {
   const now = new Date()
@@ -243,13 +288,6 @@ const formTruckTypeLabel = (item: Pick<FormItem, 'truckType' | 'truckTypeOther'>
   if (!item.truckType) return '-'
   const found = truckTypeOptions.find((opt) => opt.value === item.truckType)
   return found?.label || item.truckType
-}
-
-const buildExportFileName = () => {
-  if (exportForm.dateFrom && exportForm.dateTo) {
-    return `schedule_pengiriman_${exportForm.dateFrom}_sampai_${exportForm.dateTo}.xlsx`
-  }
-  return 'schedule_pengiriman.xlsx'
 }
 
 const getErrorMessage = (err: any, fallback: string) => {
@@ -411,6 +449,15 @@ const fetchCustomers = async () => {
   }
 }
 
+const fetchTransporters = async () => {
+  try {
+    const { data } = await getTransporters({ activeOnly: true } as any)
+    transporters.value = data.data || []
+  } catch {
+    transporters.value = []
+  }
+}
+
 const fetchList = async () => {
   loading.value = true
   error.value = null
@@ -448,6 +495,21 @@ const openDetail = async (row: ScheduleListItem) => {
 const closeDetail = () => {
   detailOpen.value = false
   detailData.value = null
+}
+
+const closeNoShow = async (item: ScheduleItem) => {
+  if (!detailData.value) return
+  const confirmed = window.confirm(
+    `Tutup jadwal ${item.plateNumber || '-'} sebagai No Show? Item ini tidak akan muncul lagi di pilihan Antrian Truk.`
+  )
+  if (!confirmed) return
+  try {
+    await closeNoShowItem(item.id)
+    await fetchDetail(detailData.value.id)
+    await fetchList()
+  } catch (err: any) {
+    error.value = getErrorMessage(err, 'Gagal menutup jadwal no show')
+  }
 }
 
 const resetForm = () => {
@@ -488,9 +550,17 @@ const openEdit = async (row: ScheduleListItem) => {
     form.customerId = data.customerId
     form.items = (data.items || []).map((item) => ({
       key: itemKey++,
+      id: item.id,
       truckType: item.truckType,
       truckTypeOther: item.truckTypeOther || '',
-      qty: item.qty
+      plateNumber: item.plateNumber || '',
+      plannedStart: formatClock(item.plannedStart) === '-' ? '' : formatClock(item.plannedStart),
+      plannedFinish: formatClock(item.plannedFinish) === '-' ? '' : formatClock(item.plannedFinish),
+      transporterId: item.transporterId || '',
+      driverName: item.driverName || '',
+      containerNumbers:
+        item.containerNumbers && item.containerNumbers.length > 0 ? [...item.containerNumbers] : [''],
+      status: item.status
     }))
     if (form.items.length === 0) {
       form.items = [createEmptyItem()]
@@ -562,20 +632,33 @@ const validateForm = () => {
   if (!form.scheduleDate) return 'Tanggal wajib diisi'
   if (!form.storeType) return 'Store Type wajib dipilih'
   if (!form.customerId) return 'Customer wajib dipilih'
-  if (form.items.length === 0) return 'Minimal ada 1 item jenis truk'
+  if (form.items.length === 0) return 'Minimal ada 1 truk'
 
   for (let i = 0; i < form.items.length; i += 1) {
     const item = form.items[i]
     const row = i + 1
     if (!item.truckType) return `Jenis Truck baris ${row} wajib dipilih`
-    const qty = Number(item.qty)
-    if (!Number.isInteger(qty) || qty < 1) return `Qty baris ${row} wajib minimal 1`
     if (item.truckType === 'OTHER' && !item.truckTypeOther.trim()) {
       return `Jenis Truck Lainnya baris ${row} wajib diisi`
+    }
+    // Item lama (sudah tersimpan sebelum Phase 1) boleh belum lengkap.
+    if (!item.id) {
+      if (!item.plateNumber.trim()) return `Plat Nomor baris ${row} wajib diisi`
+      if (!item.plannedStart) return `Estimasi Start baris ${row} wajib diisi`
+      if (!item.plannedFinish) return `Estimasi Finish baris ${row} wajib diisi`
     }
   }
 
   return null
+}
+
+const addContainerField = (item: FormItem) => {
+  item.containerNumbers.push('')
+}
+
+const removeContainerField = (item: FormItem, index: number) => {
+  item.containerNumbers.splice(index, 1)
+  if (item.containerNumbers.length === 0) item.containerNumbers.push('')
 }
 
 const buildPayload = () => {
@@ -584,9 +667,15 @@ const buildPayload = () => {
     storeType: form.storeType,
     customerId: form.customerId,
     items: form.items.map((item) => ({
+      ...(item.id ? { id: item.id } : {}),
       truckType: item.truckType,
       truckTypeOther: item.truckType === 'OTHER' ? item.truckTypeOther.trim() : undefined,
-      qty: Number(item.qty)
+      plateNumber: item.plateNumber.trim(),
+      plannedStart: item.plannedStart,
+      plannedFinish: item.plannedFinish,
+      transporterId: item.transporterId || undefined,
+      driverName: item.driverName.trim() || undefined,
+      containerNumbers: item.containerNumbers.map((value) => value.trim()).filter(Boolean)
     }))
   }
 }
@@ -674,43 +763,6 @@ const goToPage = (target: number) => {
   if (target < 1 || target > totalPages.value || target === page.value) return
   page.value = target
   fetchList()
-}
-
-const handleExportDownload = async () => {
-  exportError.value = null
-  const hasFrom = Boolean(exportForm.dateFrom)
-  const hasTo = Boolean(exportForm.dateTo)
-  if (hasFrom !== hasTo) {
-    exportError.value = 'Tanggal Dari & Sampai harus diisi bersama'
-    return
-  }
-
-  exporting.value = true
-  try {
-    const params = new URLSearchParams()
-    if (hasFrom && hasTo) {
-      params.set('dateFrom', exportForm.dateFrom)
-      params.set('dateTo', exportForm.dateTo)
-    }
-    const url = params.toString() ? `/schedules/export?${params.toString()}` : '/schedules/export'
-    const response = await api.get(url, { responseType: 'blob' })
-    const downloadUrl = URL.createObjectURL(response.data)
-    const link = document.createElement('a')
-    link.href = downloadUrl
-    link.download = buildExportFileName()
-    document.body.appendChild(link)
-    link.click()
-    link.remove()
-    window.setTimeout(() => URL.revokeObjectURL(downloadUrl), 0)
-
-    exportOpen.value = false
-    exportForm.dateFrom = ''
-    exportForm.dateTo = ''
-  } catch (err: any) {
-    exportError.value = getErrorMessage(err, 'Gagal export excel')
-  } finally {
-    exporting.value = false
-  }
 }
 
 const handlePrintSchedule = async () => {
@@ -803,11 +855,6 @@ const openDatePicker = (input: HTMLInputElement | null) => {
   }
 }
 
-const closeExport = () => {
-  exportOpen.value = false
-  exportError.value = null
-}
-
 let searchTimer: number | undefined
 
 watch(
@@ -841,6 +888,7 @@ onMounted(() => {
   applyFiltersFromRoute()
   if (canManageSchedule.value) {
     fetchCustomers()
+    fetchTransporters()
   }
   fetchList()
 })
@@ -857,6 +905,7 @@ watch(
   (allowed) => {
     if (allowed && customers.value.length === 0) {
       fetchCustomers()
+      fetchTransporters()
     }
   }
 )
@@ -958,7 +1007,7 @@ watch(
                   </button>
                 </th>
                 <th class="px-3 py-2 text-left font-medium">Total Jenis Truck</th>
-                <th class="px-3 py-2 text-left font-medium">Total Qty</th>
+                <th class="px-3 py-2 text-left font-medium">Total Truk</th>
                 <th class="px-3 py-2 text-left font-medium">
                   <button type="button" class="inline-flex items-center gap-1 hover:text-foreground" @click="toggleSort('createdAt')">
                     Created At <span class="text-xs">{{ sortIndicator('createdAt') }}</span>
@@ -991,7 +1040,7 @@ watch(
                 </td>
                 <td class="px-3 py-2">{{ row.customer?.name || '-' }}</td>
                 <td class="px-3 py-2">{{ row.totalTypes }}</td>
-                <td class="px-3 py-2">{{ row.totalQty }}</td>
+                <td class="px-3 py-2">{{ row.totalTrucks }}</td>
                 <td class="px-3 py-2">{{ formatDateTime(row.createdAt) }}</td>
                 <td class="px-3 py-2">
                   <div class="flex items-center gap-2">
@@ -1112,7 +1161,7 @@ watch(
           <div class="space-y-3">
             <div class="flex items-center justify-between">
               <label class="text-muted-foreground">Detail Jenis Truk</label>
-              <Button size="sm" variant="outline" @click="addItem">+ Tambah Jenis Truk</Button>
+              <Button size="sm" variant="outline" @click="addItem">+ Tambah Truk</Button>
             </div>
 
             <div
@@ -1121,7 +1170,7 @@ watch(
               class="rounded-md border p-3"
             >
               <div class="grid gap-3 md:grid-cols-12">
-                <div class="md:col-span-4">
+                <div class="md:col-span-3">
                   <label class="text-xs text-muted-foreground">Jenis Truck</label>
                   <div class="mt-1">
                     <Combobox
@@ -1135,7 +1184,7 @@ watch(
                   </div>
                 </div>
 
-                <div v-if="item.truckType === 'OTHER'" class="md:col-span-4">
+                <div v-if="item.truckType === 'OTHER'" class="md:col-span-3">
                   <label class="text-xs text-muted-foreground">Jenis Truck Lainnya</label>
                   <input
                     v-model="item.truckTypeOther"
@@ -1145,21 +1194,99 @@ watch(
                   />
                 </div>
 
-                <div :class="item.truckType === 'OTHER' ? 'md:col-span-2' : 'md:col-span-4'">
-                  <label class="text-xs text-muted-foreground">Jumlah</label>
+                <div :class="item.truckType === 'OTHER' ? 'md:col-span-3' : 'md:col-span-5'">
+                  <label class="text-xs text-muted-foreground">Plat Nomor</label>
                   <input
-                    v-model.number="item.qty"
-                    type="number"
-                    min="1"
+                    v-model="item.plateNumber"
+                    type="text"
+                    class="mt-1 w-full bg-transparent border rounded-md px-2 py-2 text-sm uppercase"
+                    placeholder="B 1234 XYZ"
+                  />
+                </div>
+
+                <div class="md:col-span-2">
+                  <label class="text-xs text-muted-foreground">Estimasi Start</label>
+                  <input
+                    v-model="item.plannedStart"
+                    type="time"
                     class="mt-1 w-full bg-transparent border rounded-md px-2 py-2 text-sm"
                   />
                 </div>
 
-                <div :class="item.truckType === 'OTHER' ? 'md:col-span-2' : 'md:col-span-4'" class="flex items-end">
+                <div class="md:col-span-2">
+                  <label class="text-xs text-muted-foreground">Estimasi Finish</label>
+                  <input
+                    v-model="item.plannedFinish"
+                    type="time"
+                    class="mt-1 w-full bg-transparent border rounded-md px-2 py-2 text-sm"
+                  />
+                </div>
+              </div>
+
+              <div class="mt-3 grid gap-3 md:grid-cols-12">
+                <div class="md:col-span-4">
+                  <label class="text-xs text-muted-foreground">Transporter</label>
+                  <div class="mt-1">
+                    <Combobox
+                      v-model="item.transporterId"
+                      :options="transporterOptions"
+                      placeholder="Pilih transporter..."
+                      search-placeholder="Cari transporter..."
+                      empty-text="Transporter belum terdaftar"
+                    />
+                  </div>
+                </div>
+
+                <div class="md:col-span-4">
+                  <label class="text-xs text-muted-foreground">Driver Name (opsional)</label>
+                  <input
+                    v-model="item.driverName"
+                    type="text"
+                    class="mt-1 w-full bg-transparent border rounded-md px-2 py-2 text-sm"
+                    placeholder="Nama driver"
+                  />
+                </div>
+
+                <div class="md:col-span-3">
+                  <div class="flex items-center justify-between">
+                    <label class="text-xs text-muted-foreground">No Container (opsional)</label>
+                    <button
+                      type="button"
+                      class="text-xs text-primary hover:underline"
+                      @click="addContainerField(item)"
+                    >
+                      Tambah
+                    </button>
+                  </div>
+                  <div class="mt-1 space-y-2">
+                    <div
+                      v-for="(_, cIndex) in item.containerNumbers"
+                      :key="cIndex"
+                      class="flex items-center gap-1"
+                    >
+                      <input
+                        v-model="item.containerNumbers[cIndex]"
+                        type="text"
+                        class="w-full bg-transparent border rounded-md px-2 py-2 text-sm uppercase"
+                        placeholder="TCLU1234567"
+                      />
+                      <button
+                        v-if="item.containerNumbers.length > 1"
+                        type="button"
+                        class="text-xs text-red-600 hover:underline"
+                        @click="removeContainerField(item, cIndex)"
+                      >
+                        Hapus
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="flex items-end md:col-span-1">
                   <Button
                     size="sm"
                     variant="outline"
-                    class="border-red-200 bg-red-600 text-white hover:bg-red-700 hover:text-white"
+                    class="w-full border-red-200 bg-red-600 text-white hover:bg-red-700 hover:text-white"
                     :disabled="form.items.length === 1"
                     @click="requestRemoveItem(idx)"
                   >
@@ -1167,6 +1294,16 @@ watch(
                   </Button>
                 </div>
               </div>
+
+              <p v-if="item.status" class="mt-2 text-xs text-muted-foreground">
+                Status jadwal:
+                <span
+                  class="inline-flex rounded-full px-2 py-0.5"
+                  :class="statusBadgeClass(item.status)"
+                >
+                  {{ statusLabels[item.status] }}
+                </span>
+              </p>
             </div>
           </div>
 
@@ -1210,7 +1347,7 @@ watch(
 
     <div v-if="detailOpen" class="fixed inset-0 z-50">
       <div class="absolute inset-0 bg-black/40" @click="closeDetail"></div>
-      <div class="absolute left-1/2 top-1/2 w-full max-w-3xl -translate-x-1/2 -translate-y-1/2 rounded-lg bg-card shadow-xl border">
+      <div class="absolute left-1/2 top-1/2 w-full max-w-6xl -translate-x-1/2 -translate-y-1/2 rounded-lg bg-card shadow-xl border">
         <div class="p-4 border-b flex items-center justify-between">
           <h3 class="text-lg font-semibold">Detail Schedule Pengiriman</h3>
           <Button variant="outline" size="sm" @click="closeDetail">Tutup</Button>
@@ -1243,17 +1380,50 @@ watch(
                   <tr>
                     <th class="px-3 py-2 text-left font-medium">No</th>
                     <th class="px-3 py-2 text-left font-medium">Jenis Truck</th>
-                    <th class="px-3 py-2 text-left font-medium">Qty</th>
+                    <th class="px-3 py-2 text-left font-medium">Plat Nomor</th>
+                    <th class="px-3 py-2 text-left font-medium">Estimasi Start</th>
+                    <th class="px-3 py-2 text-left font-medium">Estimasi Finish</th>
+                    <th class="px-3 py-2 text-left font-medium">Transporter</th>
+                    <th class="px-3 py-2 text-left font-medium">Driver</th>
+                    <th class="px-3 py-2 text-left font-medium">Container</th>
+                    <th class="px-3 py-2 text-left font-medium">Status</th>
+                    <th class="px-3 py-2 text-right font-medium">Aksi</th>
                   </tr>
                 </thead>
                 <tbody>
                   <tr v-if="detailData.items.length === 0">
-                    <td colspan="3" class="px-3 py-4 text-center text-muted-foreground">Tidak ada item.</td>
+                    <td colspan="10" class="px-3 py-4 text-center text-muted-foreground">Tidak ada item.</td>
                   </tr>
                   <tr v-for="(item, idx) in detailData.items" :key="item.id" class="border-t">
                     <td class="px-3 py-2">{{ idx + 1 }}</td>
                     <td class="px-3 py-2">{{ truckTypeLabel(item) }}</td>
-                    <td class="px-3 py-2">{{ item.qty }}</td>
+                    <td class="px-3 py-2">{{ item.plateNumber || '-' }}</td>
+                    <td class="px-3 py-2">{{ formatClock(item.plannedStart) }}</td>
+                    <td class="px-3 py-2">{{ formatClock(item.plannedFinish) }}</td>
+                    <td class="px-3 py-2">{{ item.transporter?.name || '-' }}</td>
+                    <td class="px-3 py-2">{{ item.driverName || '-' }}</td>
+                    <td class="px-3 py-2">
+                      {{ item.containerNumbers && item.containerNumbers.length > 0 ? item.containerNumbers.join(', ') : '-' }}
+                    </td>
+                    <td class="px-3 py-2">
+                      <span
+                        class="inline-flex rounded-full px-2 py-0.5 text-xs"
+                        :class="statusBadgeClass(item.status)"
+                      >
+                        {{ item.status ? statusLabels[item.status] : '-' }}
+                      </span>
+                    </td>
+                    <td class="px-3 py-2 text-right">
+                      <Button
+                        v-if="item.status === 'NO_SHOW' && user?.role === 'ADMIN'"
+                        size="sm"
+                        variant="outline"
+                        @click="closeNoShow(item)"
+                      >
+                        Tutup No Show
+                      </Button>
+                      <span v-else class="text-muted-foreground">-</span>
+                    </td>
                   </tr>
                 </tbody>
               </table>
@@ -1287,63 +1457,11 @@ watch(
       </div>
     </div>
 
-    <div v-if="exportOpen" class="fixed inset-0 z-50">
-      <div class="absolute inset-0 bg-black/40" @click="closeExport"></div>
-      <div class="absolute left-1/2 top-1/2 w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-lg bg-card shadow-xl border">
-        <div class="p-4 border-b">
-          <h3 class="text-lg font-semibold">Export Excel</h3>
-        </div>
-        <div class="p-4 space-y-3 text-sm">
-          <div>
-            <label class="text-sm text-muted-foreground">Tanggal Dari</label>
-            <div class="relative mt-1">
-              <input
-                ref="exportDateFromInputRef"
-                v-model="exportForm.dateFrom"
-                type="date"
-                class="w-full appearance-none bg-transparent border rounded-md px-2 py-2 pr-10 text-sm"
-                @click="openDatePicker(exportDateFromInputRef)"
-              />
-              <button
-                type="button"
-                class="absolute inset-y-0 right-0 inline-flex items-center px-3 text-muted-foreground hover:text-foreground"
-                aria-label="Pilih tanggal export dari"
-                @click="openDatePicker(exportDateFromInputRef)"
-              >
-                <CalendarDays class="h-4 w-4" />
-              </button>
-            </div>
-          </div>
-          <div>
-            <label class="text-sm text-muted-foreground">Tanggal Sampai</label>
-            <div class="relative mt-1">
-              <input
-                ref="exportDateToInputRef"
-                v-model="exportForm.dateTo"
-                type="date"
-                class="w-full appearance-none bg-transparent border rounded-md px-2 py-2 pr-10 text-sm"
-                @click="openDatePicker(exportDateToInputRef)"
-              />
-              <button
-                type="button"
-                class="absolute inset-y-0 right-0 inline-flex items-center px-3 text-muted-foreground hover:text-foreground"
-                aria-label="Pilih tanggal export sampai"
-                @click="openDatePicker(exportDateToInputRef)"
-              >
-                <CalendarDays class="h-4 w-4" />
-              </button>
-            </div>
-          </div>
-          <p class="text-xs text-muted-foreground">Kosongkan tanggal untuk export semua data.</p>
-          <p v-if="exportError" class="text-xs text-red-600">{{ exportError }}</p>
-        </div>
-        <div class="p-4 border-t flex items-center justify-end gap-2">
-          <Button variant="ghost" @click="closeExport">Batal</Button>
-          <Button :disabled="exporting" @click="handleExportDownload">
-            {{ exporting ? 'Downloading...' : 'Download' }}
-          </Button>
-        </div>
-      </div>
-    </div>
+    <ExportDialog
+      v-model="exportOpen"
+      type="SCHEDULE"
+      sync-path="/schedules/export"
+      title="Export Schedule Pengiriman"
+    />
   </div>
 </template>

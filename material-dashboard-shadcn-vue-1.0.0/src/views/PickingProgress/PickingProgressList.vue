@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import Card from '@/components/ui/Card.vue'
@@ -11,6 +11,7 @@ import PickingCreateModal from '@/components/picking/PickingCreateModal.vue'
 import PickingEditModal from '@/components/picking/PickingEditModal.vue'
 import PickingDetailDrawer from '@/components/picking/PickingDetailDrawer.vue'
 import PickingTable from '@/components/picking/PickingTable.vue'
+import ExportDialog from '@/components/export/ExportDialog.vue'
 import { RefreshCw, Search, CalendarDays } from 'lucide-vue-next'
 import api from '@/services/api'
 import { useAuth } from '@/composables/useAuth'
@@ -19,7 +20,6 @@ import {
   cancelPickingProgress,
   createPickingProgress,
   downloadPickingProgressTemplate,
-  exportPickingProgress,
   finishPickingProgress,
   getPickingProgressById,
   importPickingProgressExcel,
@@ -62,8 +62,6 @@ const drawerOpen = ref(false)
 const selectedEntry = ref<PickingProgressEntry | null>(null)
 const actionLoading = ref<Record<string, boolean>>({})
 const exportOpen = ref(false)
-const exporting = ref(false)
-const exportError = ref<string | null>(null)
 const printing = ref(false)
 const printError = ref<string | null>(null)
 const importing = ref(false)
@@ -71,8 +69,6 @@ const importFile = ref<File | null>(null)
 const importFileInput = ref<HTMLInputElement | null>(null)
 const filterDateFromInputRef = ref<HTMLInputElement | null>(null)
 const filterDateToInputRef = ref<HTMLInputElement | null>(null)
-const exportDateFromInputRef = ref<HTMLInputElement | null>(null)
-const exportDateToInputRef = ref<HTMLInputElement | null>(null)
 
 const page = ref(1)
 const limit = ref(15)
@@ -171,11 +167,6 @@ const statusCounts = ref<Record<PickingStatusKey, number>>({
   ON_PROCESS: 0,
   SELESAI: 0,
   BATAL: 0,
-})
-
-const exportForm = reactive({
-  dateFrom: '',
-  dateTo: ''
 })
 
 const statusSequenceItems = computed(() => [
@@ -860,18 +851,6 @@ const goToPage = (target: number) => {
   fetchList()
 }
 
-const buildExportFileName = () => {
-  if (exportForm.dateFrom && exportForm.dateTo) {
-    return `picking_progress_${exportForm.dateFrom}_sampai_${exportForm.dateTo}.xlsx`
-  }
-  return 'picking_progress.xlsx'
-}
-
-const closeExport = () => {
-  exportOpen.value = false
-  exportError.value = null
-}
-
 const openDatePicker = (input: HTMLInputElement | null) => {
   if (!input) return
   const pickerInput = input as HTMLInputElement & { showPicker?: () => void }
@@ -883,38 +862,6 @@ const openDatePicker = (input: HTMLInputElement | null) => {
   }
 }
 
-const handleExportDownload = async () => {
-  exportError.value = null
-  const hasFrom = Boolean(exportForm.dateFrom)
-  const hasTo = Boolean(exportForm.dateTo)
-  if (hasFrom !== hasTo) {
-    exportError.value = 'Tanggal Dari & Sampai harus diisi bersama'
-    return
-  }
-
-  exporting.value = true
-  try {
-    const response = await exportPickingProgress(
-      hasFrom && hasTo ? { dateFrom: exportForm.dateFrom, dateTo: exportForm.dateTo } : undefined
-    )
-    const downloadUrl = URL.createObjectURL(response.data)
-    const link = document.createElement('a')
-    link.href = downloadUrl
-    link.download = buildExportFileName()
-    document.body.appendChild(link)
-    link.click()
-    link.remove()
-    window.setTimeout(() => URL.revokeObjectURL(downloadUrl), 0)
-
-    exportOpen.value = false
-    exportForm.dateFrom = ''
-    exportForm.dateTo = ''
-  } catch (err: any) {
-    exportError.value = getErrorMessage(err, 'Gagal export excel')
-  } finally {
-    exporting.value = false
-  }
-}
 
 const handlePrintPickingProgress = async () => {
   printError.value = null
@@ -1401,64 +1348,12 @@ onUnmounted(() => {
       @wh-notes-saved="handleWhNotesSaved"
     />
 
-    <div v-if="exportOpen" class="fixed inset-0 z-50">
-      <div class="absolute inset-0 bg-black/40" @click="closeExport"></div>
-      <div class="absolute left-1/2 top-1/2 w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-lg bg-card shadow-xl border">
-        <div class="p-4 border-b">
-          <h3 class="text-lg font-semibold">Export Excel</h3>
-        </div>
-        <div class="p-4 space-y-3 text-sm">
-          <div>
-            <label class="text-sm text-muted-foreground">Tanggal Dari</label>
-            <div class="relative mt-1">
-              <input
-                ref="exportDateFromInputRef"
-                v-model="exportForm.dateFrom"
-                type="date"
-                class="w-full appearance-none bg-transparent border rounded-md px-2 py-2 pr-10 text-sm"
-                @click="openDatePicker(exportDateFromInputRef)"
-              />
-              <button
-                type="button"
-                class="absolute inset-y-0 right-0 inline-flex items-center px-3 text-muted-foreground hover:text-foreground"
-                aria-label="Pilih tanggal export dari"
-                @click="openDatePicker(exportDateFromInputRef)"
-              >
-                <CalendarDays class="h-4 w-4" />
-              </button>
-            </div>
-          </div>
-          <div>
-            <label class="text-sm text-muted-foreground">Tanggal Sampai</label>
-            <div class="relative mt-1">
-              <input
-                ref="exportDateToInputRef"
-                v-model="exportForm.dateTo"
-                type="date"
-                class="w-full appearance-none bg-transparent border rounded-md px-2 py-2 pr-10 text-sm"
-                @click="openDatePicker(exportDateToInputRef)"
-              />
-              <button
-                type="button"
-                class="absolute inset-y-0 right-0 inline-flex items-center px-3 text-muted-foreground hover:text-foreground"
-                aria-label="Pilih tanggal export sampai"
-                @click="openDatePicker(exportDateToInputRef)"
-              >
-                <CalendarDays class="h-4 w-4" />
-              </button>
-            </div>
-          </div>
-          <p class="text-xs text-muted-foreground">Kosongkan tanggal untuk export semua data.</p>
-          <p v-if="exportError" class="text-xs text-red-600">{{ exportError }}</p>
-        </div>
-        <div class="p-4 border-t flex items-center justify-end gap-2">
-          <Button variant="ghost" @click="closeExport">Batal</Button>
-          <Button :disabled="exporting" @click="handleExportDownload">
-            {{ exporting ? 'Downloading...' : 'Download' }}
-          </Button>
-        </div>
-      </div>
-    </div>
+    <ExportDialog
+      v-model="exportOpen"
+      type="PICKING_PROGRESS"
+      sync-path="/picking-progress/export"
+      title="Export Picking Progress"
+    />
 
     <div v-if="pickedQtyModalOpen" class="fixed inset-0 z-[70] pointer-events-none">
       <div class="absolute inset-0 z-0 bg-black/40 pointer-events-auto" @click="closePickedQtyModal"></div>

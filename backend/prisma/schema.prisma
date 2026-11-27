@@ -60,6 +60,13 @@ enum TruckType {
   OTHER
 }
 
+enum ScheduleItemStatus {
+  PLANNED
+  LINKED
+  NO_SHOW
+  NO_SHOW_CLOSED
+}
+
 model QueueEntry {
   id                    String        @id @default(uuid())
   customerId            String?
@@ -72,8 +79,11 @@ model QueueEntry {
   driverName            String
   driverPhone           String?
   truckNumber           String
-  containerNumber       String?
+  truckType             TruckType?
+  containerNumbers      String[]      @default([])
   transporter           String?
+  transporterId         String?
+  transporterRef        Transporter?  @relation(fields: [transporterId], references: [id], onDelete: SetNull)
   registerTime          DateTime      @default(now())
   inWhTime              DateTime?
   startTime             DateTime?
@@ -88,12 +98,40 @@ model QueueEntry {
   updatedAt             DateTime      @updatedAt
   logs                  QueueLog[]
 
+  // --- Relasi ke Schedule Pengiriman -------------------------------------
+  // Tidak memakai @unique di sini karena slot harus dibebaskan saat BATAL.
+  // Unik hanya untuk antrian non-BATAL, dijaga partial index
+  // "queue_entry_active_schedule_item_unique" (lihat migrasi
+  // 20261127120000_schedule_queue_integration).
+  scheduleItemId String?
+  scheduleItem   ShipmentScheduleItem? @relation(fields: [scheduleItemId], references: [id], onDelete: Restrict)
+
+  // --- Snapshot nilai plan saat antrian dibuat ---------------------------
+  // Disalin server dari database, bukan dari payload. Tidak pernah berubah
+  // karena override di form antrian.
+  plannedStart            DateTime?
+  plannedFinish           DateTime?
+  plannedPlateNumber      String?
+  plannedTruckType        TruckType?
+  plannedCustomerId       String?
+  plannedCustomerName     String?
+  plannedTransporterName  String?
+  plannedDriverName       String?
+  plannedContainerNumbers String[] @default([])
+
+  // --- Penanda penutupan otomatis oleh sistem ----------------------------
+  autoCompleted   Boolean   @default(false)
+  autoCompletedAt DateTime?
+
   @@index([status, registerTime])
   @@index([truckNumber, registerTime])
   @@index([category, registerTime])
   @@index([customerId, registerTime])
   @@index([gateId])
   @@index([pickerEmployeeId])
+  @@index([truckType])
+  @@index([transporterId])
+  @@index([scheduleItemId])
 }
 
 model QueueLog {
@@ -161,6 +199,9 @@ model AdminUser {
   createdJobTransactions JobTransaction[]      @relation("JobTransactionCreatedBy")
   updatedJobTransactions JobTransaction[]      @relation("JobTransactionUpdatedBy")
   jobTransactionLogs     JobTransactionLog[]
+  noShowClosedSchedules  ShipmentScheduleItem[] @relation("ScheduleItemNoShowClosedBy")
+  appSettingsUpdated     AppSetting[]
+  exportJobs             ExportJob[]
 
   @@index([role])
   @@index([username])
@@ -200,13 +241,63 @@ model ShipmentScheduleItem {
   id             String           @id @default(uuid())
   scheduleId     String
   schedule       ShipmentSchedule @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+
   truckType      TruckType
   truckTypeOther String?
-  qty            Int
-  createdAt      DateTime         @default(now())
+
+  // --- Data truk (Phase 1) ----------------------------------------------
+  // 1 baris = 1 truk. Kolom qty dihapus; lihat migrasi
+  // 20261127120000_schedule_queue_integration.
+  plateNumber      String?
+  transporterId    String?
+  transporter      Transporter? @relation(fields: [transporterId], references: [id], onDelete: SetNull)
+  driverName       String?
+  containerNumbers String[]     @default([])
+
+  // Waktu gabungan scheduleDate + jam, supaya shift lewat tengah malam valid.
+  plannedStart  DateTime?
+  plannedFinish DateTime?
+
+  // --- Siklus status terhadap Antrian Truk -------------------------------
+  status               ScheduleItemStatus @default(PLANNED)
+  noShowMarkedAt       DateTime?
+  noShowClosedAt       DateTime?
+  noShowClosedByUserId String?
+  noShowClosedByUser   AdminUser?         @relation("ScheduleItemNoShowClosedBy", fields: [noShowClosedByUserId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  queueEntries QueueEntry[]
 
   @@index([scheduleId])
   @@index([truckType])
+  @@index([plateNumber])
+  @@index([plannedStart])
+  @@index([status, plannedFinish])
+  @@index([transporterId])
+  @@index([noShowClosedByUserId])
+}
+
+model Transporter {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  scheduleItems ShipmentScheduleItem[]
+  queueEntries  QueueEntry[]
+}
+
+model AppSetting {
+  key             String   @id
+  value           String
+  updatedAt       DateTime @updatedAt
+  updatedByUserId String?
+  updatedByUser   AdminUser? @relation(fields: [updatedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([updatedByUserId])
 }
 
 model PickingProgress {
@@ -347,4 +438,36 @@ model DailyJobActivityLog {
 
   @@index([dailyJobActivityId, createdAt])
   @@index([userId])
+}
+
+enum ExportJobStatus {
+  MENUNGGU
+  PROSES
+  SELESAI
+  GAGAL
+}
+
+model ExportJob {
+  id          String          @id @default(uuid())
+  type        String
+  status      ExportJobStatus @default(MENUNGGU)
+  scopeLabel  String
+  params      Json
+  rowCount    Int             @default(0)
+  fileName    String?
+  filePath    String?
+  fileSize    Int?
+  error       String?
+  createdById String?
+  createdBy   AdminUser?      @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  createdByRole String?
+  startedAt   DateTime?
+  finishedAt  DateTime?
+  expiresAt   DateTime?
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  @@index([status, createdAt])
+  @@index([createdById, createdAt])
+  @@index([expiresAt])
 }

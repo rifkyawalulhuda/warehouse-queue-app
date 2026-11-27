@@ -1,4 +1,12 @@
 const prisma = require("../utils/prisma");
+const {
+  parsePagination,
+  paginateQuery,
+  normalizeSort,
+  normalizeSearch,
+} = require("../utils/pagination");
+
+const SORTABLE_FIELDS = new Set(["name", "createdAt", "updatedAt"]);
 
 function createHttpError(status, message, details) {
   const err = new Error(message);
@@ -7,10 +15,19 @@ function createHttpError(status, message, details) {
   return err;
 }
 
-async function listCustomers() {
-  return prisma.customer.findMany({
-    orderBy: { name: "asc" },
-  });
+async function listCustomers(query = {}) {
+  const search = normalizeSearch(query);
+  const { sortBy, sortDir } = normalizeSort(query, SORTABLE_FIELDS, "name", "asc");
+  const pagination = parsePagination(query);
+
+  const where = {};
+  if (search) {
+    where.name = { contains: search, mode: "insensitive" };
+  }
+
+  const orderBy = sortBy === "name" ? [{ name: sortDir }] : [{ [sortBy]: sortDir }, { name: "asc" }];
+
+  return paginateQuery(prisma.customer, { where, orderBy }, pagination);
 }
 
 async function listCustomersForExport() {

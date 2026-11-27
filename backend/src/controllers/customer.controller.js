@@ -1,11 +1,11 @@
 const customerService = require("../services/customer.service");
 const xlsx = require("xlsx");
-const { sendSuccess } = require("../utils/response");
+const { sendSuccess, sendPaginated } = require("../utils/response");
 
 async function listCustomers(req, res, next) {
   try {
-    const customers = await customerService.listCustomers();
-    return sendSuccess(res, customers);
+    const { data, meta } = await customerService.listCustomers(req.query);
+    return sendPaginated(res, data, meta);
   } catch (err) {
     return next(err);
   }

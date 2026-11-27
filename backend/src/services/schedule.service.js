@@ -15,6 +15,8 @@ const TRUCK_TYPE_LABELS = {
 };
 const PRINT_TRUCK_COLUMNS = ["CDE", "CDD", "FUSO", "WB", "FT20", "FT40", "OTHER"];
 
+const SCHEDULE_ITEM_STATUSES = ["PLANNED", "LINKED", "NO_SHOW", "NO_SHOW_CLOSED"];
+
 function createHttpError(status, message, details) {
   const err = new Error(message);
   err.status = status;
@@ -40,6 +42,43 @@ function parseDateOnly(dateStr) {
     return null;
   }
   return parsed;
+}
+
+/**
+ * Menggabungkan tanggal schedule (@db.Date, tersimpan sebagai UTC midnight)
+ * dengan jam "HH:mm" menjadi Date lokal, supaya konsisten dengan cara
+ * registerTime antrian disimpan (new Date("YYYY-MM-DDTHH:mm") = waktu lokal).
+ */
+function combineDateAndTime(scheduleDate, timeStr, dayOffset = 0) {
+  if (!scheduleDate || typeof timeStr !== "string") return null;
+  const match = /^(\d{1,2}):(\d{2})$/.exec(timeStr.trim());
+  if (!match) return null;
+  const hours = Number(match[1]);
+  const minutes = Number(match[2]);
+  if (hours > 23 || minutes > 59) return null;
+  return new Date(
+    scheduleDate.getUTCFullYear(),
+    scheduleDate.getUTCMonth(),
+    scheduleDate.getUTCDate() + dayOffset,
+    hours,
+    minutes,
+    0,
+    0
+  );
+}
+
+/** Plat nomor: uppercase tanpa spasi. "b 1234 xyz" -> "B1234XYZ" */
+function normalizePlateNumber(value) {
+  if (typeof value !== "string") return null;
+  const normalized = value.replace(/\s+/g, "").toUpperCase();
+  return normalized || null;
+}
+
+function normalizeContainerNumbers(value) {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((item) => (typeof item === "string" ? item.trim().toUpperCase() : ""))
+    .filter(Boolean);
 }
 
 function normalizeSort(query) {
@@ -73,32 +112,79 @@ function mapTruckTypeCandidates(search) {
   });
 }
 
-function normalizeItems(items) {
+/**
+ * Normalisasi satu item schedule.
+ * Phase 1: 1 baris = 1 truk. `qty` tidak lagi diterima.
+ * `plannedStart`/`plannedFinish` dikirim sebagai "HH:mm" dan digabung dengan
+ * scheduleDate. Finish lebih kecil dari start dianggap shift lewat tengah malam.
+ */
+function normalizeItem(item, scheduleDate, { requireNewFields }) {
+  const truckType = typeof item.truckType === "string" ? item.truckType.trim().toUpperCase() : "";
+  const truckTypeOtherRaw =
+    typeof item.truckTypeOther === "string" ? item.truckTypeOther.trim() : "";
+
+  if (!ALLOWED_TRUCK_TYPES.includes(truckType)) {
+    throw createHttpError(400, "truckType tidak valid");
+  }
+  if (truckType === "OTHER" && !truckTypeOtherRaw) {
+    throw createHttpError(400, "truckTypeOther wajib diisi saat truckType OTHER");
+  }
+
+  const plateNumber = normalizePlateNumber(item.plateNumber);
+  if (requireNewFields && !plateNumber) {
+    throw createHttpError(400, "Plat Nomor wajib diisi");
+  }
+
+  const startRaw = typeof item.plannedStart === "string" ? item.plannedStart.trim() : "";
+  const finishRaw = typeof item.plannedFinish === "string" ? item.plannedFinish.trim() : "";
+  if (requireNewFields && (!startRaw || !finishRaw)) {
+    throw createHttpError(400, "Estimasi Start dan Estimasi Finish wajib diisi");
+  }
+
+  let plannedStart = null;
+  let plannedFinish = null;
+  if (startRaw) {
+    plannedStart = combineDateAndTime(scheduleDate, startRaw);
+    if (!plannedStart) throw createHttpError(400, "Estimasi Start harus format HH:mm");
+  }
+  if (finishRaw) {
+    plannedFinish = combineDateAndTime(scheduleDate, finishRaw);
+    if (!plannedFinish) throw createHttpError(400, "Estimasi Finish harus format HH:mm");
+    // Shift lewat tengah malam: 23:00 -> 01:00 berarti selesai H+1.
+    if (plannedStart && plannedFinish.getTime() <= plannedStart.getTime()) {
+      plannedFinish = combineDateAndTime(scheduleDate, finishRaw, 1);
+    }
+  }
+
+  const transporterId =
+    typeof item.transporterId === "string" && item.transporterId.trim()
+      ? item.transporterId.trim()
+      : null;
+  const driverName =
+    typeof item.driverName === "string" && item.driverName.trim() ? item.driverName.trim() : null;
+
+  return {
+    truckType,
+    truckTypeOther: truckType === "OTHER" ? truckTypeOtherRaw : null,
+    plateNumber,
+    transporterId,
+    driverName,
+    containerNumbers: normalizeContainerNumbers(item.containerNumbers),
+    plannedStart,
+    plannedFinish,
+  };
+}
+
+function normalizeItems(items, scheduleDate) {
   if (!Array.isArray(items) || items.length === 0) {
     throw createHttpError(400, "Items wajib diisi minimal 1");
   }
-
   return items.map((item) => {
-    const truckType = typeof item.truckType === "string" ? item.truckType.trim().toUpperCase() : "";
-    const qty = Number(item.qty);
-    const truckTypeOtherRaw =
-      typeof item.truckTypeOther === "string" ? item.truckTypeOther.trim() : "";
-
-    if (!ALLOWED_TRUCK_TYPES.includes(truckType)) {
-      throw createHttpError(400, "truckType tidak valid");
-    }
-    if (!Number.isInteger(qty) || qty < 1) {
-      throw createHttpError(400, "qty harus angka bulat minimal 1");
-    }
-    if (truckType === "OTHER" && !truckTypeOtherRaw) {
-      throw createHttpError(400, "truckTypeOther wajib diisi saat truckType OTHER");
-    }
-
-    return {
-      truckType,
-      truckTypeOther: truckType === "OTHER" ? truckTypeOtherRaw : null,
-      qty,
-    };
+    const isExisting = typeof item.id === "string" && item.id.trim();
+    // Item baru wajib lengkap. Item lama boleh belum punya plat/waktu (data
+    // sebelum Phase 1) agar tetap bisa diedit tanpa dipaksa melengkapi.
+    const normalized = normalizeItem(item, scheduleDate, { requireNewFields: !isExisting });
+    return { ...normalized, id: isExisting ? item.id.trim() : null };
   });
 }
 
@@ -119,6 +205,9 @@ function buildWhere(query) {
     where.OR = [
       { customer: { name: { contains: search, mode: "insensitive" } } },
       { items: { some: { truckTypeOther: { contains: search, mode: "insensitive" } } } },
+      { items: { some: { plateNumber: { contains: search, mode: "insensitive" } } } },
+      { items: { some: { driverName: { contains: search, mode: "insensitive" } } } },
+      { items: { some: { transporter: { name: { contains: search, mode: "insensitive" } } } } },
     ];
     if (truckTypeCandidates.length > 0) {
       where.OR.push({ items: { some: { truckType: { in: truckTypeCandidates } } } });
@@ -144,8 +233,11 @@ function buildExportWhere(query) {
   };
 }
 
+const ITEM_INCLUDE = {
+  transporter: { select: { id: true, name: true } },
+};
+
 function mapScheduleListItem(row) {
-  const totalQty = row.items.reduce((sum, item) => sum + item.qty, 0);
   const typeKeys = new Set(
     row.items.map((item) => `${item.truckType}::${(item.truckTypeOther || "").toLowerCase()}`)
   );
@@ -158,7 +250,8 @@ function mapScheduleListItem(row) {
     createdByUserId: row.createdByUserId,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
-    totalQty,
+    // Phase 1: 1 baris = 1 truk, jadi totalTrucks = jumlah item.
+    totalTrucks: row.items.length,
     totalTypes: typeKeys.size,
   };
 }
@@ -170,6 +263,20 @@ async function ensureCustomerExists(customerId) {
   });
   if (!customer) {
     throw createHttpError(400, "Customer tidak ditemukan");
+  }
+}
+
+async function ensureTransportersExist(items) {
+  const ids = [...new Set(items.map((item) => item.transporterId).filter(Boolean))];
+  if (ids.length === 0) return;
+  const found = await prisma.transporter.findMany({
+    where: { id: { in: ids } },
+    select: { id: true },
+  });
+  const foundIds = new Set(found.map((row) => row.id));
+  const missing = ids.filter((id) => !foundIds.has(id));
+  if (missing.length > 0) {
+    throw createHttpError(400, "Transporter tidak ditemukan");
   }
 }
 
@@ -189,13 +296,19 @@ function normalizeSchedulePayload(data) {
     throw createHttpError(400, "customerId wajib diisi");
   }
 
-  const items = normalizeItems(data.items);
+  const items = normalizeItems(data.items, scheduleDate);
   return { scheduleDate, storeType, customerId, items };
+}
+
+function toItemCreateData(item) {
+  const { id, ...rest } = item;
+  return rest;
 }
 
 async function createSchedule(data, actorUserId) {
   const payload = normalizeSchedulePayload(data);
   await ensureCustomerExists(payload.customerId);
+  await ensureTransportersExist(payload.items);
 
   return prisma.shipmentSchedule.create({
     data: {
@@ -204,13 +317,14 @@ async function createSchedule(data, actorUserId) {
       customerId: payload.customerId,
       createdByUserId: actorUserId || null,
       items: {
-        create: payload.items,
+        create: payload.items.map(toItemCreateData),
       },
     },
     include: {
       customer: true,
       items: {
         orderBy: { createdAt: "asc" },
+        include: ITEM_INCLUDE,
       },
       createdByUser: {
         select: { id: true, name: true, username: true, role: true },
@@ -241,7 +355,6 @@ async function listSchedules(query) {
         select: {
           truckType: true,
           truckTypeOther: true,
-          qty: true,
         },
       },
     },
@@ -272,6 +385,7 @@ async function listSchedulesForExport(query) {
       customer: true,
       items: {
         orderBy: { createdAt: "asc" },
+        include: ITEM_INCLUDE,
       },
     },
   });
@@ -299,7 +413,6 @@ async function listSchedulesForPrint(query) {
       items: {
         select: {
           truckType: true,
-          qty: true,
         },
       },
     },
@@ -320,9 +433,10 @@ async function listSchedulesForPrint(query) {
     const target = grouped.get(customerKey);
     const bucket = schedule.storeType === "STORE_OUT" ? target.storeOut : target.storeIn;
 
+    // Phase 1: qty dihapus, jadi setiap item dihitung 1 truk.
     schedule.items.forEach((item) => {
       const key = PRINT_TRUCK_COLUMNS.includes(item.truckType) ? item.truckType : "OTHER";
-      bucket[key] += item.qty || 0;
+      bucket[key] += 1;
     });
   });
 
@@ -349,6 +463,12 @@ async function getScheduleById(id) {
       customer: true,
       items: {
         orderBy: { createdAt: "asc" },
+        include: {
+          ...ITEM_INCLUDE,
+          queueEntries: {
+            select: { id: true, status: true },
+          },
+        },
       },
       createdByUser: {
         select: { id: true, name: true, username: true, role: true },
@@ -361,34 +481,123 @@ async function getScheduleById(id) {
   return schedule;
 }
 
+/**
+ * Update memakai diff berbasis id:
+ *   - item dengan id  -> update
+ *   - item tanpa id   -> create
+ *   - item lama hilang -> delete, DITOLAK bila sudah punya antrian non-BATAL
+ *
+ * Nilai snapshot plan di QueueEntry sengaja tidak ikut berubah saat schedule
+ * diedit. Itu justru tujuan snapshot (keputusan Q6).
+ */
 async function updateSchedule(id, data) {
   if (!id) {
     throw createHttpError(400, "ID schedule tidak valid");
   }
   const payload = normalizeSchedulePayload(data);
   await ensureCustomerExists(payload.customerId);
+  await ensureTransportersExist(payload.items);
+
+  const existing = await prisma.shipmentSchedule.findUnique({
+    where: { id },
+    include: {
+      items: {
+        include: {
+          queueEntries: {
+            select: { id: true, status: true },
+          },
+        },
+      },
+    },
+  });
+  if (!existing) {
+    throw createHttpError(404, "Schedule tidak ditemukan");
+  }
+
+  const existingById = new Map(existing.items.map((item) => [item.id, item]));
+  const incomingIds = new Set(payload.items.map((item) => item.id).filter(Boolean));
+
+  // Item yang dikirim dengan id tapi bukan milik schedule ini.
+  for (const incomingId of incomingIds) {
+    if (!existingById.has(incomingId)) {
+      throw createHttpError(400, "Item schedule tidak dikenal pada jadwal ini");
+    }
+  }
+
+  const toDelete = existing.items.filter((item) => !incomingIds.has(item.id));
+  const blocked = toDelete.filter((item) =>
+    item.queueEntries.some((entry) => entry.status !== "BATAL")
+  );
+  if (blocked.length > 0) {
+    const plates = blocked
+      .map((item) => item.plateNumber || TRUCK_TYPE_LABELS[item.truckType] || item.id)
+      .join(", ");
+    throw createHttpError(
+      400,
+      `Item schedule berikut sudah memiliki antrian truk sehingga tidak bisa dihapus: ${plates}`
+    );
+  }
+
+  // S8: plat nomor terkunci selama item terhubung ke antrian aktif. Tanpa ini,
+  // plat di schedule bisa berbeda dengan plat di antrian dan tautan jadi menyesatkan.
+  const plateConflicts = [];
+  for (const item of payload.items) {
+    if (!item.id) continue;
+    const current = existingById.get(item.id);
+    if (!current) continue;
+    const hasActiveEntry = current.queueEntries.some((entry) => entry.status !== "BATAL");
+    if (!hasActiveEntry) continue;
+    if ((current.plateNumber || null) !== (item.plateNumber || null)) {
+      plateConflicts.push(current.plateNumber || current.id);
+    }
+  }
+  if (plateConflicts.length > 0) {
+    throw createHttpError(
+      400,
+      `Plat Nomor tidak bisa diubah karena item sudah terhubung ke antrian: ${plateConflicts.join(", ")}`
+    );
+  }
 
   try {
-    return await prisma.shipmentSchedule.update({
-      where: { id },
-      data: {
-        scheduleDate: payload.scheduleDate,
-        storeType: payload.storeType,
-        customerId: payload.customerId,
-        items: {
-          deleteMany: {},
-          create: payload.items,
+    return await prisma.$transaction(async (tx) => {
+      if (toDelete.length > 0) {
+        await tx.shipmentScheduleItem.deleteMany({
+          where: { id: { in: toDelete.map((item) => item.id) } },
+        });
+      }
+
+      for (const item of payload.items) {
+        const { id: itemId, ...rest } = item;
+        if (itemId) {
+          await tx.shipmentScheduleItem.update({
+            where: { id: itemId },
+            data: rest,
+          });
+        } else {
+          await tx.shipmentScheduleItem.create({
+            data: { ...rest, scheduleId: id },
+          });
+        }
+      }
+
+      return tx.shipmentSchedule.update({
+        where: { id },
+        data: {
+          scheduleDate: payload.scheduleDate,
+          storeType: payload.storeType,
+          customerId: payload.customerId,
         },
-      },
-      include: {
-        customer: true,
-        items: {
-          orderBy: { createdAt: "asc" },
+        include: {
+          customer: true,
+          items: {
+            orderBy: { createdAt: "asc" },
+            include: ITEM_INCLUDE,
+          },
+          createdByUser: {
+            select: { id: true, name: true, username: true, role: true },
+          },
         },
-        createdByUser: {
-          select: { id: true, name: true, username: true, role: true },
-        },
-      },
+      });
     });
   } catch (err) {
     if (err && err.code === "P2025") {
@@ -402,6 +611,20 @@ async function deleteSchedule(id) {
   if (!id) {
     throw createHttpError(400, "ID schedule tidak valid");
   }
+
+  const linkedCount = await prisma.queueEntry.count({
+    where: {
+      scheduleItem: { scheduleId: id },
+      status: { not: "BATAL" },
+    },
+  });
+  if (linkedCount > 0) {
+    throw createHttpError(
+      400,
+      `Schedule tidak bisa dihapus karena ${linkedCount} truk sudah memiliki antrian`
+    );
+  }
+
   try {
     return await prisma.shipmentSchedule.delete({
       where: { id },
@@ -417,14 +640,193 @@ async function deleteSchedule(id) {
   }
 }
 
+/**
+ * Daftar item schedule yang bisa dipilih di form Antrian Truk.
+ *
+ * Filter:
+ *   - status PLANNED / NO_SHOW (LINKED dan NO_SHOW_CLOSED tidak muncul)
+ *   - plannedStart dalam jendela overdue (default 7 hari ke belakang s.d. hari ini)
+ *   - tidak punya antrian non-BATAL
+ *   - kategori cocok dengan storeType (STORE_IN -> RECEIVING, STORE_OUT -> DELIVERY)
+ */
+async function listAvailableItems(query) {
+  const category = typeof query.category === "string" ? query.category.trim().toUpperCase() : "";
+  if (category && category !== "RECEIVING" && category !== "DELIVERY") {
+    throw createHttpError(400, "category harus RECEIVING atau DELIVERY");
+  }
+
+  const settings = await getScheduleSettings();
+  const overdueDays = settings.overdueWindowDays;
+
+  const now = new Date();
+  const windowStart = new Date(now.getTime() - overdueDays * 24 * 60 * 60 * 1000);
+  const windowEnd = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+
+  const where = {
+    status: { in: ["PLANNED", "NO_SHOW"] },
+    plannedStart: { gte: windowStart, lte: windowEnd },
+  };
+
+  if (category) {
+    where.schedule = {
+      storeType: category === "RECEIVING" ? "STORE_IN" : "STORE_OUT",
+    };
+  }
+
+  const search = typeof query.search === "string" ? query.search.trim() : "";
+  if (search) {
+    where.OR = [
+      { plateNumber: { contains: search, mode: "insensitive" } },
+      { driverName: { contains: search, mode: "insensitive" } },
+      { containerNumbers: { has: search.toUpperCase() } },
+      { schedule: { customer: { name: { contains: search, mode: "insensitive" } } } },
+      { transporter: { name: { contains: search, mode: "insensitive" } } },
+    ];
+  }
+
+  const rawLimit = Number(query.limit);
+  const limit = Number.isFinite(rawLimit) && rawLimit > 0 ? Math.min(Math.floor(rawLimit), 200) : 50;
+
+  const rows = await prisma.shipmentScheduleItem.findMany({
+    where,
+    orderBy: [{ plannedStart: "asc" }],
+    take: limit,
+    include: {
+      transporter: { select: { id: true, name: true } },
+      schedule: {
+        select: {
+          id: true,
+          scheduleDate: true,
+          storeType: true,
+          customer: { select: { id: true, name: true } },
+        },
+      },
+    },
+  });
+
+  return rows.map((item) => ({
+    id: item.id,
+    scheduleId: item.scheduleId,
+    scheduleDate: item.schedule.scheduleDate,
+    storeType: item.schedule.storeType,
+    category: item.schedule.storeType === "STORE_IN" ? "RECEIVING" : "DELIVERY",
+    customerId: item.schedule.customer?.id || null,
+    customerName: item.schedule.customer?.name || null,
+    plateNumber: item.plateNumber,
+    truckType: item.truckType,
+    truckTypeOther: item.truckTypeOther,
+    transporterId: item.transporterId,
+    transporterName: item.transporter?.name || null,
+    driverName: item.driverName,
+    containerNumbers: item.containerNumbers,
+    plannedStart: item.plannedStart,
+    plannedFinish: item.plannedFinish,
+    status: item.status,
+  }));
+}
+
+/**
+ * Pengaturan schedule/report dari AppSetting. Dibaca setiap query supaya
+ * perubahan toleransi langsung berlaku (retroaktif, keputusan S10).
+ */
+async function getScheduleSettings() {
+  const keys = [
+    "report.onTimeToleranceArrivalMinutes",
+    "report.onTimeToleranceFinishMinutes",
+    "schedule.backdateMaxDays",
+    "schedule.overdueWindowDays",
+    "schedule.noShowGraceHours",
+  ];
+  const rows = await prisma.appSetting.findMany({ where: { key: { in: keys } } });
+  const map = new Map(rows.map((row) => [row.key, row.value]));
+
+  const toInt = (key, fallback) => {
+    const parsed = Number(map.get(key));
+    return Number.isInteger(parsed) && parsed >= 0 ? parsed : fallback;
+  };
+
+  return {
+    onTimeToleranceArrivalMinutes: toInt(
+      "report.onTimeToleranceArrivalMinutes",
+      15
+    ),
+    onTimeToleranceFinishMinutes: toInt("report.onTimeToleranceFinishMinutes", 15),
+    backdateMaxDays: toInt("schedule.backdateMaxDays", 7),
+    overdueWindowDays: toInt("schedule.overdueWindowDays", 7),
+    noShowGraceHours: toInt("schedule.noShowGraceHours", 24),
+  };
+}
+
+/**
+ * Menandai item schedule sebagai NO_SHOW bila sudah melewati
+ * plannedFinish + graceHours dan belum pernah ditautkan ke antrian.
+ *
+ * Sistem hanya MENANDAI (S1). Penutupan final (NO_SHOW_CLOSED) dilakukan
+ * ADMIN lewat endpoint terpisah, dan item NO_SHOW tetap bisa dipakai kalau
+ * truknya ternyata datang dalam jendela overdue.
+ */
+async function markNoShowScheduleItems(now = new Date()) {
+  const settings = await getScheduleSettings();
+  const cutoff = new Date(now.getTime() - settings.noShowGraceHours * 60 * 60 * 1000);
+
+  const result = await prisma.shipmentScheduleItem.updateMany({
+    where: {
+      status: "PLANNED",
+      plannedFinish: { not: null, lt: cutoff },
+      queueEntries: { none: { status: { not: "BATAL" } } },
+    },
+    data: { status: "NO_SHOW", noShowMarkedAt: now },
+  });
+
+  return { updatedCount: result.count || 0 };
+}
+
+async function closeNoShowItem(id, actorUser) {
+  if (!id) {
+    throw createHttpError(400, "ID item schedule tidak valid");
+  }
+  const item = await prisma.shipmentScheduleItem.findUnique({
+    where: { id },
+    include: {
+      queueEntries: { select: { id: true, status: true } },
+    },
+  });
+  if (!item) {
+    throw createHttpError(404, "Item schedule tidak ditemukan");
+  }
+  if (item.queueEntries.some((entry) => entry.status !== "BATAL")) {
+    throw createHttpError(400, "Item ini sudah memiliki antrian truk");
+  }
+  if (item.status === "NO_SHOW_CLOSED") {
+    throw createHttpError(400, "Item ini sudah ditutup sebagai no-show");
+  }
+
+  return prisma.shipmentScheduleItem.update({
+    where: { id },
+    data: {
+      status: "NO_SHOW_CLOSED",
+      noShowClosedAt: new Date(),
+      noShowClosedByUserId: actorUser?.id || null,
+    },
+  });
+}
+
 module.exports = {
   TRUCK_TYPE_LABELS,
   PRINT_TRUCK_COLUMNS,
+  SCHEDULE_ITEM_STATUSES,
+  createHttpError,
+  combineDateAndTime,
+  normalizePlateNumber,
+  getScheduleSettings,
   createSchedule,
   listSchedules,
   listSchedulesForExport,
   listSchedulesForPrint,
+  listAvailableItems,
   getScheduleById,
   updateSchedule,
   deleteSchedule,
+  markNoShowScheduleItems,
+  closeNoShowItem,
 };

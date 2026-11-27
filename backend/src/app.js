@@ -11,6 +11,10 @@ const scheduleRoutes = require("./routes/schedule.routes");
 const pickingProgressRoutes = require("./routes/pickingProgress.routes");
 const dailyJobActivityRoutes = require("./routes/dailyJobActivity.routes");
 const jobTransactionRoutes = require("./routes/jobTransaction.routes");
+const transporterRoutes = require("./routes/transporter.routes");
+const settingsRoutes = require("./routes/settings.routes");
+const reportRoutes = require("./routes/report.routes");
+const exportRoutes = require("./routes/export.routes");
 const errorMiddleware = require("./middlewares/error.middleware");
 
 const app = express();
@@ -31,6 +35,10 @@ app.use("/api", scheduleRoutes);
 app.use("/api", pickingProgressRoutes);
 app.use("/api", dailyJobActivityRoutes);
 app.use("/api", jobTransactionRoutes);
+app.use("/api", transporterRoutes);
+app.use("/api", settingsRoutes);
+app.use("/api", reportRoutes);
+app.use("/api", exportRoutes);
 
 app.use(errorMiddleware);
 

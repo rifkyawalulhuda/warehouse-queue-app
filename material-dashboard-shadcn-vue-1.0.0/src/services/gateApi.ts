@@ -16,8 +16,11 @@ export type GatePayload = {
 
 export const listGates = (params?: {
   search?: string
+  warehouse?: Gate['warehouse']
   sortBy?: string
   sortDir?: 'asc' | 'desc'
+  page?: number
+  pageSize?: number
 }) => {
   return api.get('/gates', { params })
 }

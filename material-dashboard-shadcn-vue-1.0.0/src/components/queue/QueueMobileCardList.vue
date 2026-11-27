@@ -13,6 +13,7 @@ type QueueEntry = {
   gate?: { id: string; gateNo: string; area: string; warehouse: 'WH1' | 'WH2' | 'DG' } | null
   driverName: string
   truckNumber: string
+  containerNumbers?: string[]
   containerNumber?: string | null
   transporter?: string | null
   registerTime: string
@@ -168,7 +169,7 @@ const getActionSet = (entry: QueueEntry) => {
       </div>
 
       <div class="mt-3 flex flex-wrap gap-2 text-xs text-muted-foreground">
-        <span v-if="entry.containerNumber" class="rounded-full bg-muted/40 px-2 py-1">Container: {{ entry.containerNumber }}</span>
+        <span v-if="(entry.containerNumbers && entry.containerNumbers.length > 0) || entry.containerNumber" class="rounded-full bg-muted/40 px-2 py-1">Container: {{ entry.containerNumbers && entry.containerNumbers.length > 0 ? entry.containerNumbers.join(', ') : entry.containerNumber }}</span>
         <span v-if="entry.transporter" class="rounded-full bg-muted/40 px-2 py-1">Transporter: {{ entry.transporter }}</span>
       </div>
 

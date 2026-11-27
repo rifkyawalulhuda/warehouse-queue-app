@@ -1,6 +1,13 @@
 const prisma = require("../utils/prisma");
+const {
+  parsePagination,
+  paginateQuery,
+  normalizeSort,
+  normalizeSearch,
+} = require("../utils/pagination");
 
 const POSITION_VALUES = new Set(["FOREMAN", "TALLYMAN", "OPR_FORKLIFT"]);
+const SORTABLE_FIELDS = new Set(["nik", "name", "position", "createdAt", "updatedAt"]);
 
 function createHttpError(status, message, details) {
   const err = new Error(message);
@@ -58,10 +65,30 @@ function handlePrismaError(err) {
   throw err;
 }
 
-async function listEmployees() {
-  return prisma.employee.findMany({
-    orderBy: [{ name: "asc" }],
-  });
+async function listEmployees(query = {}) {
+  const search = normalizeSearch(query);
+  const position =
+    typeof query.position === "string" ? query.position.trim().toUpperCase() : "";
+  const { sortBy, sortDir } = normalizeSort(query, SORTABLE_FIELDS, "name", "asc");
+  const pagination = parsePagination(query);
+
+  const where = {};
+  if (search) {
+    where.OR = [
+      { nik: { contains: search, mode: "insensitive" } },
+      { name: { contains: search, mode: "insensitive" } },
+    ];
+  }
+  if (position && POSITION_VALUES.has(position)) {
+    where.position = position;
+  }
+
+  const orderBy =
+    sortBy === "name"
+      ? [{ name: sortDir }]
+      : [{ [sortBy]: sortDir }, { name: "asc" }];
+
+  return paginateQuery(prisma.employee, { where, orderBy }, pagination);
 }
 
 async function listEmployeesForExport() {

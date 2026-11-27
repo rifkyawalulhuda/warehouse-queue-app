@@ -15,6 +15,7 @@ type QueueEntry = {
   gate?: { id: string; gateNo: string; area: string; warehouse: 'WH1' | 'WH2' | 'DG' } | null
   driverName: string
   truckNumber: string
+  containerNumbers?: string[]
   containerNumber?: string | null
   transporter?: string | null
   registerTime: string
@@ -268,7 +269,9 @@ const sortIndicator = (column: string) => {
           </td>
           <td class="px-3 py-2">{{ entry.driverName }}</td>
           <td class="px-3 py-2">{{ entry.truckNumber }}</td>
-          <td class="px-3 py-2">{{ entry.containerNumber || '-' }}</td>
+          <td class="px-3 py-2">
+            {{ entry.containerNumbers && entry.containerNumbers.length > 0 ? entry.containerNumbers.join(', ') : (entry.containerNumber || '-') }}
+          </td>
           <td class="px-3 py-2">{{ entry.transporter || '-' }}</td>
           <td class="px-3 py-2">{{ entry.gate?.gateNo || '-' }}</td>
           <td class="px-3 py-2">{{ formatTime(entry.registerTime) }}</td>
