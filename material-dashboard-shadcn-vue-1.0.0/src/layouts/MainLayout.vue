@@ -12,7 +12,6 @@ import {
   Package,
   CalendarDays,
   Hammer,
-  BarChart3,
   Settings2,
   ChevronDown,
   ChevronLeft,
@@ -61,8 +60,15 @@ const navigation: NavItem[] = [
       { name: 'Daily Job Activity', path: '/daily-job-activity', roles: ['ADMIN', 'WAREHOUSE', 'CS'] }
     ]
   },
-  { name: 'Schedule Pengiriman', path: '/schedule-pengiriman', icon: CalendarDays, roles: ['ADMIN', 'WAREHOUSE', 'CS'] },
-  { name: 'Report Schedule vs Aktual', path: '/report-schedule-vs-aktual', icon: BarChart3, roles: ['ADMIN', 'WAREHOUSE', 'CS'] },
+  {
+    name: 'Schedule',
+    icon: CalendarDays,
+    roles: ['ADMIN', 'WAREHOUSE', 'CS'],
+    children: [
+      { name: 'Schedule Pengiriman', path: '/schedule-pengiriman', roles: ['ADMIN', 'WAREHOUSE', 'CS'] },
+      { name: 'Report Schedule vs Aktual', path: '/report-schedule-vs-aktual', roles: ['ADMIN', 'WAREHOUSE', 'CS'] }
+    ]
+  },
   { name: 'Pengaturan Sistem', path: '/pengaturan-sistem', icon: Settings2, roles: ['ADMIN'] }
 ]
 
