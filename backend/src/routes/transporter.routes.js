@@ -1,9 +1,11 @@
 const express = require("express");
+const multer = require("multer");
 const transporterController = require("../controllers/transporter.controller");
 const authMiddleware = require("../middlewares/auth.middleware");
 const { requireRole } = require("../middlewares/role.middleware");
 
 const router = express.Router();
+const upload = multer({ storage: multer.memoryStorage() });
 
 // Dibaca ketiga role: form antrian butuh daftar transporter untuk dropdown
 // dan untuk "tambah inline".
@@ -20,6 +22,22 @@ router.post(
   authMiddleware,
   requireRole("ADMIN", "WAREHOUSE", "CS"),
   transporterController.createTransporter
+);
+
+// Import massal untuk penyiapan data production. Hanya ADMIN, sama seperti
+// Master Karyawan, Customer, dan Gate.
+router.get(
+  "/transporters/template",
+  authMiddleware,
+  requireRole("ADMIN"),
+  transporterController.downloadTemplate
+);
+router.post(
+  "/transporters/import",
+  authMiddleware,
+  requireRole("ADMIN"),
+  upload.single("file"),
+  transporterController.importTransporters
 );
 
 router.patch(

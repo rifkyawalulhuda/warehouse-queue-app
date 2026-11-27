@@ -3,6 +3,8 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import Button from '@/components/ui/Button.vue'
 import Combobox from '@/components/ui/Combobox.vue'
 import ExportDialog from '@/components/export/ExportDialog.vue'
+import ReportDataTable from '@/components/report/ReportDataTable.vue'
+import type { ReportColumn } from '@/components/report/types'
 import {
   getScheduleReport,
   getTransporters,
@@ -141,6 +143,21 @@ const onTimeLabel = (onTime?: boolean | null) => {
   return onTime ? 'On time' : 'Terlambat'
 }
 
+/**
+ * Warna chip status. Teks statusnya selalu ikut tampil, jadi warna hanya
+ * penguat — bukan satu-satunya penanda (WCAG color-not-only).
+ */
+const statusChipClass = (status?: string | null) => {
+  const key = String(status || '').toUpperCase()
+  if (key === 'SELESAI') return 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400'
+  if (key === 'BATAL' || key === 'NO_SHOW') return 'bg-red-500/10 text-red-700 dark:text-red-400'
+  if (key === 'NO_SHOW_CLOSED') return 'bg-muted text-muted-foreground'
+  if (key === 'MENUNGGU') return 'bg-amber-500/10 text-amber-700 dark:text-amber-400'
+  if (key === 'IN_WH' || key === 'PROSES') return 'bg-sky-500/10 text-sky-700 dark:text-sky-400'
+  if (key === 'PLANNED') return 'bg-indigo-500/10 text-indigo-700 dark:text-indigo-400'
+  return 'bg-muted text-muted-foreground'
+}
+
 const percent = (value?: number | null) => {
   if (value === null || value === undefined) return '-'
   return `${value}%`
@@ -194,6 +211,95 @@ const fetchReport = async () => {
 
 const planRows = computed<ReportPlanRow[]>(() => report.value?.planRows || [])
 const actualRows = computed<ReportActualRow[]>(() => report.value?.actualRows || [])
+
+// --- Konfigurasi tabel report -------------------------------------------
+// Kolom didefinisikan sekali di sini supaya ketiga tabel memakai perilaku
+// sortir/pencarian/paginasi yang sama.
+const groupColumns: ReportColumn[] = [
+  { key: 'label', label: 'Kelompok', sortable: true, mobileTitle: true },
+  { key: 'totalPlan', label: 'Rencana', align: 'right', sortable: true, sortType: 'number', mono: true, mobile: true },
+  { key: 'totalActual', label: 'Aktual', align: 'right', sortable: true, sortType: 'number', mono: true, mobile: true },
+  { key: 'onTimeRate', label: 'On-time Tiba', align: 'right', sortable: true, sortType: 'number', mono: true, mobile: true },
+  { key: 'avgVariance', label: 'Avg Telat', align: 'right', sortable: true, sortType: 'number', mono: true, mobile: true }
+]
+
+const planColumns: ReportColumn[] = [
+  { key: 'scheduleDate', label: 'Tanggal', sortable: true, sortType: 'date', mobile: true },
+  { key: 'plateNumber', label: 'Plat', sortable: true, mobileTitle: true },
+  { key: 'customerName', label: 'Customer Plan', sortable: true, mobile: true },
+  { key: 'transporterName', label: 'Transporter Plan', sortable: true, mobile: true },
+  { key: 'plannedStart', label: 'Estimasi Start', sortable: true, sortType: 'date', mobile: true },
+  { key: 'registerTime', label: 'Aktual Tiba', sortable: true, sortType: 'date', mobile: true },
+  {
+    key: 'varianceArrivalMinutes',
+    label: 'Variance Tiba',
+    align: 'right',
+    sortable: true,
+    sortType: 'number',
+    mono: true,
+    mobile: true
+  },
+  { key: 'plannedFinish', label: 'Estimasi Finish', sortable: true, sortType: 'date' },
+  { key: 'finishTime', label: 'Aktual Selesai', sortable: true, sortType: 'date' },
+  {
+    key: 'varianceFinishMinutes',
+    label: 'Variance Selesai',
+    align: 'right',
+    sortable: true,
+    sortType: 'number',
+    mono: true
+  },
+  { key: 'statusText', label: 'Status', sortable: true, mobile: true }
+]
+
+const actualColumns: ReportColumn[] = [
+  { key: 'registerTime', label: 'Tiba', sortable: true, sortType: 'date', mobile: true },
+  { key: 'truckNumber', label: 'No Truck', sortable: true, mobileTitle: true },
+  { key: 'customerName', label: 'Customer Aktual', sortable: true, mobile: true },
+  { key: 'plannedCustomerName', label: 'Customer Plan', sortable: true },
+  { key: 'transporterName', label: 'Transporter Aktual', sortable: true, mobile: true },
+  { key: 'containerNumbers', label: 'Container', sortable: true, mobile: true },
+  {
+    key: 'varianceArrivalMinutes',
+    label: 'Variance Tiba',
+    align: 'right',
+    sortable: true,
+    sortType: 'number',
+    mono: true,
+    mobile: true
+  },
+  {
+    key: 'varianceFinishMinutes',
+    label: 'Variance Selesai',
+    align: 'right',
+    sortable: true,
+    sortType: 'number',
+    mono: true
+  },
+  { key: 'status', label: 'Status', sortable: true, mobile: true }
+]
+
+const groupTableRows = computed(() =>
+  (report.value?.groups || []).map((group) => ({
+    key: group.key,
+    label: group.label,
+    totalPlan: group.summary.totalPlan,
+    totalActual: group.summary.totalActual,
+    onTimeRate: group.summary.arrival.onTimeRate,
+    avgVariance: group.summary.arrival.avgVarianceMinutes
+  }))
+)
+
+const planTableRows = computed(() =>
+  planRows.value.map((row) => ({
+    ...row,
+    statusText: row.queueStatus || row.scheduleStatus
+  }))
+)
+
+const formatContainer = (value?: string[] | null) =>
+  value && value.length > 0 ? value.join(', ') : '-'
+
 
 onMounted(() => {
   fetchCustomers()
@@ -386,163 +492,150 @@ onMounted(() => {
       </div>
     </div>
 
-    <div v-if="report?.groups?.length" class="overflow-x-auto rounded-lg border bg-card">
-      <table class="min-w-full text-sm">
-        <thead class="bg-muted/60 text-muted-foreground">
-          <tr>
-            <th class="px-3 py-2 text-left font-medium">Kelompok</th>
-            <th class="px-3 py-2 text-right font-medium">Rencana</th>
-            <th class="px-3 py-2 text-right font-medium">Aktual</th>
-            <th class="px-3 py-2 text-right font-medium">On-time Tiba</th>
-            <th class="px-3 py-2 text-right font-medium">Avg Telat</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="group in report.groups" :key="group.key" class="border-t">
-            <td class="px-3 py-2">{{ group.label }}</td>
-            <td class="px-3 py-2 text-right">{{ group.summary.totalPlan }}</td>
-            <td class="px-3 py-2 text-right">{{ group.summary.totalActual }}</td>
-            <td class="px-3 py-2 text-right">{{ percent(group.summary.arrival.onTimeRate) }}</td>
-            <td class="px-3 py-2 text-right">
-              {{ group.summary.arrival.avgVarianceMinutes === null ? '-' : `${group.summary.arrival.avgVarianceMinutes} mnt` }}
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
+    <ReportDataTable
+      v-if="report?.groups?.length"
+      :columns="groupColumns"
+      :rows="groupTableRows"
+      row-key="key"
+      table-label="Ringkasan per kelompok"
+      :loading="loading"
+      empty-title="Tidak ada kelompok"
+      empty-description="Tidak ada data pada rentang ini."
+      unit="kelompok"
+      default-sort-key="label"
+    >
+      <template #cell="{ row, column }">
+        <span v-if="column.key === 'label'" class="font-medium">{{ row.label }}</span>
+        <span v-else-if="column.key === 'onTimeRate'">{{ percent(row.onTimeRate) }}</span>
+        <span v-else-if="column.key === 'avgVariance'">
+          {{
+            row.avgVariance === null || row.avgVariance === undefined
+              ? '-'
+              : `${row.avgVariance} mnt`
+          }}
+        </span>
+        <template v-else>{{ row[column.key] }}</template>
+      </template>
+    </ReportDataTable>
 
     <div class="space-y-2">
       <h2 class="text-sm font-semibold">Tabel Rencana (Schedule)</h2>
-      <div class="overflow-x-auto rounded-lg border bg-card">
-        <table class="min-w-full text-sm">
-          <thead class="bg-muted/60 text-muted-foreground">
-            <tr>
-              <th class="px-3 py-2 text-left font-medium">Tanggal</th>
-              <th class="px-3 py-2 text-left font-medium">Plat</th>
-              <th class="px-3 py-2 text-left font-medium">Customer Plan</th>
-              <th class="px-3 py-2 text-left font-medium">Transporter Plan</th>
-              <th class="px-3 py-2 text-left font-medium">Estimasi Start</th>
-              <th class="px-3 py-2 text-left font-medium">Aktual Tiba</th>
-              <th class="px-3 py-2 text-right font-medium">Variance Tiba</th>
-              <th class="px-3 py-2 text-left font-medium">Estimasi Finish</th>
-              <th class="px-3 py-2 text-left font-medium">Aktual Selesai</th>
-              <th class="px-3 py-2 text-right font-medium">Variance Selesai</th>
-              <th class="px-3 py-2 text-left font-medium">Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-if="planRows.length === 0">
-              <td colspan="11" class="px-3 py-6 text-center text-muted-foreground">
-                {{ loading ? 'Memuat...' : 'Tidak ada data pada rentang ini.' }}
-              </td>
-            </tr>
-            <tr v-for="row in planRows" :key="row.scheduleItemId" class="border-t">
-              <td class="px-3 py-2">{{ formatDate(row.scheduleDate) }}</td>
-              <td class="px-3 py-2 font-medium">{{ row.plateNumber || '-' }}</td>
-              <td class="px-3 py-2">{{ row.customerName || '-' }}</td>
-              <td class="px-3 py-2">{{ row.transporterName || '-' }}</td>
-              <td class="px-3 py-2">{{ formatDateTime(row.plannedStart) }}</td>
-              <td class="px-3 py-2">
-                {{ formatDateTime(row.registerTime) }}
-                <span v-if="row.autoCompleted" class="ml-1 text-xs text-amber-600">(auto)</span>
-              </td>
-              <td
-                class="px-3 py-2 text-right"
-                :class="varianceClass(row.varianceArrivalMinutes, row.isOnTimeArrival)"
-              >
-                {{ formatVariance(row.varianceArrivalMinutes) }}
-              </td>
-              <td class="px-3 py-2">{{ formatDateTime(row.plannedFinish) }}</td>
-              <td class="px-3 py-2">{{ formatDateTime(row.finishTime) }}</td>
-              <td
-                class="px-3 py-2 text-right"
-                :class="varianceClass(row.varianceFinishMinutes, row.isOnTimeFinish)"
-              >
-                {{ formatVariance(row.varianceFinishMinutes) }}
-              </td>
-              <td class="px-3 py-2">
-                <span class="text-xs">
-                  {{ row.queueStatus ? row.queueStatus : row.scheduleStatus }}
-                </span>
-                <span
-                  v-if="row.isOnTimeArrival !== null"
-                  class="ml-1 text-xs"
-                  :class="row.isOnTimeArrival ? 'text-emerald-600' : 'text-red-600'"
-                >
-                  · {{ onTimeLabel(row.isOnTimeArrival) }}
-                </span>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+      <ReportDataTable
+        :columns="planColumns"
+        :rows="planTableRows"
+        row-key="scheduleItemId"
+        table-label="Tabel rencana schedule"
+        :loading="loading"
+        empty-title="Tidak ada rencana"
+        empty-description="Tidak ada jadwal pada rentang ini."
+        unit="rencana"
+        default-sort-key="scheduleDate"
+        default-sort-dir="asc"
+        search-placeholder="Cari plat, customer, transporter..."
+      >
+        <template #cell="{ row, column }">
+          <span v-if="column.key === 'scheduleDate'">{{ formatDate(row.scheduleDate) }}</span>
+          <span v-else-if="column.key === 'plateNumber'" class="font-medium">
+            {{ row.plateNumber || '-' }}
+          </span>
+          <span v-else-if="column.key === 'plannedStart'">
+            {{ formatDateTime(row.plannedStart) }}
+          </span>
+          <span v-else-if="column.key === 'registerTime'">
+            {{ formatDateTime(row.registerTime) }}
+            <span v-if="row.autoCompleted" class="ml-1 text-xs text-amber-600">(auto)</span>
+          </span>
+          <span v-else-if="column.key === 'plannedFinish'">
+            {{ formatDateTime(row.plannedFinish) }}
+          </span>
+          <span v-else-if="column.key === 'finishTime'">
+            {{ formatDateTime(row.finishTime) }}
+          </span>
+          <span
+            v-else-if="column.key === 'varianceArrivalMinutes'"
+            :class="varianceClass(row.varianceArrivalMinutes, row.isOnTimeArrival)"
+          >
+            {{ formatVariance(row.varianceArrivalMinutes) }}
+          </span>
+          <span
+            v-else-if="column.key === 'varianceFinishMinutes'"
+            :class="varianceClass(row.varianceFinishMinutes, row.isOnTimeFinish)"
+          >
+            {{ formatVariance(row.varianceFinishMinutes) }}
+          </span>
+          <span v-else-if="column.key === 'statusText'" class="inline-flex items-center gap-1.5">
+            <span
+              class="rounded-full px-2 py-0.5 text-xs font-medium"
+              :class="statusChipClass(row.statusText)"
+            >
+              {{ row.statusText || '-' }}
+            </span>
+            <span
+              v-if="row.isOnTimeArrival !== null"
+              class="text-xs"
+              :class="row.isOnTimeArrival ? 'text-emerald-600' : 'text-red-600'"
+            >
+              {{ onTimeLabel(row.isOnTimeArrival) }}
+            </span>
+          </span>
+          <span v-else>{{ row[column.key] ?? '-' }}</span>
+        </template>
+      </ReportDataTable>
     </div>
 
     <div class="space-y-2">
       <h2 class="text-sm font-semibold">Tabel Aktual (Antrian Truk)</h2>
-      <div class="overflow-x-auto rounded-lg border bg-card">
-        <table class="min-w-full text-sm">
-          <thead class="bg-muted/60 text-muted-foreground">
-            <tr>
-              <th class="px-3 py-2 text-left font-medium">Tiba</th>
-              <th class="px-3 py-2 text-left font-medium">No Truck</th>
-              <th class="px-3 py-2 text-left font-medium">Customer Aktual</th>
-              <th class="px-3 py-2 text-left font-medium">Customer Plan</th>
-              <th class="px-3 py-2 text-left font-medium">Transporter Aktual</th>
-              <th class="px-3 py-2 text-left font-medium">Container</th>
-              <th class="px-3 py-2 text-right font-medium">Variance Tiba</th>
-              <th class="px-3 py-2 text-right font-medium">Variance Selesai</th>
-              <th class="px-3 py-2 text-left font-medium">Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-if="actualRows.length === 0">
-              <td colspan="9" class="px-3 py-6 text-center text-muted-foreground">
-                {{ loading ? 'Memuat...' : 'Tidak ada antrian pada rentang ini.' }}
-              </td>
-            </tr>
-            <tr v-for="row in actualRows" :key="row.queueEntryId" class="border-t">
-              <td class="px-3 py-2">{{ formatDateTime(row.registerTime) }}</td>
-              <td class="px-3 py-2 font-medium">
-                {{ row.truckNumber }}
-                <span
-                  v-if="row.isWalkIn"
-                  class="ml-1 rounded bg-slate-100 px-1 py-0.5 text-xs text-slate-700"
-                >
-                  walk-in
-                </span>
-              </td>
-              <td class="px-3 py-2">{{ row.customerName || '-' }}</td>
-              <td class="px-3 py-2">{{ row.plannedCustomerName || '-' }}</td>
-              <td class="px-3 py-2">{{ row.transporterName || '-' }}</td>
-              <td class="px-3 py-2">
-                {{ row.containerNumbers.length > 0 ? row.containerNumbers.join(', ') : '-' }}
-              </td>
-              <td
-                class="px-3 py-2 text-right"
-                :class="varianceClass(row.varianceArrivalMinutes, row.isOnTimeArrival)"
-              >
-                {{ formatVariance(row.varianceArrivalMinutes) }}
-              </td>
-              <td
-                class="px-3 py-2 text-right"
-                :class="varianceClass(row.varianceFinishMinutes, row.isOnTimeFinish)"
-              >
-                {{ formatVariance(row.varianceFinishMinutes) }}
-              </td>
-              <td class="px-3 py-2">
-                <span class="text-xs">{{ row.status }}</span>
-                <span
-                  v-if="row.autoCompleted"
-                  class="ml-1 text-xs text-amber-600"
-                >
-                  (auto)
-                </span>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+      <ReportDataTable
+        :columns="actualColumns"
+        :rows="actualRows"
+        row-key="queueEntryId"
+        table-label="Tabel aktual antrian truk"
+        :loading="loading"
+        empty-title="Tidak ada antrian"
+        empty-description="Tidak ada antrian pada rentang ini."
+        unit="antrian"
+        default-sort-key="registerTime"
+        default-sort-dir="desc"
+        search-placeholder="Cari no truck, customer, container..."
+      >
+        <template #cell="{ row, column }">
+          <span v-if="column.key === 'registerTime'">{{ formatDateTime(row.registerTime) }}</span>
+          <span v-else-if="column.key === 'truckNumber'" class="font-medium">
+            {{ row.truckNumber }}
+            <span
+              v-if="row.isWalkIn"
+              class="ml-1 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground"
+            >
+              walk-in
+            </span>
+          </span>
+          <span v-else-if="column.key === 'containerNumbers'">
+            {{ formatContainer(row.containerNumbers) }}
+          </span>
+          <span
+            v-else-if="column.key === 'varianceArrivalMinutes'"
+            :class="varianceClass(row.varianceArrivalMinutes, row.isOnTimeArrival)"
+          >
+            {{ formatVariance(row.varianceArrivalMinutes) }}
+          </span>
+          <span
+            v-else-if="column.key === 'varianceFinishMinutes'"
+            :class="varianceClass(row.varianceFinishMinutes, row.isOnTimeFinish)"
+          >
+            {{ formatVariance(row.varianceFinishMinutes) }}
+          </span>
+          <span v-else-if="column.key === 'status'" class="inline-flex items-center gap-1.5">
+            <span
+              class="rounded-full px-2 py-0.5 text-xs font-medium"
+              :class="statusChipClass(row.status)"
+            >
+              {{ row.status }}
+            </span>
+            <span v-if="row.autoCompleted" class="text-xs text-amber-600">(auto)</span>
+          </span>
+          <span v-else>{{ row[column.key] ?? '-' }}</span>
+        </template>
+      </ReportDataTable>
     </div>
 
     <ExportDialog

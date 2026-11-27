@@ -28,6 +28,7 @@ const props = withDefaults(
 
 const emit = defineEmits<{
   (e: 'update:modelValue', value: string): void
+  (e: 'search', value: string): void
 }>()
 
 const open = ref(false)
@@ -45,6 +46,12 @@ const filteredOptions = computed(() => {
   const keyword = query.value.trim().toLowerCase()
   if (!keyword) return props.options
   return props.options.filter((option) => option.label.toLowerCase().includes(keyword))
+})
+
+// Emit lewat watch, bukan handler @input, supaya tidak bergantung pada urutan
+// eksekusi handler v-model saat elemen yang sama juga punya listener sendiri.
+watch(query, (value) => {
+  emit('search', value)
 })
 
 const close = () => {

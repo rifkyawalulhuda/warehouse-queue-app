@@ -44,6 +44,7 @@ type QueueEntry = {
   containerNumbers?: string[]
   containerNumber?: string | null
   transporter?: string | null
+  transporterId?: string | null
   registerTime: string
   inWhTime?: string | null
   startTime?: string | null
@@ -382,6 +383,28 @@ const fetchCustomers = async () => {
   } catch (err: any) {
     error.value = getErrorMessage(err, 'Gagal mengambil customer')
   }
+}
+
+// Transporter hanya dipilih dari master, tidak lagi dibuat dari form antrian.
+const transporters = ref<{ id: string; name: string }[]>([])
+const fetchTransporters = async (search = '') => {
+  try {
+    const response = await api.get('/transporters', {
+      params: { activeOnly: true, limit: 500, search },
+    })
+    transporters.value = response.data?.data || []
+  } catch {
+    transporters.value = []
+  }
+}
+
+// Pencarian di server supaya daftar besar (hasil import bulk) tetap terjangkau.
+let transporterSearchTimer: ReturnType<typeof setTimeout> | undefined
+const handleTransporterSearch = (keyword: string) => {
+  if (transporterSearchTimer) clearTimeout(transporterSearchTimer)
+  transporterSearchTimer = setTimeout(() => {
+    fetchTransporters(keyword.trim())
+  }, 300)
 }
 
 const fetchMasterGates = async () => {
@@ -778,6 +801,9 @@ const openEditFromDrawer = (entry: QueueEntry) => {
   if (!canEditTransaction.value) return
   editingEntry.value = entry
   editOpen.value = true
+  // Kembalikan daftar ke kondisi awal: pencarian sebelumnya di modal edit
+  // tidak boleh menyisakan daftar terfilter untuk transaksi berikutnya.
+  fetchTransporters()
 }
 
 const closeEdit = () => {
@@ -793,6 +819,7 @@ const handleEdit = async (payload: {
   truckNumber: string
   containerNumbers: string[]
   transporter: string
+  transporterId: string
   slaWaitingMinutes?: number
   slaInWhProcessMinutes?: number
   loadingType?: string
@@ -811,6 +838,7 @@ const handleEdit = async (payload: {
       truckNumber: payload.truckNumber,
       containerNumbers: payload.containerNumbers,
       transporter: payload.transporter.trim(),
+      transporterId: payload.transporterId || null,
       notes: payload.notes.trim(),
     }
     if (typeof payload.slaWaitingMinutes === 'number') body.slaWaitingMinutes = payload.slaWaitingMinutes
@@ -949,6 +977,7 @@ onMounted(() => {
   applyInitialRouteQuery()
   fetchList()
   fetchCustomers()
+  fetchTransporters()
   const detailId = route.query.detailId
   if (typeof detailId === 'string' && detailId) {
     openDetailById(detailId)
@@ -1346,9 +1375,11 @@ watch(
       :open="editOpen"
       :submitting="editSubmitting"
       :customers="customers"
+      :transporters="transporters"
       :entry="editingEntry"
       @close="closeEdit"
       @submit="handleEdit"
+      @search-transporters="handleTransporterSearch"
     />
 
     <div v-if="setInWhOpen" class="fixed inset-0 z-50">

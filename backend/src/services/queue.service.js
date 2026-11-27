@@ -155,10 +155,49 @@ async function resolveScheduleItemForCreate(scheduleItemId, data, settings) {
 }
 
 /**
+ * Transporter hanya boleh berasal dari Master Transporter.
+ * - transporterId dikirim: nama diambil dari master (teks klien diabaikan).
+ * - hanya teks dikirim (klien lama): dicocokkan ke master secara case-insensitive.
+ * Hasil `{}` berarti payload tidak menyentuh transporter sama sekali.
+ */
+async function resolveTransporterForEntry(data) {
+  if (data.transporterId !== undefined) {
+    if (!data.transporterId) {
+      return { transporterId: null, transporterName: null };
+    }
+    const found = await prisma.transporter.findUnique({
+      where: { id: data.transporterId },
+      select: { id: true, name: true },
+    });
+    if (!found) {
+      throw createHttpError(400, "Transporter tidak ditemukan di Master Transporter");
+    }
+    return { transporterId: found.id, transporterName: found.name };
+  }
+
+  if (typeof data.transporter === "string" && data.transporter.trim()) {
+    const name = data.transporter.trim();
+    const matched = await prisma.transporter.findFirst({
+      where: { name: { equals: name, mode: "insensitive" } },
+      select: { id: true, name: true },
+    });
+    if (!matched) {
+      throw createHttpError(
+        400,
+        `Transporter "${name}" belum terdaftar di Master Transporter`
+      );
+    }
+    return { transporterId: matched.id, transporterName: matched.name };
+  }
+
+  return {};
+}
+
+/**
  * Nilai aktual: payload menang atas nilai plan, kecuali plat nomor yang
  * dikunci selama terhubung (keputusan S8).
  */
-function buildLinkedEntryData(data, resolved, actorUser) {
+function buildLinkedEntryData(data, resolved, transporterSelection = {}) {
   const { item, category } = resolved;
   const plan = item.schedule;
 
@@ -173,15 +212,20 @@ function buildLinkedEntryData(data, resolved, actorUser) {
       ? normalizeContainerNumbers(data)
       : item.containerNumbers;
 
-  const transporterId = data.transporterId || item.transporterId || null;
+  const transporterId =
+    transporterSelection.transporterId !== undefined
+      ? transporterSelection.transporterId
+      : item.transporterId || null;
   const transporterName =
-    (typeof data.transporter === "string" && data.transporter.trim()) ||
-    item.transporter?.name ||
-    null;
+    transporterSelection.transporterName !== undefined
+      ? transporterSelection.transporterName
+      : item.transporter?.name || null;
 
   return {
     category,
-    customerId: data.customerId || plan.customer?.id || null,
+    // Customer dikunci mengikuti jadwal; payload diabaikan supaya customer
+    // pada antrian tidak bisa berbeda dari plan.
+    customerId: plan.customer?.id || null,
     driverName,
     driverPhone: data.driverPhone || null,
     // Plat dikunci: mengikuti plan, payload diabaikan.
@@ -410,9 +454,10 @@ async function createQueueEntry(data, actorUser) {
     : null;
 
   const backdate = assertBackdateAllowed(data.registerTime, actorUser, settings);
+  const transporterSelection = await resolveTransporterForEntry(data);
 
   const baseData = resolved
-    ? buildLinkedEntryData(data, resolved)
+    ? buildLinkedEntryData(data, resolved, transporterSelection)
     : {
         category: data.category,
         customerId: data.customerId,
@@ -421,9 +466,9 @@ async function createQueueEntry(data, actorUser) {
         truckNumber: data.truckNumber,
         truckType: data.truckType || null,
         containerNumbers: normalizeContainerNumbers(data),
-        transporter: data.transporter || null,
         // Walk-in tetap menyimpan relasi ke master bila transporter dipilih.
-        transporterId: data.transporterId || null,
+        transporter: transporterSelection.transporterName ?? null,
+        transporterId: transporterSelection.transporterId ?? null,
         scheduleItemId: null,
       };
 
@@ -850,10 +895,14 @@ async function updateQueueEntry(id, data, actorUser) {
   }
 
   // Plat nomor dikunci selama antrian terhubung ke Schedule Pengiriman (S8).
+  // Perbandingan dibuat toleran terhadap beda kapitalisasi/spasi ganda supaya
+  // "b 7778 seu" tidak dianggap perubahan, tetapi nilai tersimpan tidak diubah.
+  const normalizeForCompare = (value) =>
+    String(value ?? "").trim().replace(/\s+/g, " ").toUpperCase();
   if (
     entry.scheduleItemId &&
     data.truckNumber !== undefined &&
-    String(data.truckNumber).trim() !== entry.truckNumber
+    normalizeForCompare(data.truckNumber) !== normalizeForCompare(entry.truckNumber)
   ) {
     throw createHttpError(
       400,
@@ -861,23 +910,34 @@ async function updateQueueEntry(id, data, actorUser) {
     );
   }
 
-  // Transporter hanya berupa teks di form edit. Sinkronkan FK-nya supaya
-  // relasi ke master tidak menunjuk transporter lama setelah teks diubah.
-  let transporterIdUpdate;
-  if (data.transporterId !== undefined) {
-    transporterIdUpdate = data.transporterId || null;
-  } else if (data.transporter !== undefined) {
-    const name = typeof data.transporter === "string" ? data.transporter.trim() : "";
-    if (!name) {
-      transporterIdUpdate = null;
-    } else {
-      const matched = await prisma.transporter.findFirst({
-        where: { name: { equals: name, mode: "insensitive" } },
-        select: { id: true },
-      });
-      transporterIdUpdate = matched?.id ?? null;
-    }
+  // Customer dikunci selama antrian terhubung ke Schedule Pengiriman.
+  if (
+    entry.scheduleItemId &&
+    data.customerId !== undefined &&
+    data.customerId !== null &&
+    data.customerId !== entry.customerId
+  ) {
+    throw createHttpError(
+      400,
+      "Customer tidak bisa diubah karena antrian ini terhubung ke Schedule Pengiriman"
+    );
   }
+
+  // Transporter hanya dipilih dari master. transporterId adalah sumber
+  // kebenaran; `transporter` (teks) disimpan sebagai snapshot nama untuk
+  // histori. Fallback pencarian nama hanya untuk klien lama yang belum
+  // mengirim transporterId.
+  // Transporter hanya dipilih dari master. Nama teks disimpan sebagai
+  // snapshot histori, selalu diambil dari master agar tidak melenceng.
+  const transporterSelection = await resolveTransporterForEntry(data);
+  const transporterIdUpdate =
+    data.transporterId !== undefined || data.transporter !== undefined
+      ? transporterSelection.transporterId ?? null
+      : undefined;
+  const transporterNameUpdate =
+    transporterSelection.transporterName !== undefined
+      ? transporterSelection.transporterName
+      : undefined;
 
   // registerTime hanya boleh diubah ADMIN (R1), dan tetap dibatasi backdate.
   let registerTimeUpdate;
@@ -894,16 +954,19 @@ async function updateQueueEntry(id, data, actorUser) {
     where: { id },
     data: {
       category: data.category ?? undefined,
-      customerId: data.customerId ?? undefined,
+      // Customer ikut plan selama terhubung; payload hanya diterima saat walk-in.
+      customerId: entry.scheduleItemId ? undefined : data.customerId ?? undefined,
       driverName: data.driverName ?? undefined,
       driverPhone: data.driverPhone !== undefined ? (data.driverPhone || null) : undefined,
-      truckNumber: data.truckNumber ?? undefined,
+      // Plat tidak pernah ditimpa selama antrian terhubung ke jadwal, supaya
+      // format dari plan tetap utuh walau payload mengirim versi lain.
+      truckNumber: entry.scheduleItemId ? undefined : data.truckNumber ?? undefined,
       truckType: data.truckType !== undefined ? (data.truckType || null) : undefined,
       containerNumbers:
         data.containerNumbers !== undefined || data.containerNumber !== undefined
           ? normalizeContainerNumbers(data)
           : undefined,
-      transporter: data.transporter ?? undefined,
+      transporter: transporterNameUpdate,
       transporterId: transporterIdUpdate,
       registerTime: registerTimeUpdate,
       slaWaitingMinutes: waitingSlaMinutes,

@@ -67,10 +67,14 @@ function combineDateAndTime(scheduleDate, timeStr, dayOffset = 0) {
   );
 }
 
-/** Plat nomor: uppercase tanpa spasi. "b 1234 xyz" -> "B1234XYZ" */
+/**
+ * Plat nomor: huruf besar, spasi dirapikan jadi satu tetapi TIDAK dihapus.
+ * "b  7778 seu" -> "B 7778 SEU". Spasi dipertahankan supaya plat tampil
+ * apa adanya seperti yang ditulis di Schedule Pengiriman.
+ */
 function normalizePlateNumber(value) {
   if (typeof value !== "string") return null;
-  const normalized = value.replace(/\s+/g, "").toUpperCase();
+  const normalized = value.trim().replace(/\s+/g, " ").toUpperCase();
   return normalized || null;
 }
 

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
-import { Plus, X } from 'lucide-vue-next'
+import { Plus, Upload, Download, X } from 'lucide-vue-next'
 import Card from '@/components/ui/Card.vue'
 import CardHeader from '@/components/ui/CardHeader.vue'
 import CardContent from '@/components/ui/CardContent.vue'
@@ -11,7 +11,13 @@ import MasterTable from '@/components/master/MasterTable.vue'
 import MasterSearch from '@/components/master/MasterSearch.vue'
 import FilterChips from '@/components/master/FilterChips.vue'
 import type { MasterColumn } from '@/components/master/types'
-import { getTransporters, createTransporter, type Transporter } from '@/services/scheduleApi'
+import {
+  getTransporters,
+  createTransporter,
+  importTransporterExcel,
+  downloadTransporterTemplate,
+  type Transporter
+} from '@/services/scheduleApi'
 import api from '@/services/api'
 import { formatDateTimeId } from '@/lib/datetime'
 import { useDebouncedCallback, useTablePagination } from '@/composables/useTablePagination'
@@ -27,6 +33,12 @@ const newName = ref('')
 const showCreate = ref(false)
 const confirmOpen = ref(false)
 const confirmRow = ref<Transporter | null>(null)
+
+const showImport = ref(false)
+const importing = ref(false)
+const importFile = ref<File | null>(null)
+const importResult = ref<{ created: number; skipped: number; total: number } | null>(null)
+const importErrors = ref<string[]>([])
 
 const sortBy = ref('name')
 const sortDir = ref<'asc' | 'desc'>('asc')
@@ -135,6 +147,58 @@ const add = async () => {
     error.value = err?.response?.data?.message || 'Gagal menambah transporter'
   } finally {
     saving.value = false
+  }
+}
+
+const handleImport = async () => {
+  if (!importFile.value) {
+    error.value = 'File Excel wajib dipilih'
+    return
+  }
+
+  importing.value = true
+  error.value = null
+  importErrors.value = []
+  importResult.value = null
+  try {
+    const response = await importTransporterExcel(importFile.value)
+    const result = response.data?.data
+    importResult.value = result || null
+    importFile.value = null
+    resetPage()
+    await load()
+    showSuccess(
+      result
+        ? `Import selesai: ${result.created} ditambahkan, ${result.skipped} dilewati`
+        : 'Import transporter selesai'
+    )
+  } catch (err: any) {
+    const details = err?.response?.data?.details
+    if (Array.isArray(details) && details.length > 0) {
+      importErrors.value = details
+      error.value = err?.response?.data?.message || 'Validasi import gagal'
+    } else {
+      error.value = err?.response?.data?.message || 'Gagal import transporter'
+    }
+  } finally {
+    importing.value = false
+  }
+}
+
+const handleDownloadTemplate = async () => {
+  try {
+    const response = await downloadTransporterTemplate()
+    const blob = new Blob([response.data], { type: response.headers['content-type'] })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = 'master-transporter-template.xlsx'
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+    window.setTimeout(() => URL.revokeObjectURL(url), 0)
+  } catch (err: any) {
+    error.value = err?.response?.data?.message || 'Gagal download template'
   }
 }
 
@@ -277,6 +341,65 @@ onMounted(load)
       {{ success }}
     </div>
 
+    <Card v-if="showImport">
+      <CardHeader>
+        <div class="text-sm font-medium">Import Excel (.xlsx)</div>
+        <p class="text-xs text-muted-foreground">
+          Header kolom: Nama Transporter, Status Aktif (opsional, AKTIF/NONAKTIF).
+          Transporter yang sudah ada dilewati, tidak ditimpa.
+        </p>
+      </CardHeader>
+      <CardContent>
+        <div class="flex flex-col gap-3 md:flex-row md:items-end">
+          <div class="min-w-0 flex-1">
+            <label for="transporter-import" class="text-xs font-medium text-muted-foreground">File Excel</label>
+            <input
+              id="transporter-import"
+              type="file"
+              accept=".xlsx"
+              class="mt-1 w-full min-w-0 max-w-full rounded-xl border border-input/80 bg-card/75 px-3 py-2 text-xs file:mr-3 file:rounded-lg file:border-0 file:bg-muted file:px-3 file:py-1.5 file:text-xs file:font-medium"
+              @change="(e) => (importFile = (e.target as HTMLInputElement).files?.[0] || null)"
+            />
+          </div>
+          <div class="flex flex-wrap items-center gap-2">
+            <Button size="sm" variant="ghost" @click="showImport = false">Tutup</Button>
+            <button
+              type="button"
+              class="inline-flex items-center gap-1.5 text-sm text-primary underline-offset-4 hover:underline"
+              @click="handleDownloadTemplate"
+            >
+              <Download class="h-3.5 w-3.5" aria-hidden="true" />
+              Template
+            </button>
+            <Button size="sm" :disabled="importing || !importFile" @click="handleImport">
+              {{ importing ? 'Mengimpor...' : 'Import' }}
+            </Button>
+          </div>
+        </div>
+
+        <div
+          v-if="importResult"
+          class="mt-3 rounded-xl border border-emerald-300/60 bg-emerald-50 px-3 py-2 text-xs text-emerald-800 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-300"
+        >
+          <span class="font-semibold">{{ importResult.created }}</span> transporter ditambahkan,
+          <span class="font-semibold">{{ importResult.skipped }}</span> dilewati dari
+          {{ importResult.total }} baris valid.
+        </div>
+
+        <div
+          v-if="importErrors.length > 0"
+          class="mt-3 rounded-xl border border-red-300/60 bg-red-50 px-3 py-2 dark:border-red-500/30 dark:bg-red-500/10"
+        >
+          <p class="text-xs font-semibold text-red-800 dark:text-red-300">
+            Import dibatalkan. Perbaiki {{ importErrors.length }} baris berikut lalu unggah ulang:
+          </p>
+          <ul class="mt-1 max-h-40 space-y-0.5 overflow-y-auto text-xs text-red-700 dark:text-red-300">
+            <li v-for="(message, index) in importErrors" :key="index">{{ message }}</li>
+          </ul>
+        </div>
+      </CardContent>
+    </Card>
+
     <Card v-if="showCreate">
       <CardHeader>
         <div class="text-sm font-medium">Tambah transporter baru</div>
@@ -340,6 +463,10 @@ onMounted(load)
         <span class="rounded-full border border-border/70 bg-muted/50 px-2.5 py-1 text-xs font-medium tabular-nums text-muted-foreground">
           {{ total }} transporter
         </span>
+        <Button size="sm" variant="outline" @click="showImport = !showImport">
+          <Upload class="mr-1.5 h-4 w-4" aria-hidden="true" />
+          Import
+        </Button>
       </template>
 
       <template #cell="{ row, column }">

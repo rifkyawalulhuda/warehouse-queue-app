@@ -6,7 +6,6 @@ import { isValidOptionalPhone, sanitizePhoneInput, MIN_PHONE_DIGITS, MAX_PHONE_D
 import {
   getAvailableScheduleItems,
   getTransporters,
-  createTransporter,
   type ScheduleAvailableItem,
   type Transporter,
 } from '@/services/scheduleApi'
@@ -87,14 +86,14 @@ const scheduleLoading = ref(false)
 const scheduleError = ref('')
 const transporters = ref<Transporter[]>([])
 const transporterLoading = ref(false)
-const newTransporterName = ref('')
-const addingTransporter = ref(false)
-const transporterError = ref('')
 
 const isLinked = computed(() => Boolean(form.scheduleItemId))
 const selectedItem = computed(
   () => scheduleItems.value.find((item) => item.id === form.scheduleItemId) || null
 )
+// Plat hanya terkunci kalau plan benar-benar punya plat. Item jadwal lama bisa
+// belum punya plat, dan mengunci field kosong akan membuat form buntu.
+const isPlateLocked = computed(() => isLinked.value && Boolean(selectedItem.value?.plateNumber))
 
 const formatSlaLabel = (minutes: number) => {
   const hours = Math.floor(minutes / 60)
@@ -119,9 +118,15 @@ const customerOptions = computed(() =>
   props.customers.map((customer) => ({ value: customer.id, label: customer.name }))
 )
 
-const transporterOptions = computed(() =>
-  transporters.value.map((item) => ({ value: item.id, label: item.name }))
-)
+const transporterOptions = computed(() => {
+  const options = transporters.value.map((item) => ({ value: item.id, label: item.name }))
+  // Jaga pilihan tetap terlihat walau hasil pencarian sudah berganti,
+  // supaya Combobox tidak kembali menampilkan placeholder setelah dipilih.
+  if (form.transporterId && !options.some((option) => option.value === form.transporterId)) {
+    options.unshift({ value: form.transporterId, label: form.transporter || 'Transporter terpilih' })
+  }
+  return options
+})
 
 const scheduleOptions = computed(() =>
   scheduleItems.value.map((item) => {
@@ -156,8 +161,6 @@ const resetForm = () => {
   form.slaInWhProcessMinutes = ''
   form.notes = ''
   form.registerTime = ''
-  newTransporterName.value = ''
-  transporterError.value = ''
   scheduleError.value = ''
   Object.keys(errors).forEach((key) => {
     ;(errors as Record<string, string>)[key] = ''
@@ -177,16 +180,26 @@ const loadScheduleItems = async () => {
   }
 }
 
-const loadTransporters = async () => {
+const loadTransporters = async (search = '') => {
   transporterLoading.value = true
   try {
-    const { data } = await getTransporters({ activeOnly: true, limit: 500 } as any)
+    const { data } = await getTransporters({ activeOnly: true, limit: 500, search } as any)
     transporters.value = data.data || []
   } catch {
     transporters.value = []
   } finally {
     transporterLoading.value = false
   }
+}
+
+// Cari transporter di server supaya daftar besar (hasil import bulk) tetap
+// terjangkau; debounce agar tidak membanjiri API saat mengetik.
+let transporterSearchTimer: ReturnType<typeof setTimeout> | undefined
+const handleTransporterSearch = (keyword: string) => {
+  if (transporterSearchTimer) clearTimeout(transporterSearchTimer)
+  transporterSearchTimer = setTimeout(() => {
+    loadTransporters(keyword.trim())
+  }, 300)
 }
 
 const applyScheduleItem = (item: ScheduleAvailableItem | null) => {
@@ -203,7 +216,8 @@ const applyScheduleItem = (item: ScheduleAvailableItem | null) => {
 
   form.scheduleItemId = item.id
   form.category = item.category
-  if (item.customerId) form.customerId = item.customerId
+  // Customer mengikuti jadwal (dikunci), jadi selalu ditimpa dari plan.
+  form.customerId = item.customerId || ''
   if (item.driverName) form.driverName = item.driverName
   form.truckNumber = item.plateNumber || ''
   form.truckType = item.truckType || ''
@@ -228,27 +242,6 @@ const handleTransporterSelect = (value: string) => {
   form.transporterId = value
   const found = transporters.value.find((item) => item.id === value)
   form.transporter = found?.name || ''
-}
-
-const addTransporterInline = async () => {
-  const name = newTransporterName.value.trim()
-  if (!name) return
-  addingTransporter.value = true
-  transporterError.value = ''
-  try {
-    const { data } = await createTransporter(name)
-    const created = data.data
-    if (!transporters.value.some((item) => item.id === created.id)) {
-      transporters.value = [...transporters.value, created].sort((a, b) => a.name.localeCompare(b.name))
-    }
-    form.transporterId = created.id
-    form.transporter = created.name
-    newTransporterName.value = ''
-  } catch (err: any) {
-    transporterError.value = err?.response?.data?.message || 'Gagal menambah transporter'
-  } finally {
-    addingTransporter.value = false
-  }
 }
 
 const addContainerField = () => {
@@ -399,7 +392,8 @@ watch(
               </div>
             </div>
             <p class="mt-2 text-muted-foreground">
-              Data di bawah sudah terisi dari jadwal. Semua boleh dioverride kecuali Plat Nomor.
+              Data di bawah sudah terisi dari jadwal. Customer dan Plat Nomor mengikuti jadwal;
+              field lain boleh dioverride.
             </p>
             <Button variant="ghost" size="sm" class="mt-2" @click="applyScheduleItem(null)">
               Lepas jadwal &amp; input manual
@@ -460,6 +454,7 @@ watch(
               <Combobox
                 v-model="form.customerId"
                 :options="customerOptions"
+                :disabled="isLinked"
                 placeholder="Pilih customer..."
                 search-placeholder="Cari customer..."
                 empty-text="Tidak ada customer"
@@ -467,6 +462,9 @@ watch(
             </div>
             <p v-if="errors.customerId" class="mt-1 text-xs text-red-600">
               {{ errors.customerId }}
+            </p>
+            <p v-else-if="isLinked" class="mt-1 text-xs text-muted-foreground">
+              Mengikuti jadwal yang dipilih.
             </p>
           </div>
           <div>
@@ -499,16 +497,16 @@ watch(
             <input
               v-model="form.truckNumber"
               type="text"
-              :readonly="isLinked"
+              :readonly="isPlateLocked"
               :class="[
                 'mt-1 w-full rounded-md border bg-transparent px-2 py-2 text-sm',
-                isLinked ? 'cursor-not-allowed bg-muted/50 text-muted-foreground' : '',
+                isPlateLocked ? 'cursor-not-allowed bg-muted/50 text-muted-foreground' : '',
               ]"
             />
             <p v-if="errors.truckNumber" class="mt-1 text-xs text-red-600">
               {{ errors.truckNumber }}
             </p>
-            <p v-else-if="isLinked" class="mt-1 text-xs text-muted-foreground">
+            <p v-else-if="isPlateLocked" class="mt-1 text-xs text-muted-foreground">
               Terkunci mengikuti jadwal.
             </p>
           </div>
@@ -555,26 +553,9 @@ watch(
               search-placeholder="Cari transporter..."
               empty-text="Transporter belum terdaftar"
               @update:model-value="handleTransporterSelect"
+              @search="handleTransporterSearch"
             />
           </div>
-          <div class="mt-2 flex items-center gap-2">
-            <input
-              v-model="newTransporterName"
-              type="text"
-              placeholder="Tambah transporter baru..."
-              class="w-full rounded-md border bg-transparent px-2 py-2 text-sm"
-              @keyup.enter="addTransporterInline"
-            />
-            <Button
-              variant="outline"
-              size="sm"
-              :disabled="addingTransporter || !newTransporterName.trim()"
-              @click="addTransporterInline"
-            >
-              {{ addingTransporter ? 'Menyimpan...' : 'Tambah' }}
-            </Button>
-          </div>
-          <p v-if="transporterError" class="mt-1 text-xs text-red-600">{{ transporterError }}</p>
         </div>
 
         <div class="grid gap-3 md:grid-cols-2">

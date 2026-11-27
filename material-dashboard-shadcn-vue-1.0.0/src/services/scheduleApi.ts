@@ -63,6 +63,19 @@ export const getTransporters = (params?: {
 export const createTransporter = (name: string) =>
   api.post<{ ok: boolean; data: Transporter }>('/transporters', { name })
 
+export const importTransporterExcel = (file: File) => {
+  const formData = new FormData()
+  formData.append('file', file)
+  return api.post<{ ok: boolean; data: { created: number; skipped: number; total: number } }>(
+    '/transporters/import',
+    formData,
+    { headers: { 'Content-Type': 'multipart/form-data' } }
+  )
+}
+
+export const downloadTransporterTemplate = () =>
+  api.get('/transporters/template', { responseType: 'blob' })
+
 export const getSettings = () => api.get<{ ok: boolean; data: AppSetting[] }>('/settings')
 
 export const updateSettings = (payload: Record<string, number>) =>

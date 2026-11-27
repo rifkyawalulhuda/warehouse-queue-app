@@ -82,6 +82,7 @@ function validateQueueCreate(req, res, next) {
     containerNumber,
     containerNumbers,
     transporter,
+    transporterId,
     registerTime,
     scheduleItemId,
     slaWaitingMinutes,
@@ -133,6 +134,14 @@ function validateQueueCreate(req, res, next) {
   if (transporter !== undefined && transporter !== null && typeof transporter !== "string") {
     errors.push("transporter harus string");
   }
+  if (
+    transporterId !== undefined &&
+    transporterId !== null &&
+    transporterId !== "" &&
+    !isNonEmptyString(transporterId)
+  ) {
+    errors.push("transporterId tidak valid");
+  }
   if (scheduleItemId !== undefined && scheduleItemId !== null && scheduleItemId !== "") {
     if (!isNonEmptyString(scheduleItemId)) {
       errors.push("scheduleItemId tidak valid");
@@ -174,6 +183,7 @@ function validateQueueUpdate(req, res, next) {
     containerNumber,
     containerNumbers,
     transporter,
+    transporterId,
     notes,
     registerTime,
     slaWaitingMinutes,
@@ -219,6 +229,14 @@ function validateQueueUpdate(req, res, next) {
   }
   if (transporter !== undefined && typeof transporter !== "string") {
     errors.push("transporter harus string");
+  }
+  if (
+    transporterId !== undefined &&
+    transporterId !== null &&
+    transporterId !== "" &&
+    !isNonEmptyString(transporterId)
+  ) {
+    errors.push("transporterId tidak valid");
   }
   if (notes !== undefined && typeof notes !== "string") {
     errors.push("notes harus string");

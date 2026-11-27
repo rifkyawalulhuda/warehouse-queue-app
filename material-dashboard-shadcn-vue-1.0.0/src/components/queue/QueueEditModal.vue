@@ -17,6 +17,7 @@ type QueueEntry = {
   containerNumbers?: string[] | null
   containerNumber?: string | null
   transporter?: string | null
+  transporterId?: string | null
   slaWaitingMinutes?: number | null
   slaInWhProcessMinutes?: number | null
   loadingType?: string | null
@@ -33,6 +34,7 @@ type FormState = {
   truckNumber: string
   containerNumbers: string[]
   transporter: string
+  transporterId: string
   slaWaitingMinutes?: number
   slaInWhProcessMinutes?: number
   loadingType?: string
@@ -49,12 +51,14 @@ const props = defineProps<{
   open: boolean
   submitting: boolean
   customers: { id: string; name: string }[]
+  transporters: { id: string; name: string }[]
   entry: QueueEntry | null
 }>()
 
 const emit = defineEmits<{
   (e: 'close'): void
   (e: 'submit', payload: FormState): void
+  (e: 'search-transporters', keyword: string): void
 }>()
 
 const form = reactive<DraftFormState>({
@@ -65,6 +69,7 @@ const form = reactive<DraftFormState>({
   truckNumber: '',
   containerNumbers: [''],
   transporter: '',
+  transporterId: '',
   slaWaitingMinutes: '',
   slaInWhProcessMinutes: '',
   loadingType: '',
@@ -104,6 +109,27 @@ const customerOptions = computed(() =>
   }))
 )
 
+const transporterOptions = computed(() => {
+  const options = props.transporters.map((item) => ({
+    value: item.id,
+    label: item.name,
+  }))
+  // Jaga pilihan tetap terlihat walau hasil pencarian sudah berganti.
+  if (form.transporterId && !options.some((option) => option.value === form.transporterId)) {
+    options.unshift({
+      value: form.transporterId,
+      label: form.transporter || 'Transporter terpilih',
+    })
+  }
+  return options
+})
+
+const handleTransporterSelect = (value: string) => {
+  form.transporterId = value
+  const found = props.transporters.find((item) => item.id === value)
+  form.transporter = found?.name || ''
+}
+
 const slaOptions = computed(() =>
   Array.from({ length: 96 }, (_, index) => {
     const value = (index + 1) * 15
@@ -118,6 +144,10 @@ const canEditRegisterTime = computed(() => (props.entry?.status || 'MENUNGGU') =
 const canEditWaitingSla = computed(() => (props.entry?.status || 'MENUNGGU') === 'MENUNGGU')
 // Plat dikunci saat antrian terhubung ke Schedule Pengiriman (S8).
 const isLinkedToSchedule = computed(() => Boolean(props.entry?.scheduleItemId))
+// Kunci plat hanya berlaku kalau plan punya plat; item jadwal lama bisa kosong.
+const isPlateLocked = computed(
+  () => isLinkedToSchedule.value && Boolean(props.entry?.truckNumber?.trim())
+)
 
 const toDatetimeLocal = (value?: string | null) => {
   if (!value) return ''
@@ -145,6 +175,7 @@ const syncFormFromEntry = () => {
         ? [props.entry.containerNumber]
         : ['']
   form.transporter = props.entry?.transporter || ''
+  form.transporterId = props.entry?.transporterId || ''
   form.slaWaitingMinutes = props.entry?.slaWaitingMinutes ? String(props.entry.slaWaitingMinutes) : ''
   form.slaInWhProcessMinutes = props.entry?.slaInWhProcessMinutes ? String(props.entry.slaInWhProcessMinutes) : ''
   form.loadingType = props.entry?.loadingType || ''
@@ -220,6 +251,7 @@ const handleSubmit = () => {
     truckNumber: form.truckNumber,
     containerNumbers: form.containerNumbers.map((value) => value.trim()).filter(Boolean),
     transporter: form.transporter,
+    transporterId: form.transporterId,
     notes: form.notes,
     registerTime: form.registerTime,
   }
@@ -299,12 +331,16 @@ watch(
               <Combobox
                 v-model="form.customerId"
                 :options="customerOptions"
+                :disabled="isLinkedToSchedule"
                 placeholder="Pilih customer..."
                 search-placeholder="Cari customer..."
                 empty-text="Tidak ada customer"
               />
             </div>
             <p v-if="errors.customerId" class="mt-1 text-xs text-red-600">{{ errors.customerId }}</p>
+            <p v-else-if="isLinkedToSchedule" class="mt-1 text-xs text-muted-foreground">
+              Terkunci mengikuti Schedule Pengiriman.
+            </p>
           </div>
           <div>
             <label class="text-muted-foreground">Driver Name</label>
@@ -328,10 +364,10 @@ watch(
             <input
               v-model="form.truckNumber"
               type="text"
-              :disabled="isLinkedToSchedule"
+              :disabled="isPlateLocked"
               class="mt-1 w-full bg-transparent border rounded-md px-2 py-2 text-sm disabled:opacity-60"
             />
-            <p v-if="isLinkedToSchedule" class="mt-1 text-xs text-muted-foreground">
+            <p v-if="isPlateLocked" class="mt-1 text-xs text-muted-foreground">
               Terkunci karena terhubung ke Schedule Pengiriman.
             </p>
             <p v-if="errors.truckNumber" class="mt-1 text-xs text-red-600">{{ errors.truckNumber }}</p>
@@ -365,7 +401,17 @@ watch(
           </div>
           <div>
             <label class="text-muted-foreground">Transporter</label>
-            <input v-model="form.transporter" type="text" class="mt-1 w-full bg-transparent border rounded-md px-2 py-2 text-sm" />
+            <div class="mt-1">
+              <Combobox
+                :model-value="form.transporterId"
+                :options="transporterOptions"
+                placeholder="Pilih transporter..."
+                search-placeholder="Cari transporter..."
+                empty-text="Transporter belum terdaftar"
+                @update:model-value="handleTransporterSelect"
+                @search="(keyword: string) => emit('search-transporters', keyword)"
+              />
+            </div>
           </div>
         </div>
 

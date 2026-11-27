@@ -143,10 +143,96 @@ async function deleteTransporter(id) {
   }
 }
 
+/**
+ * Import massal dari Excel. Mengikuti pola Master Karyawan: seluruh file
+ * divalidasi lebih dulu, dan satu baris salah membatalkan seluruh import.
+ * Transporter yang sudah ada dilewati, tidak pernah ditimpa.
+ */
+async function importTransportersFromExcel(rows) {
+  if (!Array.isArray(rows)) {
+    throw createHttpError(400, "Data Excel tidak valid");
+  }
+
+  const errors = [];
+  const parsed = [];
+  const seenNames = new Set();
+
+  for (const row of rows) {
+    const rawName = typeof row?.name === "string" ? row.name.trim() : "";
+    const rawActive = typeof row?.isActive === "string" ? row.isActive.trim() : "";
+    const rowNumber = row?.rowNumber || 0;
+
+    if (!rawName && !rawActive) {
+      continue;
+    }
+
+    const rowErrors = [];
+    const name = normalizeName(rawName);
+    if (!name) {
+      rowErrors.push("Nama Transporter wajib diisi");
+    } else if (name.length > 100) {
+      rowErrors.push("Nama Transporter maksimal 100 karakter");
+    }
+
+    const activeKey = rawActive.toLowerCase();
+    let isActive = true;
+    if (activeKey) {
+      if (["aktif", "active", "ya", "yes", "1", "true"].includes(activeKey)) {
+        isActive = true;
+      } else if (["nonaktif", "non-aktif", "inactive", "tidak", "no", "0", "false"].includes(activeKey)) {
+        isActive = false;
+      } else {
+        rowErrors.push("Status Aktif harus AKTIF atau NONAKTIF");
+      }
+    }
+
+    if (rowErrors.length > 0) {
+      errors.push(`Baris ${rowNumber}: ${rowErrors.join(", ")}`);
+      continue;
+    }
+
+    // Duplikat di dalam file dibuang; perbandingan case-insensitive supaya
+    // "Logistik X" dan "LOGISTIK X" tidak menjadi dua transporter.
+    const dedupeKey = name.toLowerCase();
+    if (seenNames.has(dedupeKey)) {
+      continue;
+    }
+    seenNames.add(dedupeKey);
+    parsed.push({ name, isActive });
+  }
+
+  if (errors.length > 0) {
+    throw createHttpError(400, "Validasi import gagal", errors);
+  }
+
+  if (parsed.length === 0) {
+    throw createHttpError(400, "Tidak ada data transporter yang valid");
+  }
+
+  const existing = await prisma.transporter.findMany({
+    where: { name: { in: parsed.map((row) => row.name), mode: "insensitive" } },
+    select: { name: true },
+  });
+  const existingNames = new Set(existing.map((item) => item.name.toLowerCase()));
+
+  const toCreate = parsed.filter((item) => !existingNames.has(item.name.toLowerCase()));
+
+  if (toCreate.length > 0) {
+    await prisma.transporter.createMany({ data: toCreate });
+  }
+
+  return {
+    created: toCreate.length,
+    skipped: parsed.length - toCreate.length,
+    total: parsed.length,
+  };
+}
+
 module.exports = {
   createHttpError,
   listTransporters,
   createTransporter,
   updateTransporter,
   deleteTransporter,
+  importTransportersFromExcel,
 };
