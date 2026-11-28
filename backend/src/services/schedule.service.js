@@ -864,8 +864,8 @@ const TRUCK_TYPE_ALIASES = {
 
 /**
  * Tanggal dari sel Excel. Menerima sel tanggal asli, serial angka Excel,
- * teks YYYY-MM-DD, dan teks DD/MM/YYYY. Hasilnya selalu UTC midnight karena
- * kolom scheduleDate bertipe @db.Date.
+ * teks DD-MM-YYYY (format template), teks YYYY-MM-DD, dan teks DD/MM/YYYY.
+ * Hasilnya selalu UTC midnight karena kolom scheduleDate bertipe @db.Date.
  */
 function parseImportDate(value) {
   if (value instanceof Date && !Number.isNaN(value.getTime())) {
@@ -987,7 +987,7 @@ async function importSchedulesFromExcel(rows, options = {}) {
     const rowErrors = [];
 
     const scheduleDate = parseImportDate(rawDate);
-    if (!scheduleDate) rowErrors.push("Tanggal wajib diisi dengan format YYYY-MM-DD");
+    if (!scheduleDate) rowErrors.push("Tanggal wajib diisi dengan format DD-MM-YYYY (contoh 01-12-2026)");
 
     const storeType = STORE_TYPE_ALIASES[rawCategory.toUpperCase()] || null;
     if (!storeType) rowErrors.push("Kategori harus RECEIVING atau DELIVERY");

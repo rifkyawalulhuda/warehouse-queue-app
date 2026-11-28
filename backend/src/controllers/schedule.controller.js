@@ -259,11 +259,22 @@ async function downloadImportTemplate(req, res, next) {
       transporters.find((name) => name.trim().length >= 3 && /[a-z]/i.test(name)) || "";
 
     const samples = [
-      ["2026-12-01", "RECEIVING", sampleCustomer, "B 1234 XYZ", "CDD", "", sampleTransporter, "Budi", "TCLU1234567", "08:00", "10:00"],
-      ["2026-12-01", "RECEIVING", sampleCustomer, "B 5678 ABC", "FUSO", "", "", "Andi", "", "13:00", "15:30"],
-      ["2026-12-02", "DELIVERY", sampleCustomer2, "B 9012 DEF", "WB", "", "", "", "TEMU7654321, TEMU1111111", "23:00", "01:00"],
+      ["01-12-2026", "RECEIVING", sampleCustomer, "B 1234 XYZ", "CDD", "", sampleTransporter, "Budi", "TCLU1234567", "08:00", "10:00"],
+      ["01-12-2026", "RECEIVING", sampleCustomer, "B 5678 ABC", "FUSO", "", "", "Andi", "", "13:00", "15:30"],
+      ["02-12-2026", "DELIVERY", sampleCustomer2, "B 9012 DEF", "WB", "", "", "", "TEMU7654321, TEMU1111111", "23:00", "01:00"],
     ];
     for (const sample of samples) worksheet.addRow(sample);
+
+    // Tanggal dibiarkan sebagai teks supaya "01-12-2026" tidak diubah Excel
+    // menjadi sel tanggal menurut locale komputer pengguna (di locale US
+    // "01-12-2026" bisa terbaca 12 Januari). Parser import membaca DD-MM-YYYY
+    // secara eksplisit, jadi apa yang diketik itulah yang masuk.
+    worksheet.getColumn(1).numFmt = "@";
+    worksheet.getCell("A1").note = {
+      texts: [
+        { text: "Format tanggal: DD-MM-YYYY\nContoh: 01-12-2026 (1 Desember 2026)\n\nSel tanggal Excel juga diterima." },
+      ],
+    };
 
     // Format kolom jam sebagai teks supaya "08:00" tidak berubah jadi sel waktu.
     worksheet.getColumn(10).numFmt = "@";
@@ -338,6 +349,8 @@ async function downloadImportTemplate(req, res, next) {
       ["OTHER", "Lainnya - isi kolom Tipe Lain"],
       ["RECEIVING", "Barang masuk (STORE_IN)"],
       ["DELIVERY", "Barang keluar (STORE_OUT)"],
+      ["Tanggal", "Format DD-MM-YYYY (contoh 01-12-2026)"],
+      ["Jam", "Format HH:mm 24 jam (contoh 08:00 atau 13:30)"],
     ];
     for (const ref of refRows) referenceSheet.addRow(ref);
     referenceSheet.addRow([]);
