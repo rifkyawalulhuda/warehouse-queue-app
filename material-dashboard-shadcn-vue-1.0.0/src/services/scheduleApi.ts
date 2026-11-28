@@ -76,6 +76,41 @@ export const importTransporterExcel = (file: File) => {
 export const downloadTransporterTemplate = () =>
   api.get('/transporters/template', { responseType: 'blob' })
 
+export type ScheduleImportResult = {
+  created: number
+  skipped: number
+  total: number
+  scheduleCount: number
+  createdSchedules: number
+  newSchedules: { date: string; customerName: string; category: string; itemCount: number }[]
+}
+
+export type ScheduleImportLog = {
+  id: string
+  fileName: string | null
+  rowCount: number
+  createdCount: number
+  skippedCount: number
+  scheduleCount: number
+  note: string | null
+  createdAt: string
+  actorUser: { id: string; name: string; username: string } | null
+}
+
+export const importScheduleExcel = (file: File) => {
+  const formData = new FormData()
+  formData.append('file', file)
+  return api.post<{ ok: boolean; data: ScheduleImportResult }>('/schedules/import', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  })
+}
+
+export const downloadScheduleImportTemplate = () =>
+  api.get('/schedules/import-template', { responseType: 'blob' })
+
+export const getScheduleImportLogs = (limit = 10) =>
+  api.get<{ ok: boolean; data: ScheduleImportLog[] }>('/schedules/import-logs', { params: { limit } })
+
 export const getSettings = () => api.get<{ ok: boolean; data: AppSetting[] }>('/settings')
 
 export const updateSettings = (payload: Record<string, number>) =>

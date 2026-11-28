@@ -8,11 +8,20 @@ import CardContent from '@/components/ui/CardContent.vue'
 import Button from '@/components/ui/Button.vue'
 import Combobox from '@/components/ui/Combobox.vue'
 import Input from '@/components/ui/Input.vue'
-import { CalendarDays, RefreshCw, Search } from 'lucide-vue-next'
+import { CalendarDays, RefreshCw, Search, Upload, Download, X, History } from 'lucide-vue-next'
 import api from '@/services/api'
 import ExportDialog from '@/components/export/ExportDialog.vue'
 import { formatDateId, formatDateTimeId } from '@/lib/datetime'
-import { getTransporters, closeNoShowItem, type Transporter } from '@/services/scheduleApi'
+import {
+  getTransporters,
+  closeNoShowItem,
+  importScheduleExcel,
+  downloadScheduleImportTemplate,
+  getScheduleImportLogs,
+  type Transporter,
+  type ScheduleImportResult,
+  type ScheduleImportLog,
+} from '@/services/scheduleApi'
 
 type StoreType = 'STORE_IN' | 'STORE_OUT'
 type TruckType = 'CDD' | 'CDE' | 'FUSO' | 'WB' | 'FT20' | 'FT40' | 'OTHER'
@@ -147,6 +156,18 @@ const confirmRemoveItemIndex = ref<number | null>(null)
 const exportOpen = ref(false)
 const printing = ref(false)
 const printError = ref<string | null>(null)
+
+// --- Import Excel (bulk Schedule Delivery & Receiving) ---
+const importOpen = ref(false)
+const importing = ref(false)
+const importFile = ref<File | null>(null)
+const importFileInput = ref<HTMLInputElement | null>(null)
+const importResult = ref<ScheduleImportResult | null>(null)
+const importErrors = ref<string[]>([])
+const importError = ref<string | null>(null)
+const importLogs = ref<ScheduleImportLog[]>([])
+const importLogsOpen = ref(false)
+const importLogsLoading = ref(false)
 const filterDateInputRef = ref<HTMLInputElement | null>(null)
 const formDateInputRef = ref<HTMLInputElement | null>(null)
 const route = useRoute()
@@ -765,6 +786,102 @@ const goToPage = (target: number) => {
   fetchList()
 }
 
+const resetImportState = () => {
+  importFile.value = null
+  importResult.value = null
+  importErrors.value = []
+  importError.value = null
+  if (importFileInput.value) importFileInput.value.value = ''
+}
+
+const openImport = () => {
+  resetImportState()
+  importOpen.value = true
+}
+
+const closeImport = () => {
+  if (importing.value) return
+  importOpen.value = false
+  resetImportState()
+}
+
+const handleImportSchedule = async () => {
+  if (!importFile.value) {
+    importError.value = 'File Excel wajib dipilih'
+    return
+  }
+
+  importing.value = true
+  importError.value = null
+  importErrors.value = []
+  importResult.value = null
+  try {
+    const response = await importScheduleExcel(importFile.value)
+    const result = response.data?.data ?? null
+    importResult.value = result
+    importFile.value = null
+    if (importFileInput.value) importFileInput.value.value = ''
+    await fetchList()
+    success.value = result
+      ? `Import selesai: ${result.created} truk ditambahkan ke ${result.scheduleCount} jadwal (${result.skipped} dilewati)`
+      : 'Import schedule selesai'
+  } catch (err: any) {
+    const details = err?.response?.data?.details
+    if (Array.isArray(details) && details.length > 0) {
+      importErrors.value = details
+      importError.value = err?.response?.data?.message || 'Validasi import gagal'
+    } else {
+      importError.value = getErrorMessage(err, 'Gagal import schedule')
+    }
+  } finally {
+    importing.value = false
+  }
+}
+
+const handleDownloadImportTemplate = async () => {
+  try {
+    const response = await downloadScheduleImportTemplate()
+    const blob = new Blob([response.data], { type: response.headers['content-type'] })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = 'template-schedule-delivery-receiving.xlsx'
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+    window.setTimeout(() => URL.revokeObjectURL(url), 0)
+  } catch (err: any) {
+    importError.value = getErrorMessage(err, 'Gagal download template')
+  }
+}
+
+const handleDownloadImportErrors = () => {
+  if (importErrors.value.length === 0) return
+  const content = importErrors.value.join('\r\n')
+  const blob = new Blob(['\ufeff' + content], { type: 'text/csv;charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = 'kesalahan-import-schedule.csv'
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+  window.setTimeout(() => URL.revokeObjectURL(url), 0)
+}
+
+const openImportLogs = async () => {
+  importLogsOpen.value = true
+  importLogsLoading.value = true
+  try {
+    const response = await getScheduleImportLogs(20)
+    importLogs.value = response.data?.data ?? []
+  } catch (err: any) {
+    importError.value = getErrorMessage(err, 'Gagal mengambil riwayat import')
+  } finally {
+    importLogsLoading.value = false
+  }
+}
+
 const handlePrintSchedule = async () => {
   printError.value = null
   printing.value = true
@@ -919,6 +1036,10 @@ watch(
         <p class="text-muted-foreground">Monitoring Jadwal Delivery & Receiving</p>
       </div>
       <div class="flex items-center gap-2">
+        <Button v-if="canManageSchedule" size="sm" variant="outline" @click="openImport">
+          <Upload class="mr-2 h-4 w-4" />
+          Import Excel
+        </Button>
         <Button size="sm" variant="outline" @click="exportOpen = true">Export Excel</Button>
         <Button size="sm" variant="outline" class="border-blue-200 bg-blue-600 text-white hover:bg-blue-700 hover:text-white" :disabled="printing" @click="handlePrintSchedule">
           {{ printing ? 'Menyiapkan...' : 'Print Out' }}
@@ -1452,6 +1573,141 @@ watch(
           <Button variant="ghost" @click="closeConfirmDelete">Batal</Button>
           <Button :disabled="deleting" @click="confirmDelete">
             {{ deleting ? 'Menghapus...' : 'Ya, Hapus' }}
+          </Button>
+        </div>
+      </div>
+    </div>
+
+    <div v-if="importOpen" class="fixed inset-0 z-50">
+      <div class="absolute inset-0 bg-black/40" @click="closeImport"></div>
+      <div class="absolute left-1/2 top-1/2 max-h-[90vh] w-full max-w-2xl -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-lg border bg-card shadow-xl">
+        <div class="flex items-start justify-between gap-3 border-b p-4">
+          <div>
+            <h3 class="text-lg font-semibold">Import Schedule Delivery &amp; Receiving</h3>
+            <p class="mt-1 text-xs text-muted-foreground">
+              Satu baris mewakili satu truk. Maksimal 500 baris per file. Baris dengan jadwal yang
+              sama (tanggal + customer + kategori) otomatis digabung.
+            </p>
+          </div>
+          <button
+            type="button"
+            class="rounded-md p-1 text-muted-foreground hover:bg-muted"
+            :disabled="importing"
+            aria-label="Tutup"
+            @click="closeImport"
+          >
+            <X class="h-4 w-4" />
+          </button>
+        </div>
+
+        <div class="space-y-3 p-4">
+          <div class="flex flex-wrap items-center gap-2">
+            <Button size="sm" variant="outline" @click="handleDownloadImportTemplate">
+              <Download class="mr-2 h-4 w-4" />
+              Unduh Template
+            </Button>
+            <Button size="sm" variant="ghost" @click="openImportLogs">
+              <History class="mr-2 h-4 w-4" />
+              Riwayat Import
+            </Button>
+          </div>
+
+          <div>
+            <label for="schedule-import-file" class="text-xs font-medium text-muted-foreground">
+              File Excel (.xlsx)
+            </label>
+            <input
+              id="schedule-import-file"
+              ref="importFileInput"
+              type="file"
+              accept=".xlsx"
+              class="mt-1 w-full min-w-0 max-w-full rounded-xl border border-input/80 bg-card/75 px-3 py-2 text-xs file:mr-3 file:rounded-lg file:border-0 file:bg-muted file:px-3 file:py-1.5 file:text-xs file:font-medium"
+              :disabled="importing"
+              @change="(e) => (importFile = (e.target as HTMLInputElement).files?.[0] || null)"
+            />
+          </div>
+
+          <div
+            v-if="importError && importErrors.length === 0"
+            class="rounded-xl border border-red-300/60 bg-red-50 px-3 py-2 text-xs text-red-700 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-300"
+            role="alert"
+          >
+            {{ importError }}
+          </div>
+
+          <div
+            v-if="importResult"
+            class="rounded-xl border border-emerald-300/60 bg-emerald-50 px-3 py-2 text-xs text-emerald-800 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-300"
+          >
+            <p>
+              <span class="font-semibold">{{ importResult.created }}</span> truk ditambahkan ke
+              <span class="font-semibold">{{ importResult.scheduleCount }}</span> jadwal
+              (<span class="font-semibold">{{ importResult.createdSchedules }}</span> jadwal baru),
+              <span class="font-semibold">{{ importResult.skipped }}</span> dilewati dari
+              {{ importResult.total }} baris valid.
+            </p>
+            <ul v-if="importResult.newSchedules.length > 0" class="mt-2 space-y-0.5">
+              <li v-for="(schedule, index) in importResult.newSchedules" :key="index">
+                + {{ formatDateId(schedule.date) }} · {{ schedule.customerName }} ·
+                {{ schedule.category }} · {{ schedule.itemCount }} truk
+              </li>
+            </ul>
+          </div>
+
+          <div
+            v-if="importErrors.length > 0"
+            class="rounded-xl border border-red-300/60 bg-red-50 px-3 py-2 dark:border-red-500/30 dark:bg-red-500/10"
+          >
+            <div class="flex items-start justify-between gap-3">
+              <p class="text-xs font-semibold text-red-800 dark:text-red-300">
+                Import dibatalkan. Perbaiki {{ importErrors.length }} baris berikut lalu unggah ulang:
+              </p>
+              <Button size="sm" variant="outline" @click="handleDownloadImportErrors">
+                <Download class="mr-1.5 h-3.5 w-3.5" />
+                Unduh daftar
+              </Button>
+            </div>
+            <ul class="mt-2 max-h-64 space-y-0.5 overflow-y-auto text-xs text-red-700 dark:text-red-300">
+              <li v-for="(message, index) in importErrors" :key="index">{{ message }}</li>
+            </ul>
+          </div>
+
+          <div v-if="importLogsOpen" class="rounded-xl border bg-muted/30 p-3">
+            <div class="flex items-center justify-between">
+              <p class="text-xs font-semibold">Riwayat import terakhir</p>
+              <button
+                type="button"
+                class="text-xs text-muted-foreground hover:underline"
+                @click="importLogsOpen = false"
+              >
+                Tutup
+              </button>
+            </div>
+            <p v-if="importLogsLoading" class="mt-2 text-xs text-muted-foreground">Memuat...</p>
+            <p v-else-if="importLogs.length === 0" class="mt-2 text-xs text-muted-foreground">
+              Belum ada riwayat import.
+            </p>
+            <ul v-else class="mt-2 space-y-1 text-xs">
+              <li
+                v-for="log in importLogs"
+                :key="log.id"
+                class="flex flex-wrap items-baseline justify-between gap-x-3 border-b border-border/50 pb-1 last:border-0"
+              >
+                <span class="font-medium">{{ formatDateTimeId(log.createdAt) }}</span>
+                <span class="text-muted-foreground">
+                  {{ log.actorUser?.name || 'Sistem' }} · {{ log.createdCount }} dibuat ·
+                  {{ log.skippedCount }} dilewati · {{ log.scheduleCount }} jadwal
+                </span>
+                <span class="w-full text-muted-foreground/80">{{ log.fileName || '-' }}</span>
+              </li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="flex items-center justify-end gap-2 border-t p-4">
+          <Button variant="ghost" :disabled="importing" @click="closeImport">Batal</Button>
+          <Button :disabled="importing || !importFile" @click="handleImportSchedule">
+            {{ importing ? 'Mengimpor...' : 'Import' }}
           </Button>
         </div>
       </div>

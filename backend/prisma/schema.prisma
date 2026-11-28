@@ -117,7 +117,7 @@ model QueueEntry {
   plannedCustomerName     String?
   plannedTransporterName  String?
   plannedDriverName       String?
-  plannedContainerNumbers String[] @default([])
+  plannedContainerNumbers String[]   @default([])
 
   // --- Penanda penutupan otomatis oleh sistem ----------------------------
   autoCompleted   Boolean   @default(false)
@@ -179,29 +179,30 @@ model Employee {
 }
 
 model AdminUser {
-  id                     String                @id @default(uuid())
+  id                     String                 @id @default(uuid())
   name                   String
   position               String
   phone                  String
   role                   AdminRole
-  username               String                @unique
+  username               String                 @unique
   passwordHash           String
-  createdAt              DateTime              @default(now())
-  updatedAt              DateTime              @updatedAt
+  createdAt              DateTime               @default(now())
+  updatedAt              DateTime               @updatedAt
   logs                   QueueLog[]
   shipmentSchedules      ShipmentSchedule[]
-  createdPickings        PickingProgress[]     @relation("PickingCreatedBy")
-  updatedPickings        PickingProgress[]     @relation("PickingUpdatedBy")
+  createdPickings        PickingProgress[]      @relation("PickingCreatedBy")
+  updatedPickings        PickingProgress[]      @relation("PickingUpdatedBy")
   pickingLogs            PickingProgressLog[]
-  createdDailyJobs       DailyJobActivity[]    @relation("DailyJobCreatedBy")
-  updatedDailyJobs       DailyJobActivity[]    @relation("DailyJobUpdatedBy")
+  createdDailyJobs       DailyJobActivity[]     @relation("DailyJobCreatedBy")
+  updatedDailyJobs       DailyJobActivity[]     @relation("DailyJobUpdatedBy")
   dailyJobLogs           DailyJobActivityLog[]
-  createdJobTransactions JobTransaction[]      @relation("JobTransactionCreatedBy")
-  updatedJobTransactions JobTransaction[]      @relation("JobTransactionUpdatedBy")
+  createdJobTransactions JobTransaction[]       @relation("JobTransactionCreatedBy")
+  updatedJobTransactions JobTransaction[]       @relation("JobTransactionUpdatedBy")
   jobTransactionLogs     JobTransactionLog[]
   noShowClosedSchedules  ShipmentScheduleItem[] @relation("ScheduleItemNoShowClosedBy")
   appSettingsUpdated     AppSetting[]
   exportJobs             ExportJob[]
+  scheduleImportLogs     ScheduleImportLog[]
 
   @@index([role])
   @@index([username])
@@ -238,9 +239,9 @@ model ShipmentSchedule {
 }
 
 model ShipmentScheduleItem {
-  id             String           @id @default(uuid())
-  scheduleId     String
-  schedule       ShipmentSchedule @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+  id         String           @id @default(uuid())
+  scheduleId String
+  schedule   ShipmentSchedule @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
 
   truckType      TruckType
   truckTypeOther String?
@@ -290,10 +291,29 @@ model Transporter {
   queueEntries  QueueEntry[]
 }
 
+/// Ringkasan satu kali import Schedule dari Excel. Disimpan supaya bisa
+/// ditelusuri siapa mengimpor file apa, berapa baris masuk/dilewati, dan
+/// schedule mana saja yang tersentuh.
+model ScheduleImportLog {
+  id           String   @id @default(uuid())
+  fileName     String?
+  rowCount     Int
+  createdCount Int
+  skippedCount Int
+  scheduleCount Int
+  note         String?
+  actorUserId  String?
+  actorUser    AdminUser? @relation(fields: [actorUserId], references: [id], onDelete: SetNull)
+  createdAt    DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([actorUserId])
+}
+
 model AppSetting {
-  key             String   @id
+  key             String     @id
   value           String
-  updatedAt       DateTime @updatedAt
+  updatedAt       DateTime   @updatedAt
   updatedByUserId String?
   updatedByUser   AdminUser? @relation(fields: [updatedByUserId], references: [id], onDelete: SetNull)
 
@@ -448,24 +468,24 @@ enum ExportJobStatus {
 }
 
 model ExportJob {
-  id          String          @id @default(uuid())
-  type        String
-  status      ExportJobStatus @default(MENUNGGU)
-  scopeLabel  String
-  params      Json
-  rowCount    Int             @default(0)
-  fileName    String?
-  filePath    String?
-  fileSize    Int?
-  error       String?
-  createdById String?
-  createdBy   AdminUser?      @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  id            String          @id @default(uuid())
+  type          String
+  status        ExportJobStatus @default(MENUNGGU)
+  scopeLabel    String
+  params        Json
+  rowCount      Int             @default(0)
+  fileName      String?
+  filePath      String?
+  fileSize      Int?
+  error         String?
+  createdById   String?
+  createdBy     AdminUser?      @relation(fields: [createdById], references: [id], onDelete: SetNull)
   createdByRole String?
-  startedAt   DateTime?
-  finishedAt  DateTime?
-  expiresAt   DateTime?
-  createdAt   DateTime        @default(now())
-  updatedAt   DateTime        @updatedAt
+  startedAt     DateTime?
+  finishedAt    DateTime?
+  expiresAt     DateTime?
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
 
   @@index([status, createdAt])
   @@index([createdById, createdAt])

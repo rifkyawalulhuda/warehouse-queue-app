@@ -16,11 +16,13 @@ router.get(
   transporterController.listTransporters
 );
 
-// Tambah inline dari form antrian boleh untuk ketiga role (keputusan S9).
+// Tambah transporter hanya untuk ADMIN. Sejak transporter dipakai lewat
+// Combobox master di form antrian, tidak ada lagi penambahan inline oleh
+// operator WAREHOUSE/CS.
 router.post(
   "/transporters",
   authMiddleware,
-  requireRole("ADMIN", "WAREHOUSE", "CS"),
+  requireRole("ADMIN"),
   transporterController.createTransporter
 );
 

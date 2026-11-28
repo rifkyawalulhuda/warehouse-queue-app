@@ -32,7 +32,7 @@ async function seedAdminUser() {
       passwordHash,
     },
   });
-  console.log("Seed: admin user created (username: admin, password: admin123)");
+  console.log("Seed: admin user created (username: admin)");
 }
 
 async function seedAppSettings() {

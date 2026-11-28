@@ -823,10 +823,439 @@ async function closeNoShowItem(id, actorUser) {
   });
 }
 
+// ---------------------------------------------------------------------------
+// Import bulk Schedule dari Excel
+// ---------------------------------------------------------------------------
+
+const MAX_IMPORT_ROWS = 500;
+const MAX_SHIFT_MINUTES = 12 * 60;
+
+const STORE_TYPE_ALIASES = {
+  RECEIVING: "STORE_IN",
+  "RECEIVING (PENERIMAAN)": "STORE_IN",
+  PENERIMAAN: "STORE_IN",
+  "STORE IN": "STORE_IN",
+  STORE_IN: "STORE_IN",
+  DELIVERY: "STORE_OUT",
+  "DELIVERY (PENGIRIMAN)": "STORE_OUT",
+  PENGIRIMAN: "STORE_OUT",
+  "STORE OUT": "STORE_OUT",
+  STORE_OUT: "STORE_OUT",
+};
+
+const TRUCK_TYPE_ALIASES = {
+  CDD: "CDD",
+  CDE: "CDE",
+  FUSO: "FUSO",
+  WB: "WB",
+  "W/B": "WB",
+  WINGBOX: "WB",
+  "WING BOX": "WB",
+  FT20: "FT20",
+  "20FT": "FT20",
+  "20 FT": "FT20",
+  FT40: "FT40",
+  "40FT": "FT40",
+  "40 FT": "FT40",
+  OTHER: "OTHER",
+  LAINNYA: "OTHER",
+  LAIN: "OTHER",
+};
+
+/**
+ * Tanggal dari sel Excel. Menerima sel tanggal asli, serial angka Excel,
+ * teks YYYY-MM-DD, dan teks DD/MM/YYYY. Hasilnya selalu UTC midnight karena
+ * kolom scheduleDate bertipe @db.Date.
+ */
+function parseImportDate(value) {
+  if (value instanceof Date && !Number.isNaN(value.getTime())) {
+    return new Date(Date.UTC(value.getFullYear(), value.getMonth(), value.getDate()));
+  }
+  if (typeof value === "number" && Number.isFinite(value)) {
+    // Serial tanggal Excel: 25569 = jarak hari 1899-12-30 -> 1970-01-01.
+    const ms = Math.round((value - 25569) * 86400000);
+    const parsed = new Date(ms);
+    if (Number.isNaN(parsed.getTime())) return null;
+    return new Date(Date.UTC(parsed.getUTCFullYear(), parsed.getUTCMonth(), parsed.getUTCDate()));
+  }
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (!trimmed) return null;
+    const iso = parseDateOnly(trimmed);
+    if (iso) return iso;
+    const dmy = /^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/.exec(trimmed);
+    if (dmy) {
+      const day = String(dmy[1]).padStart(2, "0");
+      const month = String(dmy[2]).padStart(2, "0");
+      return parseDateOnly(`${dmy[3]}-${month}-${day}`);
+    }
+  }
+  return null;
+}
+
+/** Jam dari sel Excel: teks "HH:mm", sel waktu Excel (pecahan hari), atau Date. */
+function parseImportTime(value) {
+  if (value instanceof Date && !Number.isNaN(value.getTime())) {
+    return `${String(value.getHours()).padStart(2, "0")}:${String(value.getMinutes()).padStart(2, "0")}`;
+  }
+  if (typeof value === "number" && Number.isFinite(value)) {
+    const fraction = value >= 1 ? value % 1 : value;
+    if (fraction < 0) return null;
+    const totalMinutes = Math.round(fraction * 1440);
+    if (totalMinutes >= 1440) return null;
+    return `${String(Math.floor(totalMinutes / 60)).padStart(2, "0")}:${String(totalMinutes % 60).padStart(2, "0")}`;
+  }
+  if (typeof value === "string") {
+    const match = /^(\d{1,2})[:.](\d{2})$/.exec(value.trim());
+    if (!match) return null;
+    const hours = Number(match[1]);
+    const minutes = Number(match[2]);
+    if (hours > 23 || minutes > 59) return null;
+    return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
+  }
+  return null;
+}
+
+function splitContainerNumbers(value) {
+  if (typeof value !== "string") return [];
+  return normalizeContainerNumbers(value.split(/[,;\n]/));
+}
+
+function dateKeyUtc(date) {
+  return date.toISOString().slice(0, 10);
+}
+
+/**
+ * Import bulk Schedule Delivery & Receiving dari Excel.
+ * Satu baris = satu truk. Baris dikelompokkan ke schedule berdasarkan
+ * Tanggal + Customer + Kategori (STORE_IN/STORE_OUT). Seluruh file divalidasi
+ * lebih dulu; satu baris salah membatalkan seluruh import. Truk duplikat
+ * (plat + tanggal + jam start) dilewati, bukan dianggap error.
+ */
+async function importSchedulesFromExcel(rows, options = {}) {
+  const { actorUserId = null, fileName = null } = options;
+
+  if (!Array.isArray(rows) || rows.length === 0) {
+    throw createHttpError(400, "Data Excel tidak valid");
+  }
+  if (rows.length > MAX_IMPORT_ROWS) {
+    throw createHttpError(
+      400,
+      `Maksimal ${MAX_IMPORT_ROWS} baris per file. File ini berisi ${rows.length} baris.`
+    );
+  }
+
+  const [customers, transporters] = await Promise.all([
+    prisma.customer.findMany({ select: { id: true, name: true } }),
+    prisma.transporter.findMany({ select: { id: true, name: true, isActive: true } }),
+  ]);
+  const customerByName = new Map(customers.map((c) => [c.name.trim().toLowerCase(), c]));
+  const transporterByName = new Map(transporters.map((t) => [t.name.trim().toLowerCase(), t]));
+
+  const errors = [];
+  const parsed = [];
+  const seenInFile = new Set();
+  let skippedInFile = 0;
+  const truckTypeList = ALLOWED_TRUCK_TYPES.join(", ");
+
+  for (const row of rows) {
+    const rowNumber = row?.rowNumber || 0;
+    const text = (value) => (typeof value === "string" ? value.trim() : "");
+
+    const rawDate = row?.date;
+    const rawCategory = text(row?.category);
+    const rawCustomer = text(row?.customer);
+    const rawPlate = text(row?.plate);
+    const rawTruckType = text(row?.truckType);
+    const rawTruckTypeOther = text(row?.truckTypeOther);
+    const rawTransporter = text(row?.transporter);
+    const rawDriver = text(row?.driver);
+    const rawStart = row?.start;
+    const rawFinish = row?.finish;
+
+    const isEmptyRow =
+      !text(rawDate) &&
+      !rawCategory &&
+      !rawCustomer &&
+      !rawPlate &&
+      !rawTruckType &&
+      !rawTransporter &&
+      !text(rawStart) &&
+      !text(rawFinish);
+    if (isEmptyRow) continue;
+
+    const rowErrors = [];
+
+    const scheduleDate = parseImportDate(rawDate);
+    if (!scheduleDate) rowErrors.push("Tanggal wajib diisi dengan format YYYY-MM-DD");
+
+    const storeType = STORE_TYPE_ALIASES[rawCategory.toUpperCase()] || null;
+    if (!storeType) rowErrors.push("Kategori harus RECEIVING atau DELIVERY");
+
+    let customer = null;
+    if (!rawCustomer) {
+      rowErrors.push("Customer wajib diisi");
+    } else {
+      customer = customerByName.get(rawCustomer.toLowerCase()) || null;
+      if (!customer) rowErrors.push(`Customer "${rawCustomer}" tidak ditemukan di Master Customer`);
+    }
+
+    const plateNumber = normalizePlateNumber(rawPlate);
+    if (!plateNumber) rowErrors.push("Plat Nomor wajib diisi");
+
+    const truckType = TRUCK_TYPE_ALIASES[rawTruckType.toUpperCase()] || null;
+    if (!truckType) {
+      rowErrors.push(`Tipe Truk tidak dikenal. Pilihan: ${truckTypeList}`);
+    } else if (truckType === "OTHER" && !rawTruckTypeOther) {
+      rowErrors.push("Tipe Lain wajib diisi saat Tipe Truk OTHER");
+    }
+
+    let transporterId = null;
+    if (rawTransporter) {
+      const found = transporterByName.get(rawTransporter.toLowerCase()) || null;
+      if (!found) {
+        rowErrors.push(`Transporter "${rawTransporter}" tidak ditemukan di Master Transporter`);
+      } else if (!found.isActive) {
+        rowErrors.push(`Transporter "${rawTransporter}" nonaktif`);
+      } else {
+        transporterId = found.id;
+      }
+    }
+
+    const startTime = parseImportTime(rawStart);
+    if (!startTime) rowErrors.push("Estimasi Start wajib diisi (HH:mm)");
+    const finishTime = parseImportTime(rawFinish);
+    if (!finishTime) rowErrors.push("Estimasi Finish wajib diisi (HH:mm)");
+
+    let plannedStart = null;
+    let plannedFinish = null;
+    if (scheduleDate && startTime && finishTime) {
+      plannedStart = combineDateAndTime(scheduleDate, startTime);
+      // Shift lewat tengah malam didukung: kalau finish <= start, anggap H+1.
+      // Durasi di atas 12 jam dianggap salah ketik (09:00 -> 08:00 = 23 jam).
+      const finishSameDay = combineDateAndTime(scheduleDate, finishTime);
+      plannedFinish =
+        finishSameDay.getTime() <= plannedStart.getTime()
+          ? combineDateAndTime(scheduleDate, finishTime, 1)
+          : finishSameDay;
+      const durationMinutes = (plannedFinish.getTime() - plannedStart.getTime()) / 60000;
+      if (durationMinutes > MAX_SHIFT_MINUTES) {
+        rowErrors.push("Estimasi Finish maksimal 12 jam setelah Estimasi Start");
+      } else if (durationMinutes <= 0) {
+        rowErrors.push("Estimasi Finish harus setelah Estimasi Start");
+      }
+    }
+
+    if (rowErrors.length > 0) {
+      errors.push(`Baris ${rowNumber}: ${rowErrors.join(", ")}`);
+      continue;
+    }
+
+    const duplicateKey = `${plateNumber}|${dateKeyUtc(scheduleDate)}|${startTime}`;
+    if (seenInFile.has(duplicateKey)) {
+      skippedInFile += 1;
+      continue;
+    }
+    seenInFile.add(duplicateKey);
+
+    parsed.push({
+      rowNumber,
+      scheduleDate,
+      storeType,
+      customerId: customer.id,
+      customerName: customer.name,
+      plateNumber,
+      truckType,
+      truckTypeOther: truckType === "OTHER" ? rawTruckTypeOther : null,
+      transporterId,
+      driverName: rawDriver || null,
+      containerNumbers: splitContainerNumbers(row?.containers),
+      plannedStart,
+      plannedFinish,
+      duplicateKey,
+      startTime,
+    });
+  }
+
+  if (errors.length > 0) {
+    throw createHttpError(400, "Validasi import gagal", errors);
+  }
+  if (parsed.length === 0) {
+    throw createHttpError(400, "Tidak ada data schedule yang valid");
+  }
+
+  // Duplikat terhadap data yang sudah ada: plat + tanggal + jam start.
+  const involvedDates = [...new Set(parsed.map((row) => dateKeyUtc(row.scheduleDate)))].map(
+    (key) => new Date(`${key}T00:00:00.000Z`)
+  );
+  const existingItems = await prisma.shipmentScheduleItem.findMany({
+    where: { schedule: { scheduleDate: { in: involvedDates } } },
+    select: {
+      plateNumber: true,
+      plannedStart: true,
+      schedule: { select: { scheduleDate: true } },
+    },
+  });
+  const existingKeys = new Set();
+  for (const item of existingItems) {
+    if (!item.plateNumber || !item.plannedStart) continue;
+    const hours = String(item.plannedStart.getHours()).padStart(2, "0");
+    const minutes = String(item.plannedStart.getMinutes()).padStart(2, "0");
+    existingKeys.add(
+      `${item.plateNumber}|${dateKeyUtc(item.schedule.scheduleDate)}|${hours}:${minutes}`
+    );
+  }
+
+  const toCreate = parsed.filter((row) => !existingKeys.has(row.duplicateKey));
+  const skippedCount = parsed.length - toCreate.length + skippedInFile;
+  if (toCreate.length === 0) {
+    return {
+      created: 0,
+      skipped: skippedCount,
+      total: parsed.length + skippedInFile,
+      scheduleCount: 0,
+      createdSchedules: 0,
+      newSchedules: [],
+    };
+  }
+
+  // Kelompokkan per Tanggal + Customer + Kategori.
+  const groups = new Map();
+  for (const row of toCreate) {
+    const groupKey = `${dateKeyUtc(row.scheduleDate)}|${row.customerId}|${row.storeType}`;
+    if (!groups.has(groupKey)) {
+      groups.set(groupKey, {
+        scheduleDate: row.scheduleDate,
+        customerId: row.customerId,
+        customerName: row.customerName,
+        storeType: row.storeType,
+        rows: [],
+      });
+    }
+    groups.get(groupKey).rows.push(row);
+  }
+
+  const result = await prisma.$transaction(
+    async (tx) => {
+      const groupList = [...groups.values()];
+      const existingSchedules = await tx.shipmentSchedule.findMany({
+        where: {
+          scheduleDate: { in: [...new Set(groupList.map((g) => dateKeyUtc(g.scheduleDate)))].map(
+            (key) => new Date(`${key}T00:00:00.000Z`)
+          ) },
+          customerId: { in: [...new Set(groupList.map((g) => g.customerId))] },
+        },
+        select: { id: true, scheduleDate: true, customerId: true, storeType: true },
+      });
+      const scheduleIdByKey = new Map(
+        existingSchedules.map((s) => [
+          `${dateKeyUtc(s.scheduleDate)}|${s.customerId}|${s.storeType}`,
+          s.id,
+        ])
+      );
+
+      const newSchedules = [];
+      const itemRows = [];
+      for (const group of groupList) {
+        const groupKey = `${dateKeyUtc(group.scheduleDate)}|${group.customerId}|${group.storeType}`;
+        let scheduleId = scheduleIdByKey.get(groupKey);
+        if (!scheduleId) {
+          const created = await tx.shipmentSchedule.create({
+            data: {
+              scheduleDate: group.scheduleDate,
+              storeType: group.storeType,
+              customerId: group.customerId,
+              createdByUserId: actorUserId,
+            },
+            select: { id: true },
+          });
+          scheduleId = created.id;
+          scheduleIdByKey.set(groupKey, scheduleId);
+          newSchedules.push({
+            date: dateKeyUtc(group.scheduleDate),
+            customerName: group.customerName,
+            category: group.storeType === "STORE_IN" ? "RECEIVING" : "DELIVERY",
+            itemCount: group.rows.length,
+          });
+        }
+        for (const row of group.rows) {
+          itemRows.push({
+            scheduleId,
+            truckType: row.truckType,
+            truckTypeOther: row.truckTypeOther,
+            plateNumber: row.plateNumber,
+            transporterId: row.transporterId,
+            driverName: row.driverName,
+            containerNumbers: row.containerNumbers,
+            plannedStart: row.plannedStart,
+            plannedFinish: row.plannedFinish,
+            status: "PLANNED",
+          });
+        }
+      }
+
+      await tx.shipmentScheduleItem.createMany({ data: itemRows });
+
+      await tx.scheduleImportLog.create({
+        data: {
+          fileName: fileName || null,
+          rowCount: parsed.length + skippedInFile,
+          createdCount: itemRows.length,
+          skippedCount,
+          scheduleCount: groups.size,
+          note: `Import ${itemRows.length} truk ke ${groups.size} schedule`,
+          actorUserId,
+        },
+      });
+
+      return { createdSchedules: newSchedules.length, newSchedules };
+    },
+    { timeout: 60000, maxWait: 15000 }
+  );
+
+  return {
+    created: toCreate.length,
+    skipped: skippedCount,
+    total: parsed.length + skippedInFile,
+    scheduleCount: groups.size,
+    createdSchedules: result.createdSchedules,
+    newSchedules: result.newSchedules,
+  };
+}
+
+async function listScheduleImportLogs(limit = 20) {
+  return prisma.scheduleImportLog.findMany({
+    orderBy: { createdAt: "desc" },
+    take: limit,
+    include: { actorUser: { select: { id: true, name: true, username: true } } },
+  });
+}
+
+
+async function listTemplateOptions() {
+  const [customers, transporters] = await Promise.all([
+    prisma.customer.findMany({
+      select: { name: true },
+      orderBy: { name: "asc" },
+    }),
+    prisma.transporter.findMany({
+      where: { isActive: true },
+      select: { name: true },
+      orderBy: { name: "asc" },
+    }),
+  ]);
+
+  return {
+    customers: customers.map((row) => row.name),
+    transporters: transporters.map((row) => row.name),
+  };
+}
+
 module.exports = {
   TRUCK_TYPE_LABELS,
   PRINT_TRUCK_COLUMNS,
   SCHEDULE_ITEM_STATUSES,
+  ALLOWED_TRUCK_TYPES,
   createHttpError,
   combineDateAndTime,
   normalizePlateNumber,
@@ -841,4 +1270,7 @@ module.exports = {
   deleteSchedule,
   markNoShowScheduleItems,
   closeNoShowItem,
+  importSchedulesFromExcel,
+  listScheduleImportLogs,
+  listTemplateOptions,
 };
